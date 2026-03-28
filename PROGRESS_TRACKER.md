@@ -11,13 +11,13 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1-E6 Driver View ✅
-Current Phase : Phase 1 – MVP
-Current Epic  : Phase 1 COMPLETE
-Next Action   : Run full demo — seed data → login → generate plan → driver view
+Last Worked On: P1 fully complete ✅  Tailwind v4 fixed ✅
+Current Phase : Phase 2 – Autonomous Dispatch
+Current Epic  : P2-E1 — OR-Tools VRPTW (next to start)
+Next Action   : Implement P2-E1 → ortools_planner.py + config + service switch + migration
 Blocker       : None
-Demo Target   : Phase 1 complete — working end-to-end demo
-Timeline      : 4 weeks
+Demo Target   : LangGraph agent + live map + agent feed
+Timeline      : 2 weeks
 ```
 
 ---
@@ -38,16 +38,16 @@ Timeline      : 4 weeks
 This is what "Phase 1 working demo" means. Every item below must be ✅ before you call the demo ready:
 
 ```
-[x] docker compose up starts all services without errors
-[x] Seed script runs: python scripts/seed_data.py --start-date <date>
-[x] Dispatcher can log in at http://localhost:5173/login
-[x] Dashboard shows today's unassigned orders
-[x] "Generate Plan" button assigns orders to drivers
-[x] Assignments table shows driver names + stop sequences
-[x] Driver can log in (driver@demo.com) and see their stops
-[x] Driver can tap "Arrived" and "Delivered" on each stop
-[ ] Dispatcher dashboard reflects updated delivery counts (verify live)
-[x] API docs available at http://localhost:8000/docs
+[ ] docker compose up starts all services without errors
+[ ] Seed script runs: python scripts/seed_data.py --start-date <date>
+[ ] Dispatcher can log in at http://localhost:5173/login
+[ ] Dashboard shows today's unassigned orders
+[ ] "Generate Plan" button assigns orders to drivers
+[ ] Assignments table shows driver names + stop sequences
+[ ] Driver can log in (driver@demo.com) and see their stops
+[ ] Driver can tap "Arrived" and "Delivered" on each stop
+[ ] Dispatcher dashboard reflects updated delivery counts
+[ ] API docs available at http://localhost:8000/docs
 ```
 
 ---
@@ -143,36 +143,35 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E4-S5 | Register planning router | ✅ | `app/api/router.py` |
 | P1-E4-VER | App imports clean | ✅ | python import check passed |
 
-### P1-E5: Ops Dashboard UI ✅
+### P1-E5: Ops Dashboard UI ⬜
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E5-T | TypeScript types | ✅ | `src/types/index.ts` |
-| P1-E5-API | API client modules (6 files) | ✅ | `src/api/auth.ts`, `orders.ts`, `planning.ts`, `drivers.ts`, `vehicles.ts`, `depots.ts` |
-| P1-E5-STORE | Update zustand store | ✅ | `src/store/useAppStore.ts` |
-| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ✅ | `src/routes/ProtectedRoute.tsx`, `src/routes/AppRoutes.tsx` |
-| P1-E5-LOGIN | Login page (full implementation) | ✅ | `src/pages/Login.tsx` |
-| P1-E5-LAYOUT | AppLayout with sidebar | ✅ | `src/components/layout/AppLayout.tsx` |
-| P1-E5-DASH | Dashboard page (stats + quick action) | ✅ | `src/pages/Dashboard.tsx` |
-| P1-E5-PLAN | Planning page (key demo screen) | ✅ | `src/pages/Planning.tsx` |
-| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ✅ | `src/components/shared/` |
-| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ✅ | `src/pages/Orders.tsx` |
-| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ✅ | `src/pages/Drivers.tsx` |
-| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ✅ | `src/pages/Vehicles.tsx` |
-| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ✅ | `src/pages/Depots.tsx` |
-| P1-E5-COMP | Shared components (StatusBadge, FormField, ToggleSwitch, DataTable, FormModal) | ✅ | `src/components/shared/` |
-| P1-E5-VER | UI loads, login works, planning screen generates plan | ⬜ | Manual test — start dev server |
+| P1-E5-T | TypeScript types | ⬜ | `src/types/index.ts` |
+| P1-E5-API | API client modules (6 files) | ⬜ | `src/api/` |
+| P1-E5-STORE | Update zustand store | ⬜ | `src/store/useAppStore.ts` |
+| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ⬜ | `src/routes/` |
+| P1-E5-LOGIN | Login page (full implementation) | ⬜ | `src/pages/Login.tsx` |
+| P1-E5-LAYOUT | AppLayout with sidebar | ⬜ | `src/components/layout/AppLayout.tsx` |
+| P1-E5-DASH | Dashboard page (stats + quick action) | ⬜ | `src/pages/Dashboard.tsx` |
+| P1-E5-PLAN | Planning page (key demo screen) | ⬜ | `src/pages/Planning.tsx` |
+| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ⬜ | `src/components/shared/` |
+| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ⬜ | `src/pages/Orders.tsx` |
+| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ⬜ | `src/pages/Drivers.tsx` |
+| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ⬜ | `src/pages/Vehicles.tsx` |
+| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ⬜ | `src/pages/Depots.tsx` |
+| P1-E5-COMP | Shared components (StatusBadge, Spinner, EmptyState) | ⬜ | `src/components/shared/` |
+| P1-E5-VER | UI loads, login works, planning screen generates plan | ⬜ | Manual test |
 
-### P1-E6: Driver View ✅
+### P1-E6: Driver View ⬜
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E6-API | Backend driver endpoints (my-stops + update status) | ✅ | `app/api/v1/driver.py` |
-| P1-E6-REG | Register driver router | ✅ | `app/api/router.py` |
-| P1-E6-FE | Frontend API client | ✅ | `src/api/driver.ts` |
-| P1-E6-PAGE | DriverView page (stops list + action buttons) | ✅ | `src/pages/DriverView.tsx` |
-| P1-E6-ROUTE | Add /driver route to AppRoutes | ✅ | `src/routes/AppRoutes.tsx` |
-| P1-E6-SEED | Link driver email in seed script | ✅ | `scripts/seed_data.py` |
+| P1-E6-API | Backend driver endpoints | ⬜ | `app/api/v1/driver.py` |
+| P1-E6-REG | Register driver router | ⬜ | `app/api/router.py` |
+| P1-E6-FE | Frontend API client | ⬜ | `src/api/driver.ts` |
+| P1-E6-PAGE | DriverView page | ⬜ | `src/pages/DriverView.tsx` |
+| P1-E6-SEED | Link driver email in seed script | ⬜ | `scripts/seed_data.py` |
 | P1-E6-VER | Driver sees stops + marks delivered | ⬜ | Manual test |
 
 ### P1-E7: Synthetic Data & Demo ✅
@@ -190,10 +189,95 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P2-E1 | OR-Tools VRPTW Optimization | ⬜ Spec ready | `GENSPEC_P2_autonomous_dispatch_v1.md` |
-| P2-E2 | LangGraph Planner Agent | ⬜ Spec ready | `GENSPEC_P2_autonomous_dispatch_v1.md` |
-| P2-E3 | Real-Time Tracking & Re-planning | ⬜ Spec ready | `GENSPEC_P2_autonomous_dispatch_v1.md` |
-| P2-E4 | SLA Risk Alerts | ⬜ Spec ready | `GENSPEC_P2_autonomous_dispatch_v1.md` |
+| P2-E1 | OR-Tools VRPTW Optimization | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E3 | LangGraph Dispatch Agent | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E4 | Real-Time GPS Tracking | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E5 | Live Map Dashboard (Leaflet + OSM) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E6 | Agent Activity Feed (UI) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E7 | SLA Risk Alerts | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+
+## Phase 2 – Story-Level Tracker
+
+### P2-E1: OR-Tools VRPTW ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E1-S1 | Add `ortools>=9.8` to requirements.txt | ⬜ | `requirements.txt` |
+| P2-E1-S2 | Add `PLANNER_TYPE` to config | ⬜ | `app/core/config.py` |
+| P2-E1-S3 | Implement ORToolsPlanner | ⬜ | `app/planners/ortools_planner.py` |
+| P2-E1-S4 | Update PlanningService with feature flag | ⬜ | `app/services/planning_service.py` |
+| P2-E1-VER | Set PLANNER_TYPE=ortools → plan returns optimized routes | ⬜ | Manual test |
+
+### P2-E2: Multi-LLM Provider ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E2-S1 | Add LangChain deps (langchain, langgraph, langchain-openai, langchain-anthropic, langchain-google-genai) | ⬜ | `requirements.txt` |
+| P2-E2-S2 | Add llm_provider/llm_api_key/llm_model to TenantConfig model | ⬜ | `app/models/tenant.py` |
+| P2-E2-S3 | Alembic migration for LLM columns | ⬜ | `alembic/versions/` |
+| P2-E2-S4 | Implement LLMProviderFactory | ⬜ | `app/core/llm_factory.py` |
+| P2-E2-S5 | PATCH /tenants/config/llm endpoint | ⬜ | `app/api/v1/tenants.py` |
+| P2-E2-S6 | Add LLM env vars to .env + docker-compose | ⬜ | `.env`, `docker-compose.yml` |
+| P2-E2-VER | Gemini key in tenant config → factory returns ChatGoogleGenerativeAI | ⬜ | Unit test |
+
+### P2-E3: LangGraph Agent ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E3-S1 | AgentLog model | ⬜ | `app/models/agent_log.py` |
+| P2-E3-S2 | Alembic migration for agent_logs | ⬜ | `alembic/versions/` |
+| P2-E3-S3 | LangGraph agent (fetch → optimize → explain) | ⬜ | `app/planners/langgraph_agent.py` |
+| P2-E3-S4 | Agent logs API endpoint | ⬜ | `app/api/v1/agent_logs.py` |
+| P2-E3-S5 | Register agent_logs router | ⬜ | `app/api/router.py` |
+| P2-E3-S6 | Update PlanResult schema (planner + explanation fields) | ⬜ | `app/schemas/route_plan.py` |
+| P2-E3-VER | PLANNER_TYPE=langgraph → agent runs, logs stored, explanation returned | ⬜ | Manual test |
+
+### P2-E4: Real-Time GPS Tracking ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E4-S1 | DriverLocationPing model | ⬜ | `app/models/tracking.py` |
+| P2-E4-S2 | Alembic migration for tracking table | ⬜ | `alembic/versions/` |
+| P2-E4-S3 | TrackingService (record ping + Redis cache) | ⬜ | `app/services/tracking_service.py` |
+| P2-E4-S4 | Add get_redis() to db.py | ⬜ | `app/core/db.py` |
+| P2-E4-S5 | Tracking endpoints (ping / live / history) | ⬜ | `app/api/v1/tracking.py` |
+| P2-E4-S6 | Register tracking router | ⬜ | `app/api/router.py` |
+| P2-E4-S7 | Driver app geo-ping useEffect (every 30s) | ⬜ | `src/pages/DriverView.tsx` |
+| P2-E4-S8 | Frontend tracking API client | ⬜ | `src/api/tracking.ts` |
+| P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ⬜ | Manual test |
+
+### P2-E5: Live Map Dashboard ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E5-S1 | Install leaflet + react-leaflet + @types/leaflet | ⬜ | `package.json` |
+| P2-E5-S2 | FleetMap component (OSM tiles, swappable) | ⬜ | `src/components/map/FleetMap.tsx` |
+| P2-E5-S3 | DriverMarker component | ⬜ | `src/components/map/DriverMarker.tsx` |
+| P2-E5-S4 | RoutePolyline component | ⬜ | `src/components/map/RoutePolyline.tsx` |
+| P2-E5-S5 | LiveMap page (polls every 10s) | ⬜ | `src/pages/LiveMap.tsx` |
+| P2-E5-S6 | Add /map route + sidebar nav item | ⬜ | `AppRoutes.tsx`, `AppLayout.tsx` |
+| P2-E5-VER | Map loads, driver markers appear when pings exist | ⬜ | Manual test |
+
+### P2-E6: Agent Activity Feed ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E6-S1 | AgentFeed component | ⬜ | `src/components/shared/AgentFeed.tsx` |
+| P2-E6-S2 | Agent logs API client | ⬜ | `src/api/agentLogs.ts` |
+| P2-E6-S3 | Planning page: show feed after plan generated | ⬜ | `src/pages/Planning.tsx` |
+| P2-E6-VER | Generate plan → feed shows fetch/optimize/explain steps | ⬜ | Manual test |
+
+### P2-E7: SLA Risk Alerts ⬜
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E7-S1 | SLA service (at-risk stop detection) | ⬜ | `app/services/sla_service.py` |
+| P2-E7-S2 | GET /sla/at-risk endpoint | ⬜ | `app/api/v1/sla.py` |
+| P2-E7-S3 | Register SLA router | ⬜ | `app/api/router.py` |
+| P2-E7-S4 | SLA API client | ⬜ | `src/api/sla.ts` |
+| P2-E7-S5 | Dashboard at-risk panel (polls 60s) | ⬜ | `src/pages/Dashboard.tsx` |
+| P2-E7-VER | At-risk orders appear on dashboard | ⬜ | Manual test |
 
 ## Phase 3 – Epic Status
 
