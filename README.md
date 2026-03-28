@@ -1,73 +1,66 @@
 # FleetOpsX UI
 
-A modern React web app for FleetOpsX, bootstrapped with Vite, Tailwind CSS, TanStack Query, Zustand, Axios, React Router, React Hook Form, Zod, and more.
+*The Operations Command Center*
 
-## Requirements
+The FleetOpsX UI is a modern dashboard for operations managers and drivers. It provides real-time visibility into fleet status, route planning, and delivery execution.
 
-- **Node.js:** v22.12.0 or later
+## 🚀 Getting Started
 
-## Getting Started
+This repository contains the frontend dashboard built with **React**, **Vite**, and **Tailwind CSS**.
 
-### 1. Install dependencies
+### Prerequisites
 
-```bash
-npm install
-```
+- **Node.js**: v20+
+- **npm** or **yarn**
 
-### 2. Start the development server
+### Initial Setup
 
+1. **Clone the repository:**
+   ```bash
+   git clone <repo-url>
+   cd FleetOpsX-UI
+   ```
+
+2. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment:**
+   Create a `.env` file in the root directory:
+   ```env
+   VITE_API_URL=http://localhost:8000
+   VITE_SENTRY_DSN=your-sentry-dsn
+   ```
+
+### Running the Project
+
+#### 1. Development Mode
 ```bash
 npm run dev
 ```
+The app will be available at [http://localhost:5173](http://localhost:5173).
 
-The app will run on `http://localhost:5173` (or specified port).
+#### 2. Docker Mode (via API repo)
+It is recommended to run the UI using the `docker-compose.yml` located in the `FleetOpsX-API` repository to ensure backend connectivity.
 
-## Tech Stack
-
-- [Vite](https://vitejs.dev/) + [React](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction)
-- [Axios](https://axios-http.com/)
-- [React Router](https://reactrouter.com/)
-- [React Hook Form](https://react-hook-form.com/)
-- [Zod](https://zod.dev/)
-- [Lucide React](https://lucide.dev/), [Framer Motion](https://www.framer.com/motion/), [Headless UI](https://headlessui.com/), [React Hot Toast](https://react-hot-toast.com/)
-
-## Folder Structure
-
-See `docs/bootstrap/react-ui-bootstrap-cursor-instructions.md` for strict breakdown. Key folders:
-
-```
-src/
-  api/
-  components/
-    ui/
-    layout/
-  pages/
-  routes/
-  store/
-  hooks/
-  utils/
-  styles/
+```bash
+cd ../FleetOpsX-API
+docker compose up ui
 ```
 
-## Coding Conventions
+### Building for Production
 
-- Use [Prettier](https://prettier.io/) for formatting (no semicolons, single quotes)
-- Use Tailwind Utility classes
-- Prefer function components and hooks
-- Strict typing and validation using Zod
-
-## Environment Variables
-
-Create a `.env` file:
-
-```
-VITE_API_URL=<your-api-url>
+```bash
+npm run build
 ```
 
-## Further Reading
+---
 
-- See `docs/bootstrap/react-ui-bootstrap-cursor-instructions.md` for setup details and architecture
-- Ask questions in project chat/Slack if needed
+## 🛠 Tech Stack
+
+- **Framework**: React 19 + Vite
+- **Styling**: Tailwind CSS
+- **State Management**: TanStack Query & Zustand
+- **Observability**: Sentry for error tracking
+- **Routing**: React Router
