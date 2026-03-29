@@ -3,8 +3,10 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import AppLayout from '../components/layout/AppLayout'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
+import AgentFeed from '../components/shared/AgentFeed'
 import { generatePlan } from '../api/planning'
 import { fetchOrders } from '../api/orders'
+import { fetchAgentLogs } from '../api/agentLogs'
 import type { PlanResult } from '../types'
 import toast from 'react-hot-toast'
 
@@ -15,6 +17,13 @@ export default function Planning() {
   const { data: orders = [], refetch: refetchOrders } = useQuery({
     queryKey: ['orders', planDate],
     queryFn: () => fetchOrders({ plan_date: planDate }),
+  })
+
+  // Fetch agent logs once we have a plan_id (only meaningful for langgraph planner)
+  const { data: agentLogs = [], isLoading: logsLoading } = useQuery({
+    queryKey: ['agent-logs', planResult?.plan_id],
+    queryFn: () => fetchAgentLogs(planResult!.plan_id),
+    enabled: !!planResult?.plan_id && planResult?.planner?.startsWith('langgraph'),
   })
 
   const planMutation = useMutation({
@@ -82,34 +91,51 @@ export default function Planning() {
         </Card>
 
         {planResult && (
-          <Card>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold dark:text-white">
-                Plan Result — {planResult.assigned_orders}/{planResult.total_orders} orders assigned, {planResult.total_routes} routes
-              </h3>
-              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">DRAFT</span>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b dark:border-gray-700">
-                  <th className="pb-2">#</th>
-                  <th className="pb-2">Driver</th>
-                  <th className="pb-2">Order ID</th>
-                  <th className="pb-2">Stop</th>
-                </tr>
-              </thead>
-              <tbody>
-                {planResult.assignments.map((a, i) => (
-                  <tr key={i} className="border-b last:border-0 dark:border-gray-700">
-                    <td className="py-2 text-gray-400">{i + 1}</td>
-                    <td className="py-2 font-medium dark:text-gray-200">{a.driver_name}</td>
-                    <td className="py-2 text-gray-500 truncate max-w-xs">{a.order_id.slice(0, 8)}...</td>
-                    <td className="py-2 text-gray-400">Stop {a.sequence}</td>
+          <>
+            <Card>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="font-semibold dark:text-white">
+                    Plan Result — {planResult.assigned_orders}/{planResult.total_orders} orders assigned, {planResult.total_routes} routes
+                  </h3>
+                  {planResult.planner && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Planner: <span className="font-mono">{planResult.planner}</span>
+                    </p>
+                  )}
+                </div>
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">DRAFT</span>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b dark:border-gray-700">
+                    <th className="pb-2">#</th>
+                    <th className="pb-2">Driver</th>
+                    <th className="pb-2">Order ID</th>
+                    <th className="pb-2">Stop</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                </thead>
+                <tbody>
+                  {planResult.assignments.map((a, i) => (
+                    <tr key={i} className="border-b last:border-0 dark:border-gray-700">
+                      <td className="py-2 text-gray-400">{i + 1}</td>
+                      <td className="py-2 font-medium dark:text-gray-200">{a.driver_name}</td>
+                      <td className="py-2 text-gray-500 truncate max-w-xs">{a.order_id.slice(0, 8)}...</td>
+                      <td className="py-2 text-gray-400">Stop {a.sequence}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+
+            {/* Agent Activity Feed — visible when langgraph planner was used */}
+            <AgentFeed
+              logs={agentLogs}
+              explanation={planResult.explanation}
+              planner={planResult.planner}
+              isLoading={logsLoading}
+            />
+          </>
         )}
       </div>
     </AppLayout>

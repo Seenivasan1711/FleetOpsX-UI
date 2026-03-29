@@ -81,4 +81,16 @@ export interface PlanResult {
   assigned_orders: number
   total_routes: number
   assignments: Assignment[]
+  planner?: string        // "rule_based" | "ortools" | "langgraph" | ...
+  explanation?: string    // LLM-generated summary (langgraph only)
+}
+
+export interface AgentLogEntry {
+  id: string
+  plan_id?: string
+  step: string
+  role: 'agent' | 'tool' | 'llm'
+  content: string
+  llm_provider?: string
+  created_at: string
 }

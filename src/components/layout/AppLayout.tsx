@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
-import { LayoutDashboard, Package, Route, Truck, Car, MapPin, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, Route, Truck, Car, MapPin, Map, LogOut } from 'lucide-react'
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/orders', label: 'Orders', icon: Package },
   { path: '/planning', label: 'Planning', icon: Route },
+  { path: '/map', label: 'Live Map', icon: Map },
   { path: '/drivers', label: 'Drivers', icon: Truck },
   { path: '/vehicles', label: 'Vehicles', icon: Car },
   { path: '/depots', label: 'Depots', icon: MapPin },
