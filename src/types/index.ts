@@ -94,3 +94,18 @@ export interface AgentLogEntry {
   llm_provider?: string
   created_at: string
 }
+
+export interface AgentSuggestion {
+  id: string
+  tenant_id: string
+  plan_date: string
+  suggestion_type: 'REPLAN_DRIVER' | 'EARLY_SLA_WARNING' | 'DEMAND_WARNING' | 'RESCHEDULE_STOP'
+  status: 'PENDING' | 'ACCEPTED' | 'DISMISSED'
+  priority: 'HIGH' | 'NORMAL'
+  title: string
+  detail: string | null
+  context: Record<string, unknown> | null
+  expires_at: string | null
+  acted_by: string | null
+  created_at: string | null
+}

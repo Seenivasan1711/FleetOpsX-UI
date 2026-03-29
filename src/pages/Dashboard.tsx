@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import AppLayout from '../components/layout/AppLayout'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import SuggestedActions from '../components/shared/SuggestedActions'
 import { fetchOrders } from '../api/orders'
 import { fetchDrivers } from '../api/drivers'
 import { fetchAtRiskStops } from '../api/sla'
@@ -52,6 +53,9 @@ export default function Dashboard() {
 
         {/* SLA At-Risk panel */}
         <AtRiskPanel stops={atRisk} expanded={riskExpanded} onToggle={() => setRiskExpanded(v => !v)} />
+
+        {/* AI Suggested Actions panel */}
+        <SuggestedActions planDate={today} />
       </div>
     </AppLayout>
   )

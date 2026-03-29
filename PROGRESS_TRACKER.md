@@ -11,13 +11,13 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1 fully complete ✅  Tailwind v4 fixed ✅
-Current Phase : Phase 2 – Autonomous Dispatch
-Current Epic  : P2-E1 — OR-Tools VRPTW (next to start)
-Next Action   : Implement P2-E1 → ortools_planner.py + config + service switch + migration
+Last Worked On: Phase 3 fully complete ✅  All 3 epics done
+Current Phase : Phase 4 – Fleet Intelligence Platform
+Current Epic  : P4-E1 — Multi-Region & Per-Tenant DB (next to start)
+Next Action   : Implement P4-E1 → tenant_db_route model + get_db_for_tenant() routing
 Blocker       : None
-Demo Target   : LangGraph agent + live map + agent feed
-Timeline      : 2 weeks
+Demo Target   : Enterprise scale — partner APIs, marketplace, strategic planning
+Timeline      : Phase 4 implementation
 ```
 
 ---
@@ -27,8 +27,8 @@ Timeline      : 2 weeks
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
-| **Phase 2** | Autonomous Dispatch & Optimization | ⬜ Not Started | Pilot customer live |
-| **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
+| **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
+| **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
 ---
@@ -143,36 +143,36 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E4-S5 | Register planning router | ✅ | `app/api/router.py` |
 | P1-E4-VER | App imports clean | ✅ | python import check passed |
 
-### P1-E5: Ops Dashboard UI ⬜
+### P1-E5: Ops Dashboard UI ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E5-T | TypeScript types | ⬜ | `src/types/index.ts` |
-| P1-E5-API | API client modules (6 files) | ⬜ | `src/api/` |
-| P1-E5-STORE | Update zustand store | ⬜ | `src/store/useAppStore.ts` |
-| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ⬜ | `src/routes/` |
-| P1-E5-LOGIN | Login page (full implementation) | ⬜ | `src/pages/Login.tsx` |
-| P1-E5-LAYOUT | AppLayout with sidebar | ⬜ | `src/components/layout/AppLayout.tsx` |
-| P1-E5-DASH | Dashboard page (stats + quick action) | ⬜ | `src/pages/Dashboard.tsx` |
-| P1-E5-PLAN | Planning page (key demo screen) | ⬜ | `src/pages/Planning.tsx` |
-| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ⬜ | `src/components/shared/` |
-| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ⬜ | `src/pages/Orders.tsx` |
-| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ⬜ | `src/pages/Drivers.tsx` |
-| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ⬜ | `src/pages/Vehicles.tsx` |
-| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ⬜ | `src/pages/Depots.tsx` |
-| P1-E5-COMP | Shared components (StatusBadge, Spinner, EmptyState) | ⬜ | `src/components/shared/` |
-| P1-E5-VER | UI loads, login works, planning screen generates plan | ⬜ | Manual test |
+| P1-E5-T | TypeScript types | ✅ | `src/types/index.ts` |
+| P1-E5-API | API client modules (6 files) | ✅ | `src/api/` |
+| P1-E5-STORE | Update zustand store | ✅ | `src/store/useAppStore.ts` |
+| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ✅ | `src/routes/` |
+| P1-E5-LOGIN | Login page (full implementation) | ✅ | `src/pages/Login.tsx` |
+| P1-E5-LAYOUT | AppLayout with sidebar | ✅ | `src/components/layout/AppLayout.tsx` |
+| P1-E5-DASH | Dashboard page (stats + quick action) | ✅ | `src/pages/Dashboard.tsx` |
+| P1-E5-PLAN | Planning page (key demo screen) | ✅ | `src/pages/Planning.tsx` |
+| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ✅ | `src/components/shared/` |
+| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ✅ | `src/pages/Orders.tsx` |
+| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ✅ | `src/pages/Drivers.tsx` |
+| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ✅ | `src/pages/Vehicles.tsx` |
+| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ✅ | `src/pages/Depots.tsx` |
+| P1-E5-COMP | Shared components (StatusBadge, Spinner, EmptyState) | ✅ | `src/components/shared/` |
+| P1-E5-VER | UI loads, login works, planning screen generates plan | ✅ | Manual test |
 
-### P1-E6: Driver View ⬜
+### P1-E6: Driver View ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E6-API | Backend driver endpoints | ⬜ | `app/api/v1/driver.py` |
-| P1-E6-REG | Register driver router | ⬜ | `app/api/router.py` |
-| P1-E6-FE | Frontend API client | ⬜ | `src/api/driver.ts` |
-| P1-E6-PAGE | DriverView page | ⬜ | `src/pages/DriverView.tsx` |
-| P1-E6-SEED | Link driver email in seed script | ⬜ | `scripts/seed_data.py` |
-| P1-E6-VER | Driver sees stops + marks delivered | ⬜ | Manual test |
+| P1-E6-API | Backend driver endpoints | ✅ | `app/api/v1/driver.py` |
+| P1-E6-REG | Register driver router | ✅ | `app/api/router.py` |
+| P1-E6-FE | Frontend API client | ✅ | `src/api/driver.ts` |
+| P1-E6-PAGE | DriverView page | ✅ | `src/pages/DriverView.tsx` |
+| P1-E6-SEED | Link driver email in seed script | ✅ | `scripts/seed_data.py` |
+| P1-E6-VER | Driver sees stops + marks delivered | ✅ | Manual test |
 
 ### P1-E7: Synthetic Data & Demo ✅
 
@@ -189,114 +189,135 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P2-E1 | OR-Tools VRPTW Optimization | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E3 | LangGraph Dispatch Agent | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E4 | Real-Time GPS Tracking | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E5 | Live Map Dashboard (Leaflet + OSM) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E6 | Agent Activity Feed (UI) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E7 | SLA Risk Alerts | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E1 | OR-Tools VRPTW Optimization | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E3 | LangGraph Dispatch Agent | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E4 | Real-Time GPS Tracking | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E5 | Live Map Dashboard (Leaflet + OSM) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E6 | Agent Activity Feed (UI) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E7 | SLA Risk Alerts | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 
 ## Phase 2 – Story-Level Tracker
 
-### P2-E1: OR-Tools VRPTW ⬜
+### P2-E1: OR-Tools VRPTW ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E1-S1 | Add `ortools>=9.8` to requirements.txt | ⬜ | `requirements.txt` |
-| P2-E1-S2 | Add `PLANNER_TYPE` to config | ⬜ | `app/core/config.py` |
-| P2-E1-S3 | Implement ORToolsPlanner | ⬜ | `app/planners/ortools_planner.py` |
-| P2-E1-S4 | Update PlanningService with feature flag | ⬜ | `app/services/planning_service.py` |
-| P2-E1-VER | Set PLANNER_TYPE=ortools → plan returns optimized routes | ⬜ | Manual test |
+| P2-E1-S1 | Add `ortools>=9.8` to requirements.txt | ✅ | `requirements.txt` |
+| P2-E1-S2 | Add `PLANNER_TYPE` to config | ✅ | `app/core/config.py` |
+| P2-E1-S3 | Implement ORToolsPlanner | ✅ | `app/planners/ortools_planner.py` |
+| P2-E1-S4 | Update PlanningService with feature flag | ✅ | `app/services/planning_service.py` |
+| P2-E1-VER | Set PLANNER_TYPE=ortools → plan returns optimized routes | ✅ | Manual test |
 
-### P2-E2: Multi-LLM Provider ⬜
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P2-E2-S1 | Add LangChain deps (langchain, langgraph, langchain-openai, langchain-anthropic, langchain-google-genai) | ⬜ | `requirements.txt` |
-| P2-E2-S2 | Add llm_provider/llm_api_key/llm_model to TenantConfig model | ⬜ | `app/models/tenant.py` |
-| P2-E2-S3 | Alembic migration for LLM columns | ⬜ | `alembic/versions/` |
-| P2-E2-S4 | Implement LLMProviderFactory | ⬜ | `app/core/llm_factory.py` |
-| P2-E2-S5 | PATCH /tenants/config/llm endpoint | ⬜ | `app/api/v1/tenants.py` |
-| P2-E2-S6 | Add LLM env vars to .env + docker-compose | ⬜ | `.env`, `docker-compose.yml` |
-| P2-E2-VER | Gemini key in tenant config → factory returns ChatGoogleGenerativeAI | ⬜ | Unit test |
-
-### P2-E3: LangGraph Agent ⬜
+### P2-E2: Multi-LLM Provider ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E3-S1 | AgentLog model | ⬜ | `app/models/agent_log.py` |
-| P2-E3-S2 | Alembic migration for agent_logs | ⬜ | `alembic/versions/` |
-| P2-E3-S3 | LangGraph agent (fetch → optimize → explain) | ⬜ | `app/planners/langgraph_agent.py` |
-| P2-E3-S4 | Agent logs API endpoint | ⬜ | `app/api/v1/agent_logs.py` |
-| P2-E3-S5 | Register agent_logs router | ⬜ | `app/api/router.py` |
-| P2-E3-S6 | Update PlanResult schema (planner + explanation fields) | ⬜ | `app/schemas/route_plan.py` |
-| P2-E3-VER | PLANNER_TYPE=langgraph → agent runs, logs stored, explanation returned | ⬜ | Manual test |
+| P2-E2-S1 | Add LangChain deps | ✅ | `requirements.txt` |
+| P2-E2-S2 | TenantConfig KV store for LLM config | ✅ | `app/models/tenant.py` |
+| P2-E2-S3 | LLMProviderFactory | ✅ | `app/core/llm_factory.py` |
+| P2-E2-S4 | GET/PATCH /tenants/config/llm endpoint | ✅ | `app/api/v1/tenants.py` |
+| P2-E2-VER | Gemini key in tenant config → factory returns correct provider | ✅ | Manual test |
 
-### P2-E4: Real-Time GPS Tracking ⬜
+### P2-E3: LangGraph Agent ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E4-S1 | DriverLocationPing model | ⬜ | `app/models/tracking.py` |
-| P2-E4-S2 | Alembic migration for tracking table | ⬜ | `alembic/versions/` |
-| P2-E4-S3 | TrackingService (record ping + Redis cache) | ⬜ | `app/services/tracking_service.py` |
-| P2-E4-S4 | Add get_redis() to db.py | ⬜ | `app/core/db.py` |
-| P2-E4-S5 | Tracking endpoints (ping / live / history) | ⬜ | `app/api/v1/tracking.py` |
-| P2-E4-S6 | Register tracking router | ⬜ | `app/api/router.py` |
-| P2-E4-S7 | Driver app geo-ping useEffect (every 30s) | ⬜ | `src/pages/DriverView.tsx` |
-| P2-E4-S8 | Frontend tracking API client | ⬜ | `src/api/tracking.ts` |
-| P2-E4-S9 | `POST /plan/replan` endpoint (single driver or full fleet) | ⬜ | `app/api/v1/planning.py`, `app/services/planning_service.py` |
-| P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ⬜ | Manual test |
-| P2-E4-VER2 | Replan returns updated assignments with `"replan": true` | ⬜ | Manual test |
+| P2-E3-S1 | AgentLog model + migration | ✅ | `app/models/agent_log.py` |
+| P2-E3-S2 | LangGraph agent (fetch → optimize → explain) | ✅ | `app/planners/langgraph_agent.py` |
+| P2-E3-S3 | Agent logs API endpoint | ✅ | `app/api/v1/agent_logs.py` |
+| P2-E3-S4 | Update PlanResult schema (planner + explanation) | ✅ | `app/schemas/route_plan.py` |
+| P2-E3-VER | PLANNER_TYPE=langgraph → logs stored, explanation returned | ✅ | Manual test |
 
-### P2-E5: Live Map Dashboard ⬜
+### P2-E4: Real-Time GPS Tracking ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E5-S1 | Install leaflet + react-leaflet + @types/leaflet | ⬜ | `package.json` |
-| P2-E5-S2 | FleetMap component (OSM tiles, swappable) | ⬜ | `src/components/map/FleetMap.tsx` |
-| P2-E5-S3 | DriverMarker component | ⬜ | `src/components/map/DriverMarker.tsx` |
-| P2-E5-S4 | RoutePolyline component | ⬜ | `src/components/map/RoutePolyline.tsx` |
-| P2-E5-S5 | LiveMap page (polls every 10s) | ⬜ | `src/pages/LiveMap.tsx` |
-| P2-E5-S6 | Add /map route + sidebar nav item | ⬜ | `AppRoutes.tsx`, `AppLayout.tsx` |
-| P2-E5-VER | Map loads, driver markers appear when pings exist | ⬜ | Manual test |
+| P2-E4-S1 | DriverLocationPing model + migration | ✅ | `app/models/tracking.py` |
+| P2-E4-S2 | TrackingService (record ping + Redis cache) | ✅ | `app/services/tracking_service.py` |
+| P2-E4-S3 | Tracking endpoints (ping / live / history) | ✅ | `app/api/v1/tracking.py` |
+| P2-E4-S4 | Driver app geo-ping useEffect (every 30s) | ✅ | `src/pages/DriverView.tsx` |
+| P2-E4-S5 | Frontend tracking API client | ✅ | `src/api/tracking.ts` |
+| P2-E4-S6 | POST /plan/replan endpoint | ✅ | `app/api/v1/planning.py` |
+| P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ✅ | Manual test |
 
-### P2-E6: Agent Activity Feed ⬜
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P2-E6-S1 | AgentFeed component | ⬜ | `src/components/shared/AgentFeed.tsx` |
-| P2-E6-S2 | Agent logs API client | ⬜ | `src/api/agentLogs.ts` |
-| P2-E6-S3 | Planning page: show feed after plan generated | ⬜ | `src/pages/Planning.tsx` |
-| P2-E6-VER | Generate plan → feed shows fetch/optimize/explain steps | ⬜ | Manual test |
-
-### P2-E7: SLA Risk Alerts ⬜
+### P2-E5: Live Map Dashboard ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E7-S1 | SLA service (at-risk stop detection) | ⬜ | `app/services/sla_service.py` |
-| P2-E7-S2 | GET /sla/at-risk endpoint | ⬜ | `app/api/v1/sla.py` |
-| P2-E7-S3 | Register SLA router | ⬜ | `app/api/router.py` |
-| P2-E7-S4 | SLA API client | ⬜ | `src/api/sla.ts` |
-| P2-E7-S5 | Dashboard at-risk panel (polls 60s) | ⬜ | `src/pages/Dashboard.tsx` |
-| P2-E7-VER | At-risk orders appear on dashboard | ⬜ | Manual test |
+| P2-E5-S1 | Install leaflet + react-leaflet + @types/leaflet | ✅ | `package.json` |
+| P2-E5-S2 | FleetMap component (OSM tiles) | ✅ | `src/components/map/FleetMap.tsx` |
+| P2-E5-S3 | DriverMarker + RoutePolyline components | ✅ | `src/components/map/` |
+| P2-E5-S4 | LiveMap page (polls every 10s) | ✅ | `src/pages/LiveMap.tsx` |
+| P2-E5-S5 | Add /map route + sidebar nav item | ✅ | `AppRoutes.tsx`, `AppLayout.tsx` |
+| P2-E5-VER | Map loads, driver markers appear when pings exist | ✅ | Manual test |
+
+### P2-E6: Agent Activity Feed ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E6-S1 | AgentFeed component | ✅ | `src/components/shared/AgentFeed.tsx` |
+| P2-E6-S2 | Agent logs API client | ✅ | `src/api/agentLogs.ts` |
+| P2-E6-S3 | Planning page: show feed after plan generated | ✅ | `src/pages/Planning.tsx` |
+| P2-E6-VER | Generate plan → feed shows fetch/optimize/explain steps | ✅ | Manual test |
+
+### P2-E7: SLA Risk Alerts ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E7-S1 | SLA service (at-risk stop detection) | ✅ | `app/services/sla_service.py` |
+| P2-E7-S2 | GET /sla/at-risk endpoint | ✅ | `app/api/v1/sla.py` |
+| P2-E7-S3 | SLA API client | ✅ | `src/api/sla.ts` |
+| P2-E7-S4 | Dashboard at-risk panel (polls 60s) | ✅ | `src/pages/Dashboard.tsx` |
+| P2-E7-VER | At-risk orders appear on dashboard | ✅ | Manual test |
 
 ## Phase 3 – Epic Status
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P3-E1 | Historical Analytics & Feature Store | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P3-E2 | Multi-Agent System (Planner, Monitor, Forecast, Explainer) | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P3-E3 | Proactive Planning | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
+| P3-E1 | Historical Analytics & Feature Store | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+| P3-E2 | Multi-Agent System (Planner, Monitor, Forecast, Explainer) | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+| P3-E3 | Proactive Planning | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+
+## Phase 3 – Story-Level Tracker
+
+### P3-E1: Historical Analytics & Feature Store ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E1-S1 | Add recharts to package.json | ✅ | `package.json` |
+| P3-E1-S2 | Analytics API client | ✅ | `src/api/analytics.ts` |
+| P3-E1-S3 | Analytics page (KPI cards + charts + driver leaderboard) | ✅ | `src/pages/Analytics.tsx` |
+| P3-E1-S4 | Add /analytics route (dispatcher-only) | ✅ | `src/routes/AppRoutes.tsx` |
+| P3-E1-S5 | Add Analytics nav item | ✅ | `src/components/layout/AppLayout.tsx` |
+| P3-E1-VER | Analytics page shows charts with ETL data | ✅ | Manual test |
+
+### P3-E2: Multi-Agent Orchestration ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E2-S1 | AgentSuggestion type added | ✅ | `src/types/index.ts` |
+| P3-E2-S2 | Agent suggestions API client | ✅ | `src/api/agentSuggestions.ts` |
+| P3-E2-VER | PLANNER_TYPE=multi_agent → agent logs show forecast step | ✅ | Manual test |
+
+### P3-E3: Proactive Planning & Suggested Actions UI ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E3-S1 | SuggestedActions component | ✅ | `src/components/shared/SuggestedActions.tsx` |
+| P3-E3-S2 | Dashboard: add SuggestedActions panel below SLA panel | ✅ | `src/pages/Dashboard.tsx` |
+| P3-E3-S3 | Planning: red badge on Generate Plan button | ✅ | `src/pages/Planning.tsx` |
+| P3-E3-VER | PENDING suggestions appear on Dashboard + Accept triggers replan | ✅ | Manual test |
 
 ## Phase 4 – Epic Status
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P4-E1 | Multi-Region & Per-Tenant DB | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E2 | Partner APIs (ERP/WMS/TMS) | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E3 | Capacity Marketplace | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E4 | Governance, Compliance & Audit | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
+| P4-E1 | Multi-Region & Per-Tenant DB Routing | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E2 | Partner APIs & Webhook Integration (ERP/WMS/TMS) | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E3 | Capacity Marketplace | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E4 | Governance, Compliance & Audit | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E5 | Multi-Day Strategic Planning & Scenario Simulator | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
 
 ---
 
@@ -316,12 +337,14 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | `GENSPEC_P1-E6_driver_view_v1.md` | P1-E6 | ✅ Implement | Driver mobile web view + status updates |
 | `GENSPEC_P1-E7_synthetic_data_v1.md` | P1-E7 | ✅ Implement | Bangalore seed script |
 
-### Phase 2-4 — High Level (detail added when Phase 1 ships)
+### Phase 2-4 — Detailed Specs
 
 | File | Phases | Ready? |
 |------|--------|--------|
-| `GENSPEC_P2_autonomous_dispatch_v1.md` | Phase 2 | ✅ Spec (not implement yet) |
-| `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` | Phase 3 & 4 | ✅ Planning |
+| `DEV_SPEC_P2_autonomous_dispatch_v2.md` | Phase 2 | ✅ Implemented |
+| `DEV_SPEC_P3_adaptive_multi_agent_v1.md` | Phase 3 | ✅ Implemented |
+| `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` | Phase 4 | ✅ Spec (5 epics, ready to implement) |
+| `DEV_SPEC_P3_P4_multi_agent_enterprise_v1.md` | Phase 3 & 4 | ⚠️ Superseded — use P3/P4 individual specs above |
 
 ---
 

@@ -7,6 +7,7 @@ import AgentFeed from '../components/shared/AgentFeed'
 import { generatePlan } from '../api/planning'
 import { fetchOrders } from '../api/orders'
 import { fetchAgentLogs } from '../api/agentLogs'
+import { fetchSuggestions } from '../api/agentSuggestions'
 import type { PlanResult } from '../types'
 import toast from 'react-hot-toast'
 
@@ -19,12 +20,21 @@ export default function Planning() {
     queryFn: () => fetchOrders({ plan_date: planDate }),
   })
 
-  // Fetch agent logs once we have a plan_id (only meaningful for langgraph planner)
+  // Fetch agent logs once we have a plan_id (langgraph and multi_agent planners)
+  const isAgentPlanner = planResult?.planner?.startsWith('langgraph') || planResult?.planner === 'multi_agent'
   const { data: agentLogs = [], isLoading: logsLoading } = useQuery({
     queryKey: ['agent-logs', planResult?.plan_id],
     queryFn: () => fetchAgentLogs(planResult!.plan_id),
-    enabled: !!planResult?.plan_id && planResult?.planner?.startsWith('langgraph'),
+    enabled: !!planResult?.plan_id && isAgentPlanner,
   })
+
+  // PENDING suggestions badge — show count on Generate Plan button
+  const { data: pendingSuggestions = [] } = useQuery({
+    queryKey: ['agent-suggestions', planDate],
+    queryFn: () => fetchSuggestions(planDate, 'PENDING'),
+    refetchInterval: 60_000,
+  })
+  const pendingCount = pendingSuggestions.length
 
   const planMutation = useMutation({
     mutationFn: () => generatePlan(planDate),
@@ -50,12 +60,19 @@ export default function Planning() {
               onChange={e => setPlanDate(e.target.value)}
               className="border rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:border-gray-600"
             />
-            <Button
-              onClick={() => planMutation.mutate()}
-              disabled={planMutation.isPending || unassigned.length === 0}
-            >
-              {planMutation.isPending ? 'Planning...' : `Generate Plan (${unassigned.length} unassigned)`}
-            </Button>
+            <div className="relative">
+              <Button
+                onClick={() => planMutation.mutate()}
+                disabled={planMutation.isPending || unassigned.length === 0}
+              >
+                {planMutation.isPending ? 'Planning...' : `Generate Plan (${unassigned.length} unassigned)`}
+              </Button>
+              {pendingCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold leading-none">
+                  {pendingCount}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -11,6 +11,7 @@ import Vehicles from '../pages/Vehicles'
 import Depots from '../pages/Depots'
 import DriverView from '../pages/DriverView'
 import LiveMap from '../pages/LiveMap'
+import Analytics from '../pages/Analytics'
 
 export default function AppRoutes() {
   const theme = useAppStore(s => s.theme)
@@ -30,6 +31,7 @@ export default function AppRoutes() {
         <Route path="/depots" element={<ProtectedRoute role="dispatcher"><Depots /></ProtectedRoute>} />
         <Route path="/driver" element={<ProtectedRoute role="driver"><DriverView /></ProtectedRoute>} />
         <Route path="/map" element={<ProtectedRoute role="dispatcher"><LiveMap /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute role="dispatcher"><Analytics /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
