@@ -245,7 +245,9 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P2-E4-S6 | Register tracking router | ⬜ | `app/api/router.py` |
 | P2-E4-S7 | Driver app geo-ping useEffect (every 30s) | ⬜ | `src/pages/DriverView.tsx` |
 | P2-E4-S8 | Frontend tracking API client | ⬜ | `src/api/tracking.ts` |
+| P2-E4-S9 | `POST /plan/replan` endpoint (single driver or full fleet) | ⬜ | `app/api/v1/planning.py`, `app/services/planning_service.py` |
 | P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ⬜ | Manual test |
+| P2-E4-VER2 | Replan returns updated assignments with `"replan": true` | ⬜ | Manual test |
 
 ### P2-E5: Live Map Dashboard ⬜
 

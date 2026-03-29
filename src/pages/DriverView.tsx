@@ -1,14 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchMyStops, updateStopStatus } from '../api/driver'
+import { pingLocation } from '../api/tracking'
 import useAppStore from '../store/useAppStore'
 import toast from 'react-hot-toast'
 import { LogOut, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+
+const GEO_PING_INTERVAL_MS = 30_000
 
 export default function DriverView() {
   const { user, clearAuth } = useAppStore()
   const qc = useQueryClient()
   const today = new Date().toISOString().split('T')[0]
+
+  // GPS auto-ping every 30 s
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    const sendPing = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          pingLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy_m: pos.coords.accuracy ?? undefined,
+          }).catch(() => {/* silent — no toast spam */})
+        },
+        () => {/* permission denied or unavailable — ignore */},
+        { timeout: 5000 },
+      )
+    }
+    sendPing() // send immediately on mount
+    const interval = setInterval(sendPing, GEO_PING_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [])
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-stops', today],
