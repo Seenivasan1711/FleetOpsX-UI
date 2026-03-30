@@ -16,8 +16,8 @@ const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOStrin
 
 function KpiCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
   const colorMap: Record<string, string> = {
-    blue:   'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    green:  'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300',
+    blue: 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    green: 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300',
     orange: 'bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
     purple: 'bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
   }
@@ -171,11 +171,10 @@ export default function Analytics() {
                       <td className="py-2 pr-4 font-medium dark:text-white">{d.driver_name}</td>
                       <td className="py-2 pr-4 text-right tabular-nums dark:text-gray-300">{d.total_deliveries}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">
-                        <span className={`font-semibold ${
-                          d.on_time_rate != null && d.on_time_rate >= 0.85
+                        <span className={`font-semibold ${d.on_time_rate != null && d.on_time_rate >= 0.85
                             ? 'text-green-600 dark:text-green-400'
                             : 'text-orange-500 dark:text-orange-400'
-                        }`}>
+                          }`}>
                           {d.on_time_rate != null ? `${(d.on_time_rate * 100).toFixed(1)}%` : '—'}
                         </span>
                       </td>
