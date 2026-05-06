@@ -1,64 +1,110 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Pencil, Plus, Package } from 'lucide-react'
+import { Pencil, Plus, Package, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
-import AppLayout from '../components/layout/AppLayout'
-import Button from '../components/ui/Button'
-import Input from '../components/ui/Input'
-import Card from '../components/ui/Card'
-import FormModal from '../components/shared/FormModal'
-import FormField from '../components/shared/FormField'
-import DataTable from '../components/shared/DataTable'
-import StatusBadge from '../components/shared/StatusBadge'
+import { AppShell }       from '../components/layout/AppShell'
+import { Button }         from '../components/ui/Button'
+import { Input, SearchInput } from '../components/ui/Input'
+import { Modal }          from '../components/ui/Modal'
+import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
+import DataTable          from '../components/shared/DataTable'
+import FormField          from '../components/shared/FormField'
 import { fetchOrders, createOrder, updateOrder } from '../api/orders'
-import type { Order } from '../types'
+import { exportOrders, importOrders, triggerBlobDownload } from '../api/exportImport'
+import { QUERY_KEYS }     from '../lib/utils/constants'
+import type { Order }     from '../types'
+
+// ─── Form schema ───────────────────────────────────────────────────────────────
 
 const orderSchema = z.object({
-  delivery_address: z.string().min(1, 'Delivery address is required'),
-  delivery_latitude: z.preprocess(v => v === '' ? undefined : Number(v), z.number().optional()),
-  delivery_longitude: z.preprocess(v => v === '' ? undefined : Number(v), z.number().optional()),
-  scheduled_date: z.string().min(1, 'Date is required'),
-  time_window_start: z.string().optional(),
-  time_window_end: z.string().optional(),
-  priority: z.string().default('NORMAL'),
-  weight_kg: z.preprocess(v => v === '' ? undefined : Number(v), z.number().positive().optional()),
-  quantity_units: z.preprocess(v => v === '' ? undefined : Number(v), z.number().int().positive().optional()),
-  notes: z.string().optional(),
-  external_ref: z.string().optional(),
+  delivery_address:   z.string().min(1, 'Delivery address is required'),
+  delivery_latitude:  z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().optional()),
+  delivery_longitude: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().optional()),
+  scheduled_date:     z.string().min(1, 'Date is required'),
+  time_window_start:  z.string().optional(),
+  time_window_end:    z.string().optional(),
+  priority:           z.string().default('NORMAL'),
+  weight_kg:          z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().positive().optional()),
+  quantity_units:     z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().int().positive().optional()),
+  notes:              z.string().optional(),
+  external_ref:       z.string().optional(),
 })
 
 type OrderFormData = z.infer<typeof orderSchema>
 
-const STATUS_OPTIONS = ['', 'PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED']
+const STATUS_OPTIONS  = ['', 'PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED']
 const PRIORITY_OPTIONS = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL']
+
+const selectCls = [
+  'w-full h-9 px-3 rounded-[10px] text-sm outline-none',
+  'bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)]',
+  'focus:border-[var(--c-accent)] transition-colors',
+].join(' ')
+
+const textareaCls = [
+  'w-full px-3 py-2.5 rounded-[10px] text-sm outline-none resize-none',
+  'bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)]',
+  'placeholder:text-[var(--c-muted)] focus:border-[var(--c-accent)] transition-colors',
+].join(' ')
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Orders() {
   const qc = useQueryClient()
-  const [modalOpen, setModalOpen] = useState(false)
+
+  const [modalOpen,    setModalOpen]    = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
-  const [search, setSearch] = useState('')
+  const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0])
+  const [dateFilter,   setDateFilter]   = useState(new Date().toISOString().split('T')[0])
+  const [exporting,    setExporting]    = useState(false)
+  const [importing,    setImporting]    = useState(false)
+  const fileInputRef                    = useRef<HTMLInputElement>(null)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const blob = await exportOrders(dateFilter)
+      triggerBlobDownload(blob, `orders-${dateFilter}.xlsx`)
+    } catch {
+      toast.error('Export not yet available — backend coming soon')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const result = await importOrders(file)
+      toast.success(`Imported ${result.created} orders${result.errors ? `, ${result.errors} errors` : ''}`)
+      qc.invalidateQueries({ queryKey: ['orders'] })
+    } catch {
+      toast.error('Import not yet available — backend coming soon')
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const { data: orders = [], isLoading } = useQuery({
-    queryKey: ['orders', dateFilter, statusFilter],
-    queryFn: () => fetchOrders({ plan_date: dateFilter || undefined, status: statusFilter || undefined }),
+    queryKey: QUERY_KEYS.orders(dateFilter),
+    queryFn:  () => fetchOrders({ plan_date: dateFilter || undefined, status: statusFilter || undefined }),
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<OrderFormData>({
-    resolver: zodResolver(orderSchema),
+    resolver:      zodResolver(orderSchema),
     defaultValues: { priority: 'NORMAL' },
   })
 
   const mutation = useMutation({
     mutationFn: (data: OrderFormData) => {
-      const payload = {
-        ...data,
-        scheduled_date: new Date(data.scheduled_date).toISOString(),
-      }
+      const payload = { ...data, scheduled_date: new Date(data.scheduled_date).toISOString() }
       return editingOrder ? updateOrder(editingOrder.id, payload) : createOrder(payload)
     },
     onSuccess: () => {
@@ -70,118 +116,167 @@ export default function Orders() {
   })
 
   const handleOpen = (order?: Order) => {
-    setEditingOrder(order || null)
+    setEditingOrder(order ?? null)
     reset(order ? {
-      delivery_address: order.delivery_address,
-      delivery_latitude: order.delivery_latitude,
+      delivery_address:   order.delivery_address,
+      delivery_latitude:  order.delivery_latitude,
       delivery_longitude: order.delivery_longitude,
-      scheduled_date: order.scheduled_date.split('T')[0],
-      time_window_start: order.time_window_start || '',
-      time_window_end: order.time_window_end || '',
-      priority: order.priority,
-      weight_kg: order.weight_kg,
-      quantity_units: order.quantity_units,
-      notes: order.notes || '',
-      external_ref: order.external_ref || '',
+      scheduled_date:     order.scheduled_date.split('T')[0],
+      time_window_start:  order.time_window_start ?? '',
+      time_window_end:    order.time_window_end ?? '',
+      priority:           order.priority,
+      weight_kg:          order.weight_kg,
+      quantity_units:     order.quantity_units,
+      notes:              order.notes ?? '',
+      external_ref:       order.external_ref ?? '',
     } : { priority: 'NORMAL', scheduled_date: dateFilter })
     setModalOpen(true)
   }
 
   const handleClose = () => { setModalOpen(false); setEditingOrder(null); reset() }
 
-  const filtered = (orders as Order[]).filter(o =>
-    o.delivery_address.toLowerCase().includes(search.toLowerCase()) ||
-    (o.external_ref || '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = (orders as Order[]).filter((o) => {
+    const q = search.toLowerCase()
+    return o.delivery_address.toLowerCase().includes(q) || (o.external_ref ?? '').toLowerCase().includes(q)
+  })
 
   const columns = [
     {
       key: 'ref', header: 'Order',
       render: (o: Order) => (
-        <div className="flex items-center gap-2">
-          <Package size={14} className="text-blue-500 shrink-0" />
-          <div>
-            <p className="text-xs font-mono text-gray-400">{o.external_ref || o.id.slice(0, 8)}</p>
-            <p className="text-sm text-gray-700 dark:text-gray-200 truncate max-w-xs">{o.delivery_address}</p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'var(--c-accent-dim)' }}
+          >
+            <Package size={13} style={{ color: 'var(--c-accent)' }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-mono text-[var(--c-muted)] truncate">
+              {o.external_ref ?? o.id.slice(0, 8)}
+            </p>
+            <p className="text-sm font-medium text-[var(--c-text)] truncate max-w-xs">
+              {o.delivery_address}
+            </p>
           </div>
         </div>
       ),
     },
     {
       key: 'date', header: 'Date',
-      render: (o: Order) => new Date(o.scheduled_date).toLocaleDateString('en-IN'),
+      render: (o: Order) => (
+        <span className="text-sm text-[var(--c-muted)] font-mono">
+          {new Date(o.scheduled_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+        </span>
+      ),
     },
     {
       key: 'window', header: 'Time Window',
       render: (o: Order) => o.time_window_start
-        ? <span className="text-xs text-gray-500">{o.time_window_start} – {o.time_window_end}</span>
-        : <span className="text-xs text-gray-400">—</span>,
+        ? <span className="text-xs font-mono text-[var(--c-muted)]">{o.time_window_start} – {o.time_window_end}</span>
+        : <span className="text-xs text-[var(--c-muted)]">—</span>,
     },
     {
       key: 'priority', header: 'Priority',
-      render: (o: Order) => <StatusBadge value={o.priority} />,
+      render: (o: Order) => <PriorityBadge priority={o.priority} />,
     },
     {
       key: 'status', header: 'Status',
-      render: (o: Order) => <StatusBadge value={o.status} />,
+      render: (o: Order) => <StatusBadge status={o.status} />,
     },
     {
-      key: 'actions', header: '', width: '60px',
+      key: 'actions', header: '', width: '48px',
       render: (o: Order) => (
-        <button onClick={() => handleOpen(o)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-          <Pencil size={14} className="text-gray-400" />
+        <button
+          onClick={() => handleOpen(o)}
+          className="p-1.5 rounded-lg transition-colors text-[var(--c-muted)] hover:text-[var(--c-text)]"
+          style={{ background: 'transparent' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          <Pencil size={14} />
         </button>
       ),
     },
   ]
 
   return (
-    <AppLayout>
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold dark:text-white">Orders</h2>
-            <p className="text-sm text-gray-500">{orders.length} orders for selected date</p>
-          </div>
-          <Button onClick={() => handleOpen()}>
-            <Plus size={16} className="mr-1" /> Add Order
-          </Button>
-        </div>
+    <AppShell>
+      <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
-        <div className="flex flex-wrap gap-3">
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3">
           <Input
             type="date"
             value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
+            onChange={(e) => setDateFilter(e.target.value)}
             className="w-auto"
           />
           <select
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-white dark:border-gray-600"
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={selectCls}
+            style={{ width: 'auto' }}
           >
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || 'All Statuses'}</option>)}
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s || 'All Statuses'}</option>
+            ))}
           </select>
-          <Input
-            placeholder="Search address or ref..."
+          <SearchInput
+            placeholder="Search address or ref…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[200px]"
+            onChange={(e) => setSearch(e.target.value)}
+            containerClass="flex-1 min-w-[200px]"
           />
+          <Button variant="secondary" onClick={handleExport} loading={exporting}>
+            <Download size={15} /> Export
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            loading={importing}
+          >
+            <Upload size={15} /> Import
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button onClick={() => handleOpen()}>
+            <Plus size={15} /> Add Order
+          </Button>
         </div>
 
-        <Card>
+        {/* Summary */}
+        <p className="text-xs text-[var(--c-muted)] -mt-2">
+          {filtered.length} order{filtered.length !== 1 ? 's' : ''} · {dateFilter}
+        </p>
+
+        {/* Table */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        >
           <DataTable columns={columns} data={filtered} isLoading={isLoading} emptyMessage="No orders for this date." />
-        </Card>
+        </div>
       </div>
 
-      <FormModal title={editingOrder ? 'Edit Order' : 'Create Order'} isOpen={modalOpen} onClose={handleClose}>
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
+      {/* Form modal */}
+      <Modal
+        open={modalOpen}
+        onClose={handleClose}
+        title={editingOrder ? 'Edit Order' : 'New Order'}
+        size="md"
+      >
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
           <FormField label="External Reference">
             <Input {...register('external_ref')} placeholder="ORD-2026-001" />
           </FormField>
           <FormField label="Delivery Address" error={errors.delivery_address?.message} required>
-            <Input {...register('delivery_address')} placeholder="123, Koramangala..." error={!!errors.delivery_address} />
+            <Input {...register('delivery_address')} placeholder="123, Koramangala, Bangalore" error={errors.delivery_address?.message} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Latitude">
@@ -192,7 +287,7 @@ export default function Orders() {
             </FormField>
           </div>
           <FormField label="Scheduled Date" error={errors.scheduled_date?.message} required>
-            <Input {...register('scheduled_date')} type="date" error={!!errors.scheduled_date} />
+            <Input {...register('scheduled_date')} type="date" error={errors.scheduled_date?.message} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Window Start">
@@ -204,9 +299,8 @@ export default function Orders() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Priority">
-              <select {...register('priority')}
-                className="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-white dark:border-gray-600">
-                {PRIORITY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              <select {...register('priority')} className={selectCls}>
+                {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </FormField>
             <FormField label="Weight (kg)">
@@ -214,22 +308,18 @@ export default function Orders() {
             </FormField>
           </div>
           <FormField label="Notes">
-            <textarea {...register('notes')}
-              rows={2}
-              className="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
-              placeholder="Leave at door, call on arrival..." />
+            <textarea {...register('notes')} rows={2} className={textareaCls} placeholder="Leave at door, call on arrival…" />
           </FormField>
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={mutation.isPending} className="flex-1">
-              {mutation.isPending ? 'Saving...' : editingOrder ? 'Update Order' : 'Create Order'}
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" loading={mutation.isPending} className="flex-1">
+              {editingOrder ? 'Update Order' : 'Create Order'}
             </Button>
-            <button type="button" onClick={handleClose}
-              className="flex-1 py-2 rounded border border-gray-300 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800">
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
-      </FormModal>
-    </AppLayout>
+      </Modal>
+    </AppShell>
   )
 }

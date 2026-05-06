@@ -10,14 +10,17 @@
 ## Quick Status ← UPDATE THIS EVERY SESSION
 
 ```
-Last Updated  : 2026-03-29
-Last Worked On: Phase 3 fully complete ✅  All 3 epics done
-Current Phase : Phase 4 – Fleet Intelligence Platform
-Current Epic  : P4-E1 — Multi-Region & Per-Tenant DB (next to start)
-Next Action   : Implement P4-E1 → tenant_db_route model + get_db_for_tenant() routing
-Blocker       : None
-Demo Target   : Enterprise scale — partner APIs, marketplace, strategic planning
-Timeline      : Phase 4 implementation
+Last Updated  : 2026-05-05
+Last Worked On: Phase P — ALL 7 epics frontend complete (PP-E1 through PP-E7)
+Current Phase : Phase P – Priority Features (backend endpoints remaining)
+Current Epic  : Phase P Backend — wire up BE endpoints to activate PP-E1/E2/E3/E4/E5
+Next Action   : PP-E5 BE — export/import endpoints (quickest win, no LLM needed)
+               PP-E4 BE — chat LLM endpoint
+               PP-E1/E2 BE — plan confidence + plan options endpoints
+               PP-E3 BE — fleet/availability endpoint + DB migration
+Blocker       : None (all frontends work in demo/fallback mode already)
+Demo Target   : Phase P BE endpoints → Phase 4 (5 enterprise epics)
+Timeline      : Priority phase FE done; BE endpoints first, then Phase 4
 ```
 
 ---
@@ -29,6 +32,7 @@ Timeline      : Phase 4 implementation
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
+| **Phase P** | Priority Features (NEW) | 🟡 FE complete · BE endpoints needed | Demo-ready polish + power features |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
 ---
@@ -309,6 +313,119 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P3-E3-S3 | Planning: red badge on Generate Plan button | ✅ | `src/pages/Planning.tsx` |
 | P3-E3-VER | PENDING suggestions appear on Dashboard + Accept triggers replan | ✅ | Manual test |
 
+## Phase P – Priority Features (NEW — implement before Phase 4)
+
+> Added 2026-04-30. Complete ALL Phase P epics before starting Phase 4.
+
+| Epic | Name | Area | Status |
+|------|------|------|--------|
+| PP-E1 | Planning AI Enhancement | Backend + FE | 🟡 FE done (confidence badge, warnings modal, AI summary, reasoning panel) |
+| PP-E2 | Multiple Plan Options (Fastest / Economical / Balanced) | Backend + FE | 🟡 FE done (PlanOptionsCard, 3-card layout, confirm flow, demo fallback) |
+| PP-E3 | Dynamic Conditions (Driver & Vehicle Availability) | Backend + FE | 🟡 FE done (status pills, fleet widget on Dashboard) |
+| PP-E4 | Chat AI Interface | Backend + FE | 🟡 FE done (ChatPanel, API stub, Topbar icon) |
+| PP-E5 | Excel Export / Import | Backend + FE | 🟡 FE done (buttons + API client, backend stub) |
+| PP-E6 | Map with Route Plans Overlay | Frontend | ✅ Done (StopMarker, RoutePolyline, MapLegend, LiveMap toggle) |
+| PP-E7 | UI Polish & Design Overhaul | Frontend | ✅ Done (all S1–S11) |
+
+---
+
+### PP-E1: Planning AI Enhancement (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E1-FE-S1 | Planning page: AI reasoning panel (collapsible, chain-of-thought steps) | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-FE-S2 | Confidence badge (green/amber/red based on score) next to plan result | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-FE-S3 | Pre-plan warnings modal: show risky orders before dispatcher confirms | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-FE-S4 | AI summary text block below plan result (scrollable, formatted) | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-FE-VER | Confidence + warnings + reasoning all visible after plan generates | ⬜ | Manual test |
+
+---
+
+### PP-E2: Multiple Plan Options (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E2-FE-S1 | `PlanOptionsCard` component (mode label, key metrics, select button) | ✅ | `src/components/planning/PlanOptionsCard.tsx` |
+| PP-E2-FE-S2 | Planning page: "Generate Options" button → calls POST /plan/options | ✅ | `src/pages/Planning.tsx` |
+| PP-E2-FE-S3 | 3-card layout (Fastest / Economical / Balanced) with metric comparison | ✅ | `src/pages/Planning.tsx` |
+| PP-E2-FE-S4 | Selected card highlighted; "Confirm Plan" button → POST /plan/confirm | ✅ | `src/pages/Planning.tsx` |
+| PP-E2-FE-S5 | Plan options API client | ✅ | `src/api/planning.ts` |
+| PP-E2-FE-VER | 3 plans shown; dispatcher selects one; assignments applied | ⬜ | Manual test |
+
+---
+
+### PP-E3: Dynamic Conditions (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E3-FE-S1 | Drivers page: availability toggle (Available / On Break / Off Duty) per driver row | ✅ | `src/pages/Drivers.tsx` |
+| PP-E3-FE-S2 | Vehicles page: fuel level progress bar + status dropdown per vehicle row | ✅ | `src/pages/Vehicles.tsx` |
+| PP-E3-FE-S3 | Dashboard: fleet availability summary widget (X available, Y off-duty, Z in-use) | ✅ | `src/pages/Dashboard.tsx` |
+| PP-E3-FE-S4 | Fleet availability API client | ✅ | `src/api/fleet.ts` |
+| PP-E3-FE-VER | Off-duty driver shown in red; plan excludes them automatically | ⬜ | Manual test |
+
+---
+
+### PP-E4: Chat AI Interface (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E4-FE-S1 | `ChatPanel` component (slide-in sidebar, message bubbles, timestamp) | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-FE-S2 | Chat input box with send button + Enter key support | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-FE-S3 | Chat icon button in header (top-right) → toggles panel | ✅ | `src/components/layout/Topbar.tsx` |
+| PP-E4-FE-S4 | Starter suggestion chips (4 quick-start prompts) | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-FE-S5 | Chat API client (send message, fetch history) | ✅ | `src/api/chat.ts` |
+| PP-E4-FE-S6 | Loading state: 3-dot typing indicator | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-FE-VER | Chat panel opens; backend endpoint needed for real AI responses | ⬜ | Backend: POST /api/v1/chat/message |
+
+---
+
+### PP-E5: Excel Export / Import (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E5-FE-S1 | Orders page: "Export Orders" button (GET /export/orders → download .xlsx) | ✅ | `src/pages/Orders.tsx` |
+| PP-E5-FE-S2 | Orders page: "Import Orders" file input (POST /import/orders multipart) | ✅ | `src/pages/Orders.tsx` |
+| PP-E5-FE-S3 | Import result toast: "X orders created, Y errors" | ✅ | `src/pages/Orders.tsx` |
+| PP-E5-FE-S4 | Planning page: "Export Plan" button after plan generated | ✅ | `src/pages/Planning.tsx` |
+| PP-E5-FE-S5 | Export/import API client (all 4 methods + triggerBlobDownload) | ✅ | `src/api/exportImport.ts` |
+| PP-E5-FE-VER | Export/import UI ready; backend endpoints needed for actual file ops | ⬜ | Backend: GET /api/v1/export/orders etc. |
+
+---
+
+### PP-E6: Map with Route Plans Overlay (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E6-FE-S1 | `RoutePolyline` component — Leaflet Polyline per route, color-coded by driver | ✅ | `src/components/map/RoutePolyline.tsx` |
+| PP-E6-FE-S2 | `StopMarker` component — numbered DivIcon marker, popup with order details | ✅ | `src/components/map/StopMarker.tsx` |
+| PP-E6-FE-S3 | `MapLegend` component — driver name → color swatch | ✅ | `src/components/map/MapLegend.tsx` |
+| PP-E6-FE-S4 | LiveMap page: view toggle ("Live Tracking" / "Route Plan") | ✅ | `src/pages/LiveMap.tsx` |
+| PP-E6-FE-S5 | Route plan view: uses plan store + orders data, renders polylines + stops | ✅ | `src/pages/LiveMap.tsx` |
+| PP-E6-FE-S6 | Plan store (Zustand) saves last plan on generate | ✅ | `src/store/plan.store.ts` |
+| PP-E6-FE-VER | After plan: colored polylines + numbered stops visible on map | ⬜ | Manual test |
+
+---
+
+### PP-E7: UI Polish & Design Overhaul (Frontend Tasks)
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E7-S1 | Brand color palette + Tailwind config (primary, accent, semantic) | ✅ | `src/styles/globals.css` (multi-theme: dark/light × 3 variants) |
+| PP-E7-S2 | Typography scale: Plus Jakarta Sans + JetBrains Mono | ✅ | `src/styles/globals.css` |
+| PP-E7-S3 | Sidebar redesign: icons + labels, active highlight, hover transitions | ✅ | `src/components/layout/Sidebar.tsx` |
+| PP-E7-S4 | Dashboard KPI cards: trend arrows, icon per metric, counter animation | ✅ | `src/components/features/dashboard/StatCard.tsx` |
+| PP-E7-S5 | Data tables: hover highlight, column alignment | ✅ | `src/components/shared/DataTable.tsx` |
+| PP-E7-S6 | Skeleton loaders: shimmer animation | ✅ | `src/components/ui/Skeleton.tsx` |
+| PP-E7-S7 | Toast notifications: react-hot-toast on all CRUD + plan actions | ✅ | all pages |
+| PP-E7-S8 | Button component: primary / secondary / danger / sm variants | ✅ | `src/components/ui/Button.tsx` |
+| PP-E7-S9 | Status badge + Priority badge system | ✅ | `src/components/ui/Badge.tsx` |
+| PP-E7-S10 | Planning page redesign: route result table, agent feed, export | ✅ | `src/pages/Planning.tsx` |
+| PP-E7-S11 | All pages use AppShell + consistent design language | ✅ | all page files |
+| PP-E7-VER | Visual review: all pages consistent, no layout breaks | ⬜ | Manual review |
+
+---
+
 ## Phase 4 – Epic Status
 
 | Epic | Name | Status | GENSPEC |
@@ -493,4 +610,4 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-30*

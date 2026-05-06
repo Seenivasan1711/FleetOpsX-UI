@@ -1,1 +1,193 @@
-@import '@fontsource/inter';
+@import "tailwindcss";
+
+/* ─── Tailwind tokens mapped to CSS variables ──────────────────────────────── */
+@theme inline {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-bg:           var(--c-bg);
+  --color-surface:      var(--c-surface);
+  --color-elevated:     var(--c-elevated);
+  --color-border:       var(--c-border);
+  --color-text:         var(--c-text);
+  --color-muted:        var(--c-muted);
+  --color-subtle:       var(--c-subtle);
+  --color-sidebar:      var(--c-sidebar-bg);
+  --color-accent:       var(--c-accent);
+  --color-accent-dim:   var(--c-accent-dim);
+  --color-danger:       var(--c-red);
+  --color-danger-dim:   var(--c-red-dim);
+  --color-success:      var(--c-green);
+  --color-success-dim:  var(--c-green-dim);
+  --color-warning:      var(--c-orange);
+  --color-warning-dim:  var(--c-orange-dim);
+  --color-info:         var(--c-purple);
+  --color-info-dim:     var(--c-purple-dim);
+}
+
+/* ─── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--c-bg);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font-family: var(--font-sans);
+}
+
+/* ─── Theme: Dark · Midnight (default) ──────────────────────────────────────── */
+[data-theme="dark"] {
+  --c-bg:         #060c1a;
+  --c-surface:    #0c1528;
+  --c-elevated:   #122035;
+  --c-border:     #1a2d4a;
+  --c-text:       #e8edf8;
+  --c-muted:      #5e7a9e;
+  --c-subtle:     #1a2d4a;
+  --c-sidebar-bg: #06091a;
+
+  --c-red:    #f87171; --c-red-dim:    rgba(248, 113, 113, 0.10);
+  --c-green:  #34d399; --c-green-dim:  rgba(52,  211, 153, 0.10);
+  --c-orange: #fbbf24; --c-orange-dim: rgba(251, 191,  36, 0.10);
+  --c-purple: #a78bfa; --c-purple-dim: rgba(167, 139, 250, 0.10);
+}
+
+[data-theme="dark"][data-variant="midnight"] {
+  --c-accent:      #3b82f6;
+  --c-accent-dim:  rgba(59, 130, 246, 0.12);
+  --c-accent-glow: rgba(59, 130, 246, 0.28);
+}
+
+[data-theme="dark"][data-variant="storm"] {
+  --c-bg:         #080b0f;
+  --c-surface:    #0f1318;
+  --c-elevated:   #151c22;
+  --c-border:     #1e2832;
+  --c-sidebar-bg: #06090c;
+  --c-text:       #dde8f0;
+  --c-muted:      #5b7080;
+  --c-subtle:     #1e2832;
+  --c-accent:      #06b6d4;
+  --c-accent-dim:  rgba(6, 182, 212, 0.12);
+  --c-accent-glow: rgba(6, 182, 212, 0.28);
+}
+
+[data-theme="dark"][data-variant="amethyst"] {
+  --c-bg:         #09070f;
+  --c-surface:    #110d1c;
+  --c-elevated:   #17122a;
+  --c-border:     #231a38;
+  --c-sidebar-bg: #07050e;
+  --c-text:       #e0daf0;
+  --c-muted:      #7060a0;
+  --c-subtle:     #231a38;
+  --c-accent:      #8b5cf6;
+  --c-accent-dim:  rgba(139, 92, 246, 0.12);
+  --c-accent-glow: rgba(139, 92, 246, 0.28);
+}
+
+/* ─── Theme: Light ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --c-bg:         #eef2f7;
+  --c-surface:    #ffffff;
+  --c-elevated:   #f4f7fb;
+  --c-border:     #dde5f0;
+  --c-text:       #0d1520;
+  --c-muted:      #6080a0;
+  --c-subtle:     #e0e8f5;
+  --c-sidebar-bg: #ffffff;
+
+  --c-red:    #dc2626; --c-red-dim:    rgba(220,  38,  38, 0.08);
+  --c-green:  #059669; --c-green-dim:  rgba(  5, 150, 105, 0.08);
+  --c-orange: #d97706; --c-orange-dim: rgba(217, 119,   6, 0.08);
+  --c-purple: #7c3aed; --c-purple-dim: rgba(124,  58, 237, 0.08);
+}
+
+[data-theme="light"][data-variant="midnight"] {
+  --c-accent:      #2563eb;
+  --c-accent-dim:  rgba(37, 99, 235, 0.08);
+  --c-accent-glow: rgba(37, 99, 235, 0.20);
+}
+
+[data-theme="light"][data-variant="storm"] {
+  --c-accent:      #0891b2;
+  --c-accent-dim:  rgba(8, 145, 178, 0.08);
+  --c-accent-glow: rgba(8, 145, 178, 0.20);
+}
+
+[data-theme="light"][data-variant="amethyst"] {
+  --c-accent:      #7c3aed;
+  --c-accent-dim:  rgba(124, 58, 237, 0.08);
+  --c-accent-glow: rgba(124, 58, 237, 0.20);
+}
+
+/* ─── Smooth theme transition ────────────────────────────────────────────────── */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    background-color 0.38s ease,
+    border-color     0.38s ease,
+    color            0.25s ease,
+    box-shadow       0.38s ease !important;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes page-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.3); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--c-border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-muted); }
+
+/* ─── Selection ──────────────────────────────────────────────────────────────── */
+::selection {
+  background: var(--c-accent-dim);
+  color: var(--c-accent);
+}

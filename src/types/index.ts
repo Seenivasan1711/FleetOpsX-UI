@@ -9,6 +9,7 @@ export interface User {
   tenant_id: string
   role: 'dispatcher' | 'driver' | 'admin'
   full_name: string
+  email?: string
   access_token: string
 }
 
@@ -24,6 +25,8 @@ export interface Depot {
   created_at: string
 }
 
+export type DriverAvailability = 'AVAILABLE' | 'ON_BREAK' | 'OFF_DUTY'
+
 export interface Driver {
   id: string
   tenant_id: string
@@ -32,7 +35,10 @@ export interface Driver {
   email?: string
   home_depot_id?: string
   is_active: boolean
+  availability_status?: DriverAvailability
 }
+
+export type VehicleStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'LOW_FUEL'
 
 export interface Vehicle {
   id: string
@@ -44,6 +50,8 @@ export interface Vehicle {
   is_refrigerated?: boolean
   home_depot_id?: string
   is_active: boolean
+  vehicle_status?: VehicleStatus
+  fuel_level_pct?: number
 }
 
 export interface Order {
@@ -81,8 +89,25 @@ export interface PlanResult {
   assigned_orders: number
   total_routes: number
   assignments: Assignment[]
-  planner?: string        // "rule_based" | "ortools" | "langgraph" | ...
-  explanation?: string    // LLM-generated summary (langgraph only)
+  planner?: string
+  explanation?: string
+  confidence_score?: number
+  warnings?: string[]
+}
+
+export type PlanOptionMode = 'fastest' | 'economical' | 'balanced'
+
+export interface PlanOption {
+  mode: PlanOptionMode
+  label: string
+  description: string
+  plan_id: string
+  assigned_orders: number
+  total_orders: number
+  total_routes: number
+  estimated_km?: number
+  estimated_duration_min?: number
+  assignments: Assignment[]
 }
 
 export interface AgentLogEntry {

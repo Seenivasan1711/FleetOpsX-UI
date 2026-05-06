@@ -1,129 +1,182 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
-import AppLayout from '../components/layout/AppLayout'
-import Card from '../components/ui/Card'
-import Button from '../components/ui/Button'
-import SuggestedActions from '../components/shared/SuggestedActions'
-import { fetchOrders } from '../api/orders'
-import { fetchDrivers } from '../api/drivers'
-import { fetchAtRiskStops } from '../api/sla'
-import type { AtRiskStop } from '../api/sla'
+import { Package, AlertTriangle, CheckCircle, Users, Truck } from 'lucide-react'
+import { AppShell }           from '../components/layout/AppShell'
+import { StatCard }           from '../components/features/dashboard/StatCard'
+import { OnboardingBanner }   from '../components/features/dashboard/OnboardingBanner'
+import { QuickActions }       from '../components/features/dashboard/QuickActions'
+import { AtRiskPanel }        from '../components/features/dashboard/AtRiskPanel'
+import { AiSuggestionsPanel } from '../components/features/dashboard/AiSuggestionsPanel'
+import { Button }             from '../components/ui/Button'
+import { fetchOrders }        from '../api/orders'
+import { fetchDrivers }       from '../api/drivers'
+import { fetchVehicles }      from '../api/vehicles'
+import { QUERY_KEYS }         from '../lib/utils/constants'
+import { today }              from '../lib/utils/format'
 
-const PRIORITY_COLORS: Record<string, string> = {
-  CRITICAL: 'bg-red-100 text-red-700',
-  HIGH:     'bg-orange-100 text-orange-700',
-  NORMAL:   'bg-gray-100 text-gray-600',
-  LOW:      'bg-blue-100 text-blue-600',
-}
+const ONBOARDING_KEY = 'fleetopsx_ob_dismissed'
 
-export default function Dashboard() {
-  const today = new Date().toISOString().split('T')[0]
-  const [riskExpanded, setRiskExpanded] = useState(true)
-
-  const { data: orders = [] } = useQuery({ queryKey: ['orders', today], queryFn: () => fetchOrders({ plan_date: today }) })
-  const { data: drivers = [] } = useQuery({ queryKey: ['drivers'], queryFn: () => fetchDrivers() })
-  const { data: atRisk = [] } = useQuery({
-    queryKey: ['sla-at-risk', today],
-    queryFn: () => fetchAtRiskStops(today),
-    refetchInterval: 60_000,
-  })
-
-  const unassigned = orders.filter(o => o.status === 'PENDING').length
-  const assigned   = orders.filter(o => o.status === 'ASSIGNED').length
-
+function FleetBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? (value / total) * 100 : 0
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold dark:text-white">Today's Overview</h2>
-          <Link to="/planning">
-            <Button>Generate Plan</Button>
-          </Link>
-        </div>
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Orders" value={orders.length} color="blue" />
-          <StatCard label="Unassigned" value={unassigned} color="red" />
-          <StatCard label="Assigned" value={assigned} color="green" />
-          <StatCard label="Active Drivers" value={drivers.filter(d => d.is_active).length} color="purple" />
-        </div>
-
-        {/* SLA At-Risk panel */}
-        <AtRiskPanel stops={atRisk} expanded={riskExpanded} onToggle={() => setRiskExpanded(v => !v)} />
-
-        {/* AI Suggested Actions panel */}
-        <SuggestedActions planDate={today} />
+    <div className="mb-2.5">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-[var(--c-muted)]">{label}</span>
+        <span className="text-xs font-bold text-[var(--c-text)]">{value}</span>
       </div>
-    </AppLayout>
-  )
-}
-
-function AtRiskPanel({ stops, expanded, onToggle }: { stops: AtRiskStop[]; expanded: boolean; onToggle: () => void }) {
-  const hasRisk = stops.length > 0
-  return (
-    <div className={`rounded-xl border-2 overflow-hidden transition-colors ${hasRisk ? 'border-red-300' : 'border-gray-200 dark:border-gray-700'}`}>
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${hasRisk ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <AlertTriangle size={15} className={hasRisk ? 'text-red-500' : 'text-gray-400'} />
-          <span className={hasRisk ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-400'}>
-            At-Risk Deliveries
-          </span>
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${hasRisk ? 'bg-red-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>
-            {stops.length}
-          </span>
-        </span>
-        <span className="text-xs text-gray-400 flex items-center gap-1">
-          refreshes every 60s
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="p-4">
-          {stops.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-3">No at-risk stops — all deliveries on track.</p>
-          ) : (
-            <div className="space-y-2">
-              {stops.map(s => (
-                <div key={s.stop_id} className="flex items-start justify-between gap-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{s.delivery_address}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[s.priority] ?? PRIORITY_COLORS.NORMAL}`}>{s.priority}</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Driver: <span className="font-medium">{s.driver_name}</span>
-                      {' · '}Window ends: <span className="font-medium">{s.time_window_end}</span>
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-red-600">+{s.overdue_by_minutes} min late</p>
-                    <p className="text-xs text-gray-400">ETA ~{s.eta_minutes % 60}min</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+        <div
+          className="h-1.5 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
     </div>
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  const colors: Record<string, string> = {
-    blue: 'text-blue-600', red: 'text-red-500', green: 'text-green-500', purple: 'text-purple-500',
+export default function Dashboard() {
+  const navigate  = useNavigate()
+  const planDate  = today()
+
+  const [showBanner, setShowBanner] = useState(
+    () => !localStorage.getItem(ONBOARDING_KEY)
+  )
+
+  const dismissBanner = () => {
+    localStorage.setItem(ONBOARDING_KEY, '1')
+    setShowBanner(false)
   }
+
+  const { data: orders  = [] } = useQuery({
+    queryKey: QUERY_KEYS.orders(planDate),
+    queryFn:  () => fetchOrders({ plan_date: planDate }),
+  })
+
+  const { data: drivers = [] } = useQuery({
+    queryKey: QUERY_KEYS.drivers,
+    queryFn:  () => fetchDrivers(),
+  })
+
+  const { data: vehicles = [] } = useQuery({
+    queryKey: QUERY_KEYS.vehicles,
+    queryFn:  () => fetchVehicles({ active_only: false }),
+  })
+
+  const unassigned    = orders.filter((o) => o.status === 'PENDING').length
+  const assigned      = orders.filter((o) => o.status === 'ASSIGNED').length
+  const activeDrivers = drivers.filter((d) => d.is_active).length
+
+  const driverStats = useMemo(() => ({
+    available: drivers.filter((d) => d.is_active && d.availability_status !== 'ON_BREAK' && d.availability_status !== 'OFF_DUTY').length,
+    on_break:  drivers.filter((d) => d.availability_status === 'ON_BREAK').length,
+    off_duty:  drivers.filter((d) => !d.is_active || d.availability_status === 'OFF_DUTY').length,
+    total:     drivers.length,
+  }), [drivers])
+
+  const vehicleStats = useMemo(() => ({
+    available:   vehicles.filter((v) => v.is_active && (!v.vehicle_status || v.vehicle_status === 'AVAILABLE')).length,
+    in_use:      vehicles.filter((v) => v.vehicle_status === 'IN_USE').length,
+    maintenance: vehicles.filter((v) => v.vehicle_status === 'MAINTENANCE').length,
+    low_fuel:    vehicles.filter((v) => v.vehicle_status === 'LOW_FUEL').length,
+    total:       vehicles.length,
+  }), [vehicles])
+
   return (
-    <Card>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${colors[color]}`}>{value}</p>
-    </Card>
+    <AppShell pendingOrders={unassigned}>
+      <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
+
+        {showBanner && (
+          <OnboardingBanner
+            unassignedCount={unassigned}
+            onDismiss={dismissBanner}
+            onGenerate={() => { dismissBanner(); navigate('/planning') }}
+          />
+        )}
+
+        {/* KPI stats */}
+        <div className="flex gap-3.5">
+          <StatCard
+            label="Total Orders" value={orders.length} color="accent" delay={0}
+            icon={<Package size={14} />}
+            trend={{ up: true, val: '+4', label: 'vs yesterday' }}
+          />
+          <StatCard
+            label="Unassigned" value={unassigned} color="danger" delay={80}
+            icon={<AlertTriangle size={14} />}
+            trend={{ up: false, val: `${unassigned > 0 ? Math.round((unassigned / Math.max(orders.length, 1)) * 100) : 0}%`, label: 'need dispatch' }}
+          />
+          <StatCard
+            label="Assigned" value={assigned} color="success" delay={160}
+            icon={<CheckCircle size={14} />}
+          />
+          <StatCard
+            label="Active Drivers" value={activeDrivers} color="info" delay={240}
+            icon={<Users size={14} />}
+            trend={{ up: true, val: '100%', label: 'available' }}
+          />
+        </div>
+
+        {/* Fleet Availability Widget — PP-E3 */}
+        {(drivers.length > 0 || vehicles.length > 0) && (
+          <div
+            className="rounded-2xl p-5"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Truck size={14} style={{ color: 'var(--c-accent)' }} />
+              <p className="text-sm font-bold text-[var(--c-text)]">Fleet Availability</p>
+              <span className="text-xs text-[var(--c-muted)] ml-auto">Live · click status pills on Drivers / Vehicles pages to update</span>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {/* Drivers */}
+              <div>
+                <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Users size={10} /> Drivers · {driverStats.total} total
+                </p>
+                <FleetBar label="Available"   value={driverStats.available} total={driverStats.total} color="var(--c-green)"  />
+                <FleetBar label="On Break"    value={driverStats.on_break}  total={driverStats.total} color="var(--c-orange)" />
+                <FleetBar label="Off Duty"    value={driverStats.off_duty}  total={driverStats.total} color="var(--c-muted)"  />
+              </div>
+              {/* Vehicles */}
+              <div>
+                <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Truck size={10} /> Vehicles · {vehicleStats.total} total
+                </p>
+                <FleetBar label="Available"   value={vehicleStats.available}   total={vehicleStats.total} color="var(--c-green)"  />
+                <FleetBar label="In Use"      value={vehicleStats.in_use}      total={vehicleStats.total} color="var(--c-accent)" />
+                <FleetBar label="Maintenance" value={vehicleStats.maintenance}  total={vehicleStats.total} color="var(--c-red)"    />
+                <FleetBar label="Low Fuel"    value={vehicleStats.low_fuel}    total={vehicleStats.total} color="var(--c-orange)" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <QuickActions />
+
+        {/* At-risk + AI panels */}
+        <AtRiskPanel planDate={planDate} />
+        <AiSuggestionsPanel planDate={planDate} />
+
+        {/* Dispatch CTA */}
+        {unassigned > 0 && (
+          <div
+            className="flex items-center justify-between gap-4 px-6 py-5 rounded-2xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <div>
+              <p className="text-sm font-bold text-[var(--c-text)] mb-0.5">Ready to dispatch?</p>
+              <p className="text-xs text-[var(--c-muted)]">
+                {unassigned} unassigned orders awaiting route optimisation for today.
+              </p>
+            </div>
+            <Button onClick={() => navigate('/planning')}>
+              Generate Plan →
+            </Button>
+          </div>
+        )}
+      </div>
+    </AppShell>
   )
 }
