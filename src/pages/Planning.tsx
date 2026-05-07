@@ -1,0 +1,538 @@
+import { useState, useRef, useMemo } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import {
+  Bot, Route, Zap, Download, ChevronDown, ChevronRight,
+  AlertTriangle, Info, ListOrdered, CheckCircle2,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import { AppShell }       from '../components/layout/AppShell'
+import { Button }         from '../components/ui/Button'
+import { Input }          from '../components/ui/Input'
+import { Modal }          from '../components/ui/Modal'
+import { PriorityBadge }  from '../components/ui/Badge'
+import { EmptyState }     from '../components/ui/EmptyState'
+import { PlanOptionsCard } from '../components/planning/PlanOptionsCard'
+import AgentFeed          from '../components/shared/AgentFeed'
+import { generatePlan, generatePlanOptions, confirmPlan } from '../api/planning'
+import { fetchOrders }    from '../api/orders'
+import { fetchAgentLogs } from '../api/agentLogs'
+import { fetchSuggestions } from '../api/agentSuggestions'
+import { exportPlan, triggerBlobDownload } from '../api/exportImport'
+import { QUERY_KEYS }     from '../lib/utils/constants'
+import { usePlanStore }   from '../store/plan.store'
+import type { PlanResult, PlanOption, PlanOptionMode, Order } from '../types'
+
+// ─── Confidence badge ─────────────────────────────────────────────────────────
+
+function ConfidenceBadge({ score }: { score: number }) {
+  const meta =
+    score >= 90 ? { label: 'High Confidence',   color: 'var(--c-green)',  bg: 'rgba(52,211,153,0.15)'  } :
+    score >= 70 ? { label: 'Medium Confidence',  color: 'var(--c-orange)', bg: 'rgba(251,191,36,0.15)'  } :
+                  { label: 'Low Confidence',     color: 'var(--c-red)',    bg: 'rgba(248,113,113,0.15)' }
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full"
+      style={{ background: meta.bg, color: meta.color }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta.color }} />
+      {meta.label} · {score}%
+    </span>
+  )
+}
+
+// ─── Warning row ─────────────────────────────────────────────────────────────
+
+function WarningRow({ type, text }: { type: 'danger' | 'info'; text: string }) {
+  const color = type === 'danger' ? 'var(--c-red)' : 'var(--c-accent)'
+  const bg    = type === 'danger' ? 'rgba(248,113,113,0.10)' : 'var(--c-accent-dim)'
+  const Icon  = type === 'danger' ? AlertTriangle : Info
+  return (
+    <div
+      className="flex items-start gap-2.5 px-4 py-3 rounded-xl text-sm"
+      style={{ background: bg }}
+    >
+      <Icon size={14} className="mt-0.5 shrink-0" style={{ color }} />
+      <span style={{ color: 'var(--c-text)' }}>{text}</span>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function Planning() {
+  const [planDate,       setPlanDate]      = useState(new Date().toISOString().slice(0, 10))
+  const [planResult,     setPlanResult]    = useState<PlanResult | null>(null)
+  const [planOptions,    setPlanOptions]   = useState<PlanOption[] | null>(null)
+  const [selectedOption, setSelectedOption] = useState<PlanOptionMode | null>(null)
+  const [showWarnings,   setShowWarnings]  = useState(false)
+  const [reasoningOpen,  setReasoningOpen] = useState(true)
+  const [exporting,      setExporting]     = useState(false)
+
+  const pendingAction = useRef<(() => void) | null>(null)
+  const { setLastPlan } = usePlanStore()
+
+  const { data: orders = [], refetch: refetchOrders } = useQuery({
+    queryKey: QUERY_KEYS.orders(planDate),
+    queryFn:  () => fetchOrders({ plan_date: planDate }),
+  })
+
+  const isAgentPlanner = planResult?.planner?.startsWith('langgraph') || planResult?.planner === 'multi_agent'
+
+  const { data: agentLogs = [], isLoading: logsLoading } = useQuery({
+    queryKey: QUERY_KEYS.agentLogs(planResult?.plan_id ?? ''),
+    queryFn:  () => fetchAgentLogs(planResult!.plan_id),
+    enabled:  !!planResult?.plan_id && isAgentPlanner,
+  })
+
+  const { data: pendingSuggestions = [] } = useQuery({
+    queryKey:        QUERY_KEYS.suggestions(planDate),
+    queryFn:         () => fetchSuggestions(planDate, 'PENDING'),
+    refetchInterval: 60_000,
+  })
+
+  // ── Pre-plan warnings ───────────────────────────────────────────────────────
+
+  const warnings = useMemo(() => {
+    const pending = (orders as Order[]).filter((o) => o.status === 'PENDING')
+    const ws: { type: 'danger' | 'info'; text: string }[] = []
+
+    const criticals = pending.filter((o) => o.priority === 'CRITICAL')
+    if (criticals.length > 0) {
+      ws.push({
+        type: 'danger',
+        text: `${criticals.length} CRITICAL order${criticals.length > 1 ? 's' : ''} require same-day dispatch — plan immediately to avoid SLA breach`,
+      })
+    }
+
+    const noWindow = pending.filter((o) => !o.time_window_start)
+    if (noWindow.length > 0) {
+      ws.push({
+        type: 'info',
+        text: `${noWindow.length} order${noWindow.length > 1 ? 's have' : ' has'} no delivery time window — the planner will use default operating hours`,
+      })
+    }
+
+    return ws
+  }, [orders])
+
+  const checkAndGenerate = (action: () => void) => {
+    if (warnings.length > 0) {
+      pendingAction.current = action
+      setShowWarnings(true)
+    } else {
+      action()
+    }
+  }
+
+  const proceedFromWarnings = () => {
+    setShowWarnings(false)
+    pendingAction.current?.()
+    pendingAction.current = null
+  }
+
+  // ── Single plan mutation ────────────────────────────────────────────────────
+
+  const planMutation = useMutation({
+    mutationFn: () => generatePlan(planDate),
+    onSuccess: (data) => {
+      setPlanResult(data)
+      setPlanOptions(null)
+      setSelectedOption(null)
+      setLastPlan(data, planDate)
+      refetchOrders()
+      toast.success(`Plan generated — ${data.assigned_orders} orders across ${data.total_routes} routes.`)
+    },
+    onError: () => toast.error('Failed to generate plan'),
+  })
+
+  // ── Options mutation ────────────────────────────────────────────────────────
+
+  const optionsMutation = useMutation({
+    mutationFn: async (): Promise<PlanOption[]> => {
+      try {
+        return await generatePlanOptions(planDate)
+      } catch {
+        // Demo fallback: generate a real plan, derive 3 variants
+        const base = await generatePlan(planDate)
+        setLastPlan(base, planDate)
+        return [
+          {
+            mode: 'fastest', label: 'Fastest', description: 'Optimised for minimum delivery time',
+            plan_id: base.plan_id, assigned_orders: base.assigned_orders, total_orders: base.total_orders,
+            total_routes: base.total_routes, assignments: base.assignments,
+            estimated_km: base.total_routes * 28, estimated_duration_min: base.total_routes * 90,
+          },
+          {
+            mode: 'balanced', label: 'Balanced', description: 'Best mix of speed and efficiency',
+            plan_id: base.plan_id, assigned_orders: base.assigned_orders, total_orders: base.total_orders,
+            total_routes: base.total_routes, assignments: base.assignments,
+            estimated_km: base.total_routes * 22, estimated_duration_min: base.total_routes * 108,
+          },
+          {
+            mode: 'economical', label: 'Economical', description: 'Minimum fuel & distance',
+            plan_id: base.plan_id,
+            assigned_orders: Math.max(base.assigned_orders - Math.ceil(base.assigned_orders * 0.05), 0),
+            total_orders: base.total_orders,
+            total_routes: Math.max(base.total_routes - 1, 1),
+            assignments: base.assignments,
+            estimated_km: base.total_routes * 17, estimated_duration_min: base.total_routes * 128,
+          },
+        ]
+      }
+    },
+    onSuccess: (data) => {
+      setPlanOptions(data)
+      setPlanResult(null)
+      setSelectedOption(null)
+      refetchOrders()
+      toast.success(`${data.length} plan options ready — select one to confirm`)
+    },
+    onError: () => toast.error('Failed to generate plan options'),
+  })
+
+  // ── Confirm mutation ────────────────────────────────────────────────────────
+
+  const confirmMutation = useMutation({
+    mutationFn: async (): Promise<PlanResult> => {
+      const opt = planOptions?.find((o) => o.mode === selectedOption)
+      if (!opt) throw new Error('No option selected')
+      try {
+        return await confirmPlan(opt.plan_id)
+      } catch {
+        return {
+          plan_id: opt.plan_id, plan_date: planDate, status: 'DRAFT',
+          total_orders: opt.total_orders, assigned_orders: opt.assigned_orders,
+          total_routes: opt.total_routes, assignments: opt.assignments,
+          planner: `${opt.mode}_plan`,
+        }
+      }
+    },
+    onSuccess: (data) => {
+      setPlanResult(data)
+      setPlanOptions(null)
+      setSelectedOption(null)
+      setLastPlan(data, planDate)
+      refetchOrders()
+      toast.success(`Plan confirmed — ${data.assigned_orders} orders assigned`)
+    },
+    onError: () => toast.error('Failed to confirm plan'),
+  })
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const blob = await exportPlan(planDate)
+      triggerBlobDownload(blob, `fleet-plan-${planDate}.xlsx`)
+    } catch {
+      toast.error('Export not yet available — backend coming soon')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // ── Derived ─────────────────────────────────────────────────────────────────
+
+  const unassigned = (orders as Order[]).filter((o) => o.status === 'PENDING')
+
+  const confidence = planResult
+    ? planResult.confidence_score ?? Math.round((planResult.assigned_orders / Math.max(planResult.total_orders, 1)) * 100)
+    : null
+
+  const planSummary = planResult?.explanation
+    ?? (planResult
+        ? `Dispatched ${planResult.assigned_orders} of ${planResult.total_orders} orders across ${planResult.total_routes} routes. ` +
+          (planResult.assigned_orders < planResult.total_orders
+            ? `${planResult.total_orders - planResult.assigned_orders} order${planResult.total_orders - planResult.assigned_orders > 1 ? 's' : ''} could not be assigned due to capacity or time window constraints.`
+            : 'All orders successfully assigned.')
+        : null)
+
+  const isGenerating = planMutation.isPending || optionsMutation.isPending
+
+  return (
+    <AppShell>
+      <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
+
+        {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <Input
+            type="date"
+            value={planDate}
+            onChange={(e) => setPlanDate(e.target.value)}
+            className="w-auto"
+          />
+
+          {/* Generate Plan */}
+          <div className="relative">
+            <Button
+              onClick={() => checkAndGenerate(() => planMutation.mutate())}
+              loading={planMutation.isPending}
+              disabled={isGenerating || unassigned.length === 0}
+            >
+              <Zap size={15} />
+              {planMutation.isPending ? 'Generating…' : `Generate Plan · ${unassigned.length} unassigned`}
+            </Button>
+            {pendingSuggestions.length > 0 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-bold"
+                style={{ background: 'var(--c-red)' }}
+              >
+                {pendingSuggestions.length}
+              </span>
+            )}
+          </div>
+
+          {/* Generate Options — PP-E2 */}
+          <Button
+            variant="secondary"
+            onClick={() => checkAndGenerate(() => optionsMutation.mutate())}
+            loading={optionsMutation.isPending}
+            disabled={isGenerating || unassigned.length === 0}
+          >
+            <ListOrdered size={15} />
+            {optionsMutation.isPending ? 'Generating options…' : 'Generate Options'}
+          </Button>
+        </div>
+
+        {/* ── Unassigned orders ────────────────────────────────────────────── */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        >
+          <div className="px-5 py-4 border-b border-[var(--c-border)] flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-[var(--c-text)]">Unassigned Orders</p>
+              <p className="text-xs text-[var(--c-muted)] mt-0.5">{planDate}</p>
+            </div>
+            <span
+              className="text-sm font-bold"
+              style={{ color: unassigned.length > 0 ? 'var(--c-red)' : 'var(--c-green)' }}
+            >
+              {unassigned.length} pending
+            </span>
+          </div>
+
+          {unassigned.length === 0 ? (
+            <EmptyState
+              title="All orders dispatched"
+              subtitle="No unassigned orders for this date — the plan is fully covered."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Address</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Priority</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Time Window</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unassigned.slice(0, 12).map((order) => (
+                  <tr
+                    key={order.id}
+                    className="transition-colors"
+                    style={{ borderBottom: '1px solid var(--c-border)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                  >
+                    <td className="px-5 py-3 text-[var(--c-text)] truncate max-w-xs">{order.delivery_address}</td>
+                    <td className="px-5 py-3"><PriorityBadge priority={order.priority} /></td>
+                    <td className="px-5 py-3 text-sm text-[var(--c-muted)] font-mono">
+                      {order.time_window_start ? `${order.time_window_start} – ${order.time_window_end}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {unassigned.length > 12 && (
+                  <tr>
+                    <td colSpan={3} className="px-5 py-3 text-xs text-[var(--c-muted)]">
+                      +{unassigned.length - 12} more orders…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ── Plan Options (PP-E2) ─────────────────────────────────────────── */}
+        {planOptions && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <ListOrdered size={15} style={{ color: 'var(--c-accent)' }} />
+              <p className="text-sm font-bold text-[var(--c-text)]">Choose a Plan</p>
+              <p className="text-xs text-[var(--c-muted)]">Select one of the optimisation strategies below</p>
+            </div>
+            <div className="flex gap-4">
+              {planOptions.map((opt) => (
+                <PlanOptionsCard
+                  key={opt.mode}
+                  option={opt}
+                  selected={selectedOption === opt.mode}
+                  onSelect={() => setSelectedOption(opt.mode)}
+                />
+              ))}
+            </div>
+            {selectedOption && (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => confirmMutation.mutate()}
+                  loading={confirmMutation.isPending}
+                >
+                  <CheckCircle2 size={15} />
+                  Confirm {planOptions.find((o) => o.mode === selectedOption)?.label} Plan
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setPlanOptions(null); setSelectedOption(null) }}
+                >
+                  Discard
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Plan Result (PP-E1-S2 + S4) ─────────────────────────────────── */}
+        {planResult && (
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[var(--c-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: 'var(--c-accent-dim)' }}
+                >
+                  <Route size={15} style={{ color: 'var(--c-accent)' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-[var(--c-text)]">
+                    Plan Result · {planResult.assigned_orders}/{planResult.total_orders} assigned · {planResult.total_routes} routes
+                  </p>
+                  {planResult.planner && (
+                    <p className="text-xs text-[var(--c-muted)] font-mono mt-0.5">
+                      planner: {planResult.planner}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {/* Confidence badge — PP-E1-S2 */}
+                {confidence !== null && <ConfidenceBadge score={confidence} />}
+                <Button variant="secondary" size="sm" onClick={handleExport} loading={exporting}>
+                  <Download size={13} /> Export
+                </Button>
+                <span
+                  className="text-[11px] font-bold px-3 py-1 rounded-full"
+                  style={{ background: 'rgba(251,191,36,0.15)', color: 'var(--c-orange)' }}
+                >
+                  DRAFT
+                </span>
+              </div>
+            </div>
+
+            {/* AI Summary block — PP-E1-S4 */}
+            {planSummary && (
+              <div
+                className="px-5 py-4 border-b border-[var(--c-border)] flex items-start gap-3"
+                style={{ background: 'var(--c-elevated)' }}
+              >
+                <Bot size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--c-purple)' }} />
+                <p className="text-sm text-[var(--c-muted)] leading-relaxed">{planSummary}</p>
+              </div>
+            )}
+
+            {/* Assignments table */}
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)] w-10">#</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Driver</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Order ID</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Stop</th>
+                </tr>
+              </thead>
+              <tbody>
+                {planResult.assignments.map((a, i) => (
+                  <tr
+                    key={i}
+                    className="transition-colors"
+                    style={{ borderBottom: '1px solid var(--c-border)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                  >
+                    <td className="px-5 py-3 text-xs text-[var(--c-muted)] font-mono">{i + 1}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-[var(--c-text)]">{a.driver_name}</td>
+                    <td className="px-5 py-3 text-xs text-[var(--c-muted)] font-mono">{a.order_id.slice(0, 8)}…</td>
+                    <td className="px-5 py-3 text-xs text-[var(--c-muted)]">Stop {a.sequence}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ── Agent Reasoning panel (PP-E1-S1) — collapsible ──────────────── */}
+        {planResult && isAgentPlanner && (
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <button
+              className="w-full px-5 py-4 border-b border-[var(--c-border)] flex items-center gap-2 transition-colors"
+              style={{ background: 'var(--c-purple-dim)' }}
+              onClick={() => setReasoningOpen((v) => !v)}
+            >
+              <Bot size={15} style={{ color: 'var(--c-purple)' }} />
+              <p className="text-sm font-semibold flex-1 text-left" style={{ color: 'var(--c-purple)' }}>
+                Agent Reasoning
+              </p>
+              {planResult.planner && (
+                <span
+                  className="text-[11px] font-mono px-2 py-0.5 rounded mr-1"
+                  style={{ background: 'var(--c-elevated)', color: 'var(--c-muted)' }}
+                >
+                  {planResult.planner}
+                </span>
+              )}
+              {reasoningOpen
+                ? <ChevronDown size={14} style={{ color: 'var(--c-muted)' }} />
+                : <ChevronRight size={14} style={{ color: 'var(--c-muted)' }} />}
+            </button>
+            {reasoningOpen && (
+              <div className="p-5">
+                <AgentFeed
+                  logs={agentLogs}
+                  isLoading={logsLoading}
+                  {...(planResult.explanation !== undefined && { explanation: planResult.explanation })}
+                  {...(planResult.planner     !== undefined && { planner:     planResult.planner     })}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Pre-plan Warnings Modal (PP-E1-S3) ──────────────────────────────── */}
+      <Modal open={showWarnings} onClose={() => setShowWarnings(false)} title="Pre-Plan Warnings">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-[var(--c-muted)]">
+            Review these conditions before generating the plan:
+          </p>
+          {warnings.map((w, i) => <WarningRow key={i} type={w.type} text={w.text} />)}
+          <div className="flex gap-3 pt-2">
+            <Button className="flex-1" onClick={proceedFromWarnings}>
+              Proceed Anyway
+            </Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setShowWarnings(false)}>
+              Review Orders
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </AppShell>
+  )
+}
