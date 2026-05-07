@@ -11,7 +11,6 @@ export default function Login() {
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [tenantId, setTenantId] = useState('')
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
@@ -20,11 +19,11 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      const user = await loginApi(email, password, tenantId)
+      const user = await loginApi(email, password)
       setAuth(user)
       navigate(user.role === 'driver' ? '/driver' : '/')
     } catch {
-      setError('Invalid credentials. Please check your email, password, and Tenant ID.')
+      setError('Invalid credentials. Please check your email and password.')
     } finally {
       setLoading(false)
     }
@@ -78,19 +77,6 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">
-                Tenant ID
-              </label>
-              <Input
-                type="text"
-                value={tenantId}
-                onChange={(e) => setTenantId(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                 required
               />
             </div>
