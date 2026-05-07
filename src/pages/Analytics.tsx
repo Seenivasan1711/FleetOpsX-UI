@@ -13,8 +13,8 @@ import { Skeleton }   from '../components/ui/Skeleton'
 import { fetchKpis, fetchDriverPerformance, triggerEtl } from '../api/analytics'
 import { QUERY_KEYS } from '../lib/utils/constants'
 
-const refEnd   = new Date().toISOString().split('T')[0]
-const refStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+const refEnd   = new Date().toISOString().split('T')[0] as string
+const refStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] as string
 
 // ─── KPI card ──────────────────────────────────────────────────────────────────
 
