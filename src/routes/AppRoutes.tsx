@@ -21,6 +21,7 @@ const Marketplace   = lazy(() => import('../pages/Marketplace'))
 const AuditLog      = lazy(() => import('../pages/AuditLog'))
 const Scenarios     = lazy(() => import('../pages/Scenarios'))
 const DriverView    = lazy(() => import('../pages/DriverView'))
+const PlanHistory   = lazy(() => import('../pages/PlanHistory'))
 
 const PageLoader = () => (
   <div className="flex-1 p-6 space-y-4">
@@ -61,6 +62,7 @@ export default function AppRoutes() {
           <Route path="/scenarios"     element={dispatcher(<Scenarios />)} />
 
           <Route path="/admin/ai-providers" element={dispatcher(<AiProviders />)} />
+          <Route path="/plan-history"       element={dispatcher(<PlanHistory />)} />
 
           <Route path="/driver" element={<ProtectedRoute role="driver"><DriverView /></ProtectedRoute>} />
 

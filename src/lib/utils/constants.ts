@@ -13,6 +13,7 @@ import {
   Layers,
   Plug,
   Zap,
+  History,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -44,6 +45,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'governance',    label: 'Governance & Audit',  path: '/governance',        icon: ShieldCheck,  section: 'roadmap' },
   { id: 'scenarios',     label: 'Scenario Simulator',  path: '/scenarios',         icon: Layers,       section: 'roadmap' },
   { id: 'ai-providers',  label: 'AI Providers',         path: '/admin/ai-providers', icon: Zap,          section: 'roadmap' },
+  { id: 'plan-history',  label: 'Plan History',         path: '/plan-history',       icon: History,      section: 'roadmap' },
 ]
 
 export const KEYBOARD_SHORTCUTS = [
