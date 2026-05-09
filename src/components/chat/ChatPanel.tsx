@@ -195,7 +195,7 @@ export function ChatPanel() {
     <div
       className="fixed inset-y-0 right-0 z-50 flex flex-col"
       style={{
-        width:      400,
+        width:      'min(400px, 100vw)',
         background: 'var(--c-surface)',
         borderLeft: '1px solid var(--c-border)',
         boxShadow:  '-8px 0 48px rgba(0,0,0,.32)',
@@ -268,7 +268,7 @@ export function ChatPanel() {
                   : <Bot  size={13} style={{ color: 'var(--c-purple)' }} />
                 }
               </div>
-              <div className="flex flex-col max-w-[300px]">
+              <div className="flex flex-col max-w-[75%]">
                 <div
                   className="px-4 py-3 text-sm leading-relaxed"
                   style={{
