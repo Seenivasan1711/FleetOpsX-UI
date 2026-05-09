@@ -1,0 +1,32 @@
+{
+  "name": "FleetOpsX Driver",
+  "short_name": "FleetOpsX",
+  "description": "Driver delivery management — view stops, update status, and share location",
+  "start_url": "/driver",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#6d28d9",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["logistics", "productivity"],
+  "shortcuts": [
+    {
+      "name": "My Stops",
+      "url": "/driver",
+      "description": "View today's delivery stops"
+    }
+  ]
+}

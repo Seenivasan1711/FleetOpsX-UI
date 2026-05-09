@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { LogOut, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { LogOut, MapPin, Clock, CheckCircle, XCircle, AlertCircle, WifiOff, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchMyStops, updateStopStatus } from '../api/driver'
 import { pingLocation } from '../api/tracking'
@@ -8,10 +8,44 @@ import { useAuthStore } from '../store/auth.store'
 
 const GEO_PING_MS = 30_000
 
+// ─── PWA helpers ─────────────────────────────────────────────────────────────
+
+function useOnlineStatus() {
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const on  = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online',  on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
+  return online
+}
+
+type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
+
+function useInstallPrompt() {
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setPrompt(e as BeforeInstallPromptEvent) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+  const install = async () => {
+    if (!prompt) return
+    await prompt.prompt()
+    const { outcome } = await prompt.userChoice
+    if (outcome === 'accepted') setPrompt(null)
+  }
+  return { canInstall: !!prompt, install }
+}
+
 export default function DriverView() {
   const { user, clearAuth } = useAuthStore()
-  const qc    = useQueryClient()
-  const today = new Date().toISOString().split('T')[0]
+  const qc     = useQueryClient()
+  const today  = new Date().toISOString().split('T')[0]
+  const online = useOnlineStatus()
+  const { canInstall, install } = useInstallPrompt()
 
   // GPS auto-ping every 30 s
   useEffect(() => {
@@ -89,6 +123,31 @@ export default function DriverView() {
           <LogOut size={20} />
         </button>
       </div>
+
+      {/* Offline banner */}
+      {!online && (
+        <div className="flex items-center gap-2 px-4 py-2 text-sm" style={{ background: '#92400e', color: '#fef3c7' }}>
+          <WifiOff size={14} />
+          <span>Offline — showing cached data. Updates will sync when reconnected.</span>
+        </div>
+      )}
+
+      {/* Install prompt */}
+      {canInstall && (
+        <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#1e1b4b', borderBottom: '1px solid #312e81' }}>
+          <div className="flex items-center gap-2">
+            <Download size={14} style={{ color: '#a5b4fc' }} />
+            <span className="text-sm" style={{ color: '#e0e7ff' }}>Install FleetOpsX for quick access</span>
+          </div>
+          <button
+            onClick={install}
+            className="text-xs font-semibold px-3 py-1 rounded-lg"
+            style={{ background: '#6d28d9', color: '#fff' }}
+          >
+            Install
+          </button>
+        </div>
+      )}
 
       {/* Progress bar */}
       <div

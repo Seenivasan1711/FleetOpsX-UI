@@ -15,6 +15,13 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   })
 }
 
+// Register service worker for Driver PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {/* not critical */})
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Providers>
