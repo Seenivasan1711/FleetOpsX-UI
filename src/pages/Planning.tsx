@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Bot, Route, Zap, Download, ChevronDown, ChevronRight,
-  AlertTriangle, Info, ListOrdered, CheckCircle2,
+  AlertTriangle, Info, ListOrdered, CheckCircle2, Brain,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }       from '../components/layout/AppShell'
@@ -13,11 +13,15 @@ import { PriorityBadge }  from '../components/ui/Badge'
 import { EmptyState }     from '../components/ui/EmptyState'
 import { PlanOptionsCard } from '../components/planning/PlanOptionsCard'
 import AgentFeed          from '../components/shared/AgentFeed'
+import { ScenarioCards }  from '../components/planning/ScenarioCards'
 import { generatePlan, generatePlanOptions, confirmPlan } from '../api/planning'
 import { fetchOrders }    from '../api/orders'
 import { fetchAgentLogs } from '../api/agentLogs'
 import { fetchSuggestions } from '../api/agentSuggestions'
 import { exportPlan, triggerBlobDownload } from '../api/exportImport'
+import { startAiScenarios, confirmScenario } from '../api/aiPlanning'
+import type { AiScenario } from '../api/aiPlanning'
+import { usePlanPolling } from '../hooks/usePlanPolling'
 import { QUERY_KEYS }     from '../lib/utils/constants'
 import { usePlanStore }   from '../store/plan.store'
 import type { PlanResult, PlanOption, PlanOptionMode, Order } from '../types'
@@ -67,6 +71,18 @@ export default function Planning() {
   const [showWarnings,   setShowWarnings]  = useState(false)
   const [reasoningOpen,  setReasoningOpen] = useState(true)
   const [exporting,      setExporting]     = useState(false)
+
+  // P5-E2 — AI Scenario Planning
+  const [showAiModal,      setShowAiModal]      = useState(false)
+  const [nlConstraints,    setNlConstraints]    = useState('')
+  const [selectedScenario, setSelectedScenario] = useState<AiScenario['type'] | null>(null)
+  const [confirming,       setConfirming]       = useState(false)
+  const [currentTaskId,    setCurrentTaskId]    = useState<string | null>(null)
+
+  const {
+    status: pollStatus, result: aiResult, error: pollError,
+    isPolling, startPolling, reset: resetPolling,
+  } = usePlanPolling()
 
   const pendingAction = useRef<(() => void) | null>(null)
   const { setLastPlan } = usePlanStore()
@@ -248,6 +264,37 @@ export default function Planning() {
             : 'All orders successfully assigned.')
         : null)
 
+  // P5-E2 handlers
+  const handleStartAiPlan = async () => {
+    setShowAiModal(false)
+    resetPolling()
+    setSelectedScenario(null)
+    try {
+      const data = await startAiScenarios(planDate, nlConstraints || undefined)
+      setCurrentTaskId(data.task_id)
+      startPolling(data.task_id)
+    } catch {
+      toast.error('Failed to start AI planning')
+    }
+  }
+
+  const handleConfirmScenario = async () => {
+    if (!selectedScenario || !currentTaskId) return
+    setConfirming(true)
+    try {
+      await confirmScenario(planDate, selectedScenario, currentTaskId)
+      toast.success(`"${selectedScenario}" scenario confirmed`)
+      resetPolling()
+      setSelectedScenario(null)
+      setCurrentTaskId(null)
+      refetchOrders()
+    } catch {
+      toast.error('Failed to confirm scenario')
+    } finally {
+      setConfirming(false)
+    }
+  }
+
   const isGenerating = planMutation.isPending || optionsMutation.isPending
 
   return (
@@ -293,7 +340,95 @@ export default function Planning() {
             <ListOrdered size={15} />
             {optionsMutation.isPending ? 'Generating options…' : 'Generate Options'}
           </Button>
+
+          {/* AI Scenarios — P5-E2 */}
+          <Button
+            variant="secondary"
+            onClick={() => setShowAiModal(true)}
+            disabled={isGenerating || isPolling}
+          >
+            <Brain size={15} />
+            AI Scenarios
+          </Button>
         </div>
+
+        {/* ── AI Planning: thinking state ──────────────────────────────────── */}
+        {isPolling && (
+          <div
+            className="rounded-2xl px-5 py-4 flex items-center gap-4"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(124,58,237,0.12)' }}>
+              <Brain size={16} style={{ color: 'var(--c-purple)' }} className="animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[var(--c-text)]">AI is analysing your fleet…</p>
+              <p className="text-xs text-[var(--c-muted)] mt-0.5">
+                Generating 4 optimisation scenarios — this takes about 10–20 s
+              </p>
+            </div>
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background: 'var(--c-purple)',
+                    animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── AI Planning: error state ─────────────────────────────────────── */}
+        {pollError && (
+          <div
+            className="rounded-2xl px-5 py-4 flex items-center gap-3"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)' }}
+          >
+            <AlertTriangle size={15} style={{ color: 'var(--c-red)' }} />
+            <p className="text-sm text-[var(--c-text)]">{pollError}</p>
+            <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setShowAiModal(true)}>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* ── AI Scenarios result ──────────────────────────────────────────── */}
+        {pollStatus === 'done' && aiResult && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Brain size={15} style={{ color: 'var(--c-purple)' }} />
+              <p className="text-sm font-bold text-[var(--c-text)]">AI Scenario Recommendations</p>
+              <p className="text-xs text-[var(--c-muted)]">
+                Select a scenario and confirm to apply
+              </p>
+            </div>
+            <ScenarioCards
+              planResult={aiResult}
+              onSelect={setSelectedScenario}
+              selectedType={selectedScenario}
+              confirming={confirming}
+            />
+            {selectedScenario && (
+              <div className="flex items-center gap-3">
+                <Button onClick={handleConfirmScenario} loading={confirming}>
+                  <CheckCircle2 size={15} />
+                  Confirm {selectedScenario.replace('_', ' ')} scenario
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { resetPolling(); setSelectedScenario(null); setCurrentTaskId(null) }}
+                  disabled={confirming}
+                >
+                  Discard
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Unassigned orders ────────────────────────────────────────────── */}
         <div
@@ -515,6 +650,44 @@ export default function Planning() {
           </div>
         )}
       </div>
+
+      {/* ── AI Scenarios Modal — P5-E2 ──────────────────────────────────────── */}
+      <Modal open={showAiModal} onClose={() => setShowAiModal(false)} title="AI Scenario Planning">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-[var(--c-muted)]">
+            The AI will generate 4 optimised scenarios — fastest, economical, balanced, and driver-availability — for <span className="font-semibold text-[var(--c-text)]">{planDate}</span>.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wide">
+              Natural language constraints <span className="normal-case font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={nlConstraints}
+              onChange={(e) => setNlConstraints(e.target.value)}
+              placeholder="e.g. Avoid highway tolls, prioritise Zone A deliveries, no overtime for drivers"
+              rows={3}
+              className="w-full rounded-xl px-3 py-2.5 text-sm resize-none"
+              style={{
+                background:  'var(--c-elevated)',
+                border:      '1px solid var(--c-border)',
+                color:       'var(--c-text)',
+                outline:     'none',
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--c-purple)')}
+              onBlur={(e)  => (e.currentTarget.style.borderColor = 'var(--c-border)')}
+            />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button className="flex-1" onClick={handleStartAiPlan}>
+              <Brain size={14} />
+              Generate AI Scenarios
+            </Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setShowAiModal(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ── Pre-plan Warnings Modal (PP-E1-S3) ──────────────────────────────── */}
       <Modal open={showWarnings} onClose={() => setShowWarnings(false)} title="Pre-Plan Warnings">
