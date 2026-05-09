@@ -14,6 +14,7 @@ import {
   Plug,
   Zap,
   History,
+  UserCog,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -46,6 +47,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'scenarios',     label: 'Scenario Simulator',  path: '/scenarios',         icon: Layers,       section: 'roadmap' },
   { id: 'ai-providers',  label: 'AI Providers',         path: '/admin/ai-providers', icon: Zap,          section: 'roadmap' },
   { id: 'plan-history',  label: 'Plan History',         path: '/plan-history',       icon: History,      section: 'roadmap' },
+  { id: 'team',          label: 'Team',                 path: '/team',               icon: UserCog,      section: 'roadmap' },
 ]
 
 export const KEYBOARD_SHORTCUTS = [
