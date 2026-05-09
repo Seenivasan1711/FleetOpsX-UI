@@ -4,7 +4,8 @@ import ProtectedRoute from './ProtectedRoute'
 import { Skeleton } from '../components/ui/Skeleton'
 
 // Code-split all pages — only the current page loads
-const Login      = lazy(() => import('../pages/Login'))
+const Login          = lazy(() => import('../pages/Login'))
+const TenantSelector = lazy(() => import('../pages/TenantSelector'))
 const Dashboard  = lazy(() => import('../pages/Dashboard'))
 const Orders     = lazy(() => import('../pages/Orders'))
 const Planning   = lazy(() => import('../pages/Planning'))
@@ -41,7 +42,8 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"         element={<Login />} />
+          <Route path="/select-tenant" element={<TenantSelector />} />
 
           <Route path="/"          element={dispatcher(<Dashboard />)} />
           <Route path="/orders"    element={dispatcher(<Orders />)} />

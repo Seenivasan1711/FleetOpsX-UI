@@ -21,7 +21,13 @@ export default function Login() {
     try {
       const user = await loginApi(email, password)
       setAuth(user)
-      navigate(user.role === 'driver' ? '/driver' : '/')
+      if (user.role === 'superadmin') {
+        navigate('/select-tenant')
+      } else if (user.role === 'driver') {
+        navigate('/driver')
+      } else {
+        navigate('/')
+      }
     } catch {
       setError('Invalid credentials. Please check your email and password.')
     } finally {

@@ -7,9 +7,12 @@ const client = axios.create({
 })
 
 client.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const { accessToken, effectiveTenantId } = useAuthStore.getState()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  if (effectiveTenantId) {
+    config.headers['X-Acting-Tenant-Id'] = effectiveTenantId
   }
   return config
 })

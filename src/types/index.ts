@@ -4,13 +4,23 @@ export interface Tenant {
   slug: string
 }
 
+export interface TenantBrief {
+  id: string
+  name: string
+  slug: string
+  is_active: boolean
+  order_count_today: number
+  driver_count: number
+}
+
 export interface User {
   user_id: string
-  tenant_id: string
-  role: 'dispatcher' | 'driver' | 'admin'
+  tenant_id: string | null
+  role: 'dispatcher' | 'driver' | 'admin' | 'superadmin'
   full_name: string
   email?: string
   access_token: string
+  tenants?: TenantBrief[]
 }
 
 export interface Depot {
