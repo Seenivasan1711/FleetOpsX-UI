@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Layers,
   Plug,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -40,8 +41,9 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'integrations',  label: 'Integrations',        path: '/integrations', icon: Plug,         section: 'roadmap' },
   // Phase 4 — live
   { id: 'marketplace',   label: 'Marketplace',         path: '/marketplace',  icon: GitMerge,     section: 'roadmap' },
-  { id: 'governance',    label: 'Governance & Audit',  path: '/governance',   icon: ShieldCheck,  section: 'roadmap' },
-  { id: 'scenarios',     label: 'Scenario Simulator',  path: '/scenarios',    icon: Layers,       section: 'roadmap' },
+  { id: 'governance',    label: 'Governance & Audit',  path: '/governance',        icon: ShieldCheck,  section: 'roadmap' },
+  { id: 'scenarios',     label: 'Scenario Simulator',  path: '/scenarios',         icon: Layers,       section: 'roadmap' },
+  { id: 'ai-providers',  label: 'AI Providers',         path: '/admin/ai-providers', icon: Zap,          section: 'roadmap' },
 ]
 
 export const KEYBOARD_SHORTCUTS = [

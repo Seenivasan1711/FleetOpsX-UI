@@ -6,6 +6,7 @@ import { Skeleton } from '../components/ui/Skeleton'
 // Code-split all pages — only the current page loads
 const Login          = lazy(() => import('../pages/Login'))
 const TenantSelector = lazy(() => import('../pages/TenantSelector'))
+const AiProviders    = lazy(() => import('../pages/AiProviders'))
 const Dashboard  = lazy(() => import('../pages/Dashboard'))
 const Orders     = lazy(() => import('../pages/Orders'))
 const Planning   = lazy(() => import('../pages/Planning'))
@@ -58,6 +59,8 @@ export default function AppRoutes() {
           <Route path="/marketplace"   element={dispatcher(<Marketplace />)} />
           <Route path="/governance"    element={dispatcher(<AuditLog />)} />
           <Route path="/scenarios"     element={dispatcher(<Scenarios />)} />
+
+          <Route path="/admin/ai-providers" element={dispatcher(<AiProviders />)} />
 
           <Route path="/driver" element={<ProtectedRoute role="driver"><DriverView /></ProtectedRoute>} />
 
