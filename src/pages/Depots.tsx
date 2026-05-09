@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Pencil, Plus, MapPin } from 'lucide-react'
@@ -45,7 +45,7 @@ export default function Depots() {
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<DepotFormData>({
-    resolver: zodResolver(depotSchema),
+    resolver: zodResolver(depotSchema) as Resolver<DepotFormData>,
   })
 
   const mutation = useMutation({
@@ -178,7 +178,7 @@ export default function Depots() {
         onClose={handleClose}
         title={editingDepot ? 'Edit Depot' : 'Add Depot'}
       >
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        <form onSubmit={handleSubmit((d: DepotFormData) => mutation.mutate(d))} className="space-y-4">
           <FormField label="Name" error={errors.name?.message} required>
             <Input {...register('name')} placeholder="Koramangala Depot" error={errors.name?.message} />
           </FormField>

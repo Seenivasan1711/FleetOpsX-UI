@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Pencil, Plus, Package, Download, Upload } from 'lucide-react'
@@ -94,17 +94,21 @@ export default function Orders() {
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: QUERY_KEYS.orders(dateFilter),
-    queryFn:  () => fetchOrders({ plan_date: dateFilter || undefined, status: statusFilter || undefined }),
+    queryFn:  () => fetchOrders({ plan_date: dateFilter || undefined, ...(statusFilter ? { status: statusFilter } : {}) }),
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<OrderFormData>({
-    resolver:      zodResolver(orderSchema),
+    resolver:      zodResolver(orderSchema) as Resolver<OrderFormData>,
     defaultValues: { priority: 'NORMAL' },
   })
 
   const mutation = useMutation({
     mutationFn: (data: OrderFormData) => {
-      const payload = { ...data, scheduled_date: new Date(data.scheduled_date).toISOString() }
+      const payload = {
+        ...data,
+        scheduled_date: new Date(data.scheduled_date).toISOString(),
+        priority: data.priority as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL',
+      }
       return editingOrder ? updateOrder(editingOrder.id, payload) : createOrder(payload)
     },
     onSuccess: () => {
@@ -271,7 +275,7 @@ export default function Orders() {
         title={editingOrder ? 'Edit Order' : 'New Order'}
         size="md"
       >
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        <form onSubmit={handleSubmit((d: OrderFormData) => mutation.mutate(d))} className="space-y-4">
           <FormField label="External Reference">
             <Input {...register('external_ref')} placeholder="ORD-2026-001" />
           </FormField>

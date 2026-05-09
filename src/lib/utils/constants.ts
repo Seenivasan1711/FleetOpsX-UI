@@ -66,7 +66,7 @@ export const PAGE_KEY_MAP: Record<string, string> = {
 }
 
 export const QUERY_KEYS = {
-  orders:           (date: string) => ['orders', date] as const,
+  orders:           (date?: string) => ['orders', date] as const,
   drivers:          ['drivers'] as const,
   vehicles:         ['vehicles'] as const,
   depots:           ['depots'] as const,

@@ -27,5 +27,5 @@ export function shortId(id: string): string {
 }
 
 export function today(): string {
-  return new Date().toISOString().split('T')[0]
+  return new Date().toISOString().split('T')[0] ?? ''
 }

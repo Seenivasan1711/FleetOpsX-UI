@@ -32,7 +32,7 @@ export const PriorityBadge = ({ priority }: { priority: Priority }) => {
 }
 
 export const StatusBadge = ({ status }: { status: string }) => {
-  const s = statusStyles[status] ?? statusStyles.PENDING
+  const s = statusStyles[status] ?? { bg: 'var(--c-elevated)', color: 'var(--c-muted)', dot: 'var(--c-muted)' }
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"

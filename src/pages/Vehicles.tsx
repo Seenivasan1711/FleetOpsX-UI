@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Pencil, Plus, Truck, Snowflake } from 'lucide-react'
@@ -56,7 +56,7 @@ const VehicleTypeBadge = ({ type }: { type: string }) => {
     TRUCK_SMALL: { bg: 'rgba(251,191,36,0.12)',  color: 'var(--c-orange)' },
     TRUCK_LARGE: { bg: 'rgba(248,113,113,0.12)', color: 'var(--c-red)'   },
   }
-  const s = colors[type] ?? colors.VAN
+  const s = colors[type] ?? { bg: 'rgba(59,130,246,0.12)', color: 'var(--c-accent)' }
   return (
     <span
       className="text-[10.5px] font-bold font-mono px-2 py-0.5 rounded-md"
@@ -88,7 +88,7 @@ export default function Vehicles() {
   const depotMap = Object.fromEntries((depots as Depot[]).map((d) => [d.id, d.name]))
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<VehicleFormData>({
-    resolver:      zodResolver(vehicleSchema),
+    resolver:      zodResolver(vehicleSchema) as Resolver<VehicleFormData>,
     defaultValues: { is_refrigerated: false, vehicle_type: 'VAN' },
   })
 
@@ -271,7 +271,7 @@ export default function Vehicles() {
         onClose={handleClose}
         title={editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
       >
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        <form onSubmit={handleSubmit((d: VehicleFormData) => mutation.mutate(d))} className="space-y-4">
           <FormField label="Registration Number" error={errors.registration_number?.message} required>
             <Input {...register('registration_number')} placeholder="KA-01-AB-1234" error={errors.registration_number?.message} />
           </FormField>

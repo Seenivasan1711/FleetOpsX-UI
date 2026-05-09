@@ -44,7 +44,7 @@ export const AtRiskPanel = ({ planDate }: Props) => {
                   <span className="text-sm font-medium text-[var(--c-text)] truncate">
                     {s.delivery_address}
                   </span>
-                  <PriorityBadge priority={s.priority} />
+                  <PriorityBadge priority={s.priority as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'} />
                 </div>
                 <p className="text-xs text-[var(--c-muted)] mt-0.5">
                   Driver: <span className="font-medium">{s.driver_name}</span>
