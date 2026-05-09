@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 type Theme   = 'dark' | 'light'
-type Variant = 'midnight' | 'storm' | 'amethyst'
+type Variant = 'obsidian' | 'midnight' | 'storm' | 'amethyst'
 
 type DisplayPrefs = {
   compactSidebar:  boolean
@@ -39,7 +39,7 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       theme:           'dark',
-      variant:         'midnight',
+      variant:         'obsidian',
       sidebarExpanded: false,
       chatOpen:        false,
 

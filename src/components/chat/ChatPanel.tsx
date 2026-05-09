@@ -195,11 +195,11 @@ export function ChatPanel() {
     <div
       className="fixed inset-y-0 right-0 z-50 flex flex-col"
       style={{
-        width:      'min(400px, 100vw)',
+        width:      'min(420px, 100vw)',
         background: 'var(--c-surface)',
         borderLeft: '1px solid var(--c-border)',
-        boxShadow:  '-8px 0 48px rgba(0,0,0,.32)',
-        animation:  'dropdown-in 0.22s ease',
+        boxShadow:  '-8px 0 48px rgba(0,0,0,.4)',
+        animation:  'chat-slide-in 0.25s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
       {/* Header */}
@@ -275,6 +275,7 @@ export function ChatPanel() {
                     background:   msg.role === 'user' ? 'var(--c-accent)' : 'var(--c-elevated)',
                     color:        msg.role === 'user' ? '#fff'             : 'var(--c-text)',
                     borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    borderLeft:   msg.role === 'assistant' ? '3px solid var(--c-accent)' : undefined,
                   }}
                 >
                   {msg.content && <span>{msg.content}</span>}

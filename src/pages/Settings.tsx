@@ -21,9 +21,10 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 // ─── Color variant metadata ────────────────────────────────────────────────────
 
 const VARIANTS = [
-  { id: 'midnight' as const, label: 'Midnight', swatch: '#3b82f6', desc: 'Classic blue · calm & focused' },
-  { id: 'storm'    as const, label: 'Storm',    swatch: '#06b6d4', desc: 'Electric cyan · sharp & modern' },
-  { id: 'amethyst' as const, label: 'Amethyst', swatch: '#8b5cf6', desc: 'Deep purple · refined & bold'   },
+  { id: 'obsidian' as const, label: 'Obsidian', swatch: '#7c3aed', desc: 'Pure black · purple accent (default)' },
+  { id: 'midnight' as const, label: 'Midnight', swatch: '#3b82f6', desc: 'Navy blue · calm & focused'           },
+  { id: 'storm'    as const, label: 'Storm',    swatch: '#06b6d4', desc: 'Electric cyan · sharp & modern'       },
+  { id: 'amethyst' as const, label: 'Amethyst', swatch: '#8b5cf6', desc: 'Deep purple · refined & bold'        },
 ]
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ const AppearanceTab = () => {
       {/* Accent variant */}
       <div>
         <SectionHeading>Accent Color</SectionHeading>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {VARIANTS.map((v) => {
             const active = variant === v.id
             return (
