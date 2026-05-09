@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useQuery }          from '@tanstack/react-query'
-import { MapPin, Route, Layers, PlayCircle, StopCircle } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useQuery, useQueryClient }          from '@tanstack/react-query'
+import { MapPin, Route, Layers, PlayCircle, StopCircle, Wifi } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -15,6 +15,7 @@ import type { LivePosition }  from '../api/tracking'
 import { fetchOrders }     from '../api/orders'
 import { QUERY_KEYS }      from '../lib/utils/constants'
 import { usePlanStore }    from '../store/plan.store'
+import { useFleetEvents }  from '../hooks/useFleetEvents'
 import type { Order }      from '../types'
 
 // Demo fleet: Bangalore area coords, each driver drifts slowly on simulate
@@ -47,8 +48,35 @@ export default function LiveMap() {
   const [view, setView]          = useState<ViewMode>('live')
   const [demoMode, setDemoMode]  = useState(false)
   const [demoPos, setDemoPos]    = useState<LivePosition[]>(DEMO_SEED)
+  const [wsConnected, setWsConnected] = useState(false)
   const demoRef                  = useRef<ReturnType<typeof setInterval> | null>(null)
   const { lastPlan, lastPlanDate } = usePlanStore()
+  const qc = useQueryClient()
+
+  // Real-time WebSocket events
+  const handleFleetEvent = useCallback((event: { type: string; payload: Record<string, unknown> }) => {
+    if (event.type === 'location_update') {
+      setWsConnected(true)
+      const p = event.payload as { driver_id: string; driver_name: string; lat: number; lng: number; speed_kmh?: number }
+      // Optimistically update the position in React Query cache
+      qc.setQueryData<LivePosition[]>(QUERY_KEYS.livePositions, (prev = []) => {
+        const updated = prev.filter((x) => x.driver_id !== p.driver_id)
+        return [...updated, {
+          driver_id:   p.driver_id,
+          driver_name: p.driver_name,
+          latitude:    p.lat,
+          longitude:   p.lng,
+          speed_kmh:   p.speed_kmh ?? 0,
+          recorded_at: new Date().toISOString(),
+        }]
+      })
+    }
+    if (event.type === 'order_at_risk') {
+      toast.error(`SLA at risk: ${(event.payload as { order_id?: string }).order_id ?? 'order'}`, { id: 'ws-atrisk' })
+    }
+  }, [qc])
+
+  useFleetEvents(handleFleetEvent)
 
   useEffect(() => {
     if (demoMode) {
@@ -162,6 +190,11 @@ export default function LiveMap() {
           {/* Status info */}
           {view === 'live' ? (
             <>
+              {/* WebSocket indicator */}
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: wsConnected ? 'var(--c-green)' : 'var(--c-muted)' }}>
+                <Wifi size={12} />
+                <span>{wsConnected ? 'Live' : 'Polling'}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <span
                   className="w-2 h-2 rounded-full"
