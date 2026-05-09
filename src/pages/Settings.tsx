@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Palette, Bell, User, Moon, Sun, LogOut, RotateCcw, Check } from 'lucide-react'
+
 import { AppShell }    from '../components/layout/AppShell'
 import { Toggle }      from '../components/ui/Toggle'
 import { Button }      from '../components/ui/Button'
@@ -16,15 +17,6 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'appearance',    label: 'Appearance',    icon: <Palette size={15} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={15} />    },
   { id: 'account',       label: 'Account',       icon: <User size={15} />    },
-]
-
-// ─── Color variant metadata ────────────────────────────────────────────────────
-
-const VARIANTS = [
-  { id: 'obsidian' as const, label: 'Obsidian', swatch: '#7c3aed', desc: 'Pure black · purple accent (default)' },
-  { id: 'midnight' as const, label: 'Midnight', swatch: '#3b82f6', desc: 'Navy blue · calm & focused'           },
-  { id: 'storm'    as const, label: 'Storm',    swatch: '#06b6d4', desc: 'Electric cyan · sharp & modern'       },
-  { id: 'amethyst' as const, label: 'Amethyst', swatch: '#8b5cf6', desc: 'Deep purple · refined & bold'        },
 ]
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -58,7 +50,7 @@ const SettingRow = ({
 // ─── Appearance tab ────────────────────────────────────────────────────────────
 
 const AppearanceTab = () => {
-  const { theme, variant, display, setTheme, setVariant, setDisplay } = useUiStore()
+  const { theme, display, setTheme, setDisplay } = useUiStore()
 
   return (
     <div className="space-y-8">
@@ -117,46 +109,6 @@ const AppearanceTab = () => {
                       <Check size={11} className="text-white" />
                     </span>
                   )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Accent variant */}
-      <div>
-        <SectionHeading>Accent Color</SectionHeading>
-        <div className="grid grid-cols-2 gap-3">
-          {VARIANTS.map((v) => {
-            const active = variant === v.id
-            return (
-              <button
-                key={v.id}
-                onClick={() => setVariant(v.id)}
-                className="flex flex-col gap-2.5 p-4 rounded-2xl text-left transition-all duration-150"
-                style={{
-                  background:  active ? 'var(--c-accent-dim)' : 'var(--c-elevated)',
-                  border:      active ? `1.5px solid ${v.swatch}` : '1.5px solid var(--c-border)',
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div
-                    className="w-8 h-8 rounded-xl"
-                    style={{ background: v.swatch, boxShadow: active ? `0 4px 14px ${v.swatch}55` : 'none' }}
-                  />
-                  {active && (
-                    <span
-                      className="w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: v.swatch }}
-                    >
-                      <Check size={11} className="text-white" />
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--c-text)]">{v.label}</p>
-                  <p className="text-[11px] text-[var(--c-muted)] leading-tight mt-0.5">{v.desc}</p>
                 </div>
               </button>
             )
@@ -251,7 +203,7 @@ const NotificationsTab = () => {
 
 const AccountTab = () => {
   const { user, clearAuth } = useAuthStore()
-  const { setTheme, setVariant, setDisplay, setNotification } = useUiStore()
+  const { setTheme, setDisplay, setNotification } = useUiStore()
   const navigate = useNavigate()
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -266,7 +218,6 @@ const AccountTab = () => {
       return
     }
     setTheme('dark')
-    setVariant('midnight')
     setDisplay('compactSidebar', false)
     setDisplay('reduceMotion', false)
     setDisplay('keyboardHints', true)

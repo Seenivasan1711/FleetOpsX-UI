@@ -14,16 +14,15 @@ const queryClient = new QueryClient({
 })
 
 function ThemeSync() {
-  const { theme, variant } = useUiStore()
+  const { theme } = useUiStore()
 
   useEffect(() => {
     const html = document.documentElement
     html.classList.add('theme-transitioning')
-    html.setAttribute('data-theme',   theme)
-    html.setAttribute('data-variant', variant)
+    html.setAttribute('data-theme', theme)
     const t = setTimeout(() => html.classList.remove('theme-transitioning'), 420)
     return () => clearTimeout(t)
-  }, [theme, variant])
+  }, [theme])
 
   return null
 }

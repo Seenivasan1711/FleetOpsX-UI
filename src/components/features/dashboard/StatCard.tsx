@@ -12,11 +12,11 @@ type StatCardProps = {
   delay?: number
 }
 
-const colorTokens: Record<Color, { text: string; bg: string; bar: string }> = {
-  accent:  { text: 'var(--c-accent)',  bg: 'var(--c-accent-dim)',  bar: 'var(--c-accent)'  },
-  danger:  { text: 'var(--c-red)',     bg: 'var(--c-red-dim)',     bar: 'var(--c-red)'     },
-  success: { text: 'var(--c-green)',   bg: 'var(--c-green-dim)',   bar: 'var(--c-green)'   },
-  info:    { text: 'var(--c-purple)',  bg: 'var(--c-purple-dim)',  bar: 'var(--c-purple)'  },
+const colorTokens: Record<Color, { text: string; bg: string; bar: string; glow: string }> = {
+  accent:  { text: 'var(--c-accent)',  bg: 'var(--c-accent-dim)',  bar: 'var(--c-accent)',  glow: 'var(--c-accent-glow)'  },
+  danger:  { text: 'var(--c-red)',     bg: 'var(--c-red-dim)',     bar: 'var(--c-red)',     glow: 'rgba(239,68,68,0.22)'  },
+  success: { text: 'var(--c-green)',   bg: 'var(--c-green-dim)',   bar: 'var(--c-green)',   glow: 'rgba(16,185,129,0.22)' },
+  info:    { text: 'var(--c-purple)',  bg: 'var(--c-purple-dim)',  bar: 'var(--c-purple)',  glow: 'rgba(167,139,250,0.22)'},
 }
 
 export const StatCard = ({ label, value, color, icon, trend, delay = 0 }: StatCardProps) => {
@@ -25,19 +25,28 @@ export const StatCard = ({ label, value, color, icon, trend, delay = 0 }: StatCa
 
   return (
     <div
-      className="relative flex-1 rounded-2xl overflow-hidden cursor-default transition-all duration-200 hover:-translate-y-[3px] hover:shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      className="relative min-w-0 rounded-2xl overflow-hidden cursor-default transition-all duration-200 hover:-translate-y-[2px]"
+      style={{
+        background: 'var(--c-surface)',
+        border: '1px solid var(--c-border)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = `0 12px 32px rgba(0,0,0,0.25), 0 0 0 1px ${c.bar}30`)}
+      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-sm)')}
     >
       {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] opacity-70" style={{ background: c.bar }} />
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px]"
+        style={{ background: c.bar, boxShadow: `0 1px 8px ${c.glow}` }}
+      />
 
-      <div className="p-5">
-        <div className="flex justify-between items-start mb-3.5">
-          <span className="text-[11px] font-bold uppercase tracking-[0.9px] text-[var(--c-muted)]">
+      <div className="p-5 pt-7">
+        <div className="flex justify-between items-start mb-4">
+          <span className="text-[10.5px] font-bold uppercase tracking-[1px] text-[var(--c-muted)]">
             {label}
           </span>
           <div
-            className="w-[30px] h-[30px] rounded-lg flex items-center justify-center"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: c.bg, color: c.text }}
           >
             {icon}
@@ -45,16 +54,16 @@ export const StatCard = ({ label, value, color, icon, trend, delay = 0 }: StatCa
         </div>
 
         <div
-          className="text-[38px] font-extrabold leading-none tracking-[-1.5px] font-mono"
+          className="text-[40px] font-extrabold leading-none tracking-[-2px] font-mono"
           style={{ color: c.text }}
         >
           {animated}
         </div>
 
         {trend && (
-          <div className="flex items-center gap-1 mt-2.5 text-[11px] text-[var(--c-muted)]">
+          <div className="flex items-center gap-1.5 mt-3 text-[11px] text-[var(--c-muted)]">
             <span
-              className="font-semibold"
+              className="font-bold"
               style={{ color: trend.up ? 'var(--c-green)' : 'var(--c-red)' }}
             >
               {trend.up ? '↑' : '↓'} {trend.val}

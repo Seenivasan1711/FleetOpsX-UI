@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Settings, LogOut, ChevronRight, Lock } from 'lucide-react'
+import { Settings, ChevronRight, Lock, Truck } from 'lucide-react'
 import { cn } from '../../lib/utils/cn'
 import { Tooltip } from '../ui/Tooltip'
 import { NAV_ITEMS, type NavItemDef } from '../../lib/utils/constants'
@@ -15,10 +15,16 @@ type NavItemProps = {
   active:   boolean
   expanded: boolean
   badge?:   number | null
+  compact?: boolean
 }
 
-const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
+const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
   const Icon = item.icon
+  const iconSize  = compact ? 16 : 18
+  const textSize  = compact ? 'text-[12.5px]' : 'text-[13.5px]'
+  const rowPad    = compact
+    ? (expanded ? 'w-full px-3 py-[5px] gap-2' : 'w-10 h-8 justify-center')
+    : (expanded ? 'w-full px-3 py-2.5 gap-2.5'  : 'w-11 h-10 justify-center')
 
   const button = (
     <Link
@@ -26,7 +32,7 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
       onClick={item.comingSoon ? (e) => e.preventDefault() : undefined}
       className={cn(
         'relative flex items-center rounded-[10px] transition-all duration-150 group',
-        expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
+        rowPad,
         active
           ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
           : item.comingSoon
@@ -34,16 +40,15 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
             : 'text-[var(--c-muted)] hover:bg-[var(--c-elevated)] hover:text-[var(--c-text)]'
       )}
     >
-      {/* Active indicator bar */}
       {active && (
         <span className="absolute left-0 top-[18%] w-[3px] h-[64%] bg-[var(--c-accent)] rounded-r-full" />
       )}
 
-      <Icon size={18} className="shrink-0" />
+      <Icon size={iconSize} className="shrink-0" />
 
       {expanded && (
         <>
-          <span className={cn('flex-1 text-[13.5px] text-left', active ? 'font-semibold' : 'font-medium')}>
+          <span className={cn('flex-1 text-left', textSize, active ? 'font-semibold' : 'font-medium')}>
             {item.label}
           </span>
           {item.comingSoon && (
@@ -59,14 +64,12 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
         </>
       )}
 
-      {/* Collapsed badge dot */}
       {!expanded && !item.comingSoon && badge != null && badge > 0 && (
         <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[var(--c-accent)] text-white text-[8px] font-bold flex items-center justify-center">
           {badge > 9 ? '9+' : badge}
         </span>
       )}
 
-      {/* Coming soon lock (collapsed) */}
       {!expanded && item.comingSoon && (
         <Lock size={8} className="absolute top-1 right-1 text-[var(--c-muted)]" />
       )}
@@ -92,90 +95,104 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
   }
 
   return (
-    <nav
-      className="relative flex flex-col border-r border-[var(--c-border)] transition-[width] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden shrink-0"
-      style={{
-        width:      expanded ? '224px' : '64px',
-        minHeight:  '100vh',
-        background: 'var(--c-sidebar-bg)',
-      }}
+    // Wrapper owns the width transition. No overflow-hidden here so the
+    // toggle button (positioned at -right-[13px]) is never clipped.
+    <div
+      className="relative flex shrink-0 transition-[width] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] h-full"
+      style={{ width: expanded ? '224px' : '64px' }}
     >
-      {/* Logo */}
-      <div
-        className={cn(
-          'flex items-center gap-2.5 mb-5 overflow-hidden',
-          expanded ? 'px-4 py-5' : 'py-5 justify-center'
-        )}
+      {/* overflow-hidden on nav clips labels during the width transition */}
+      <nav
+        className="flex flex-col w-full h-full border-r border-[var(--c-border)] overflow-hidden"
+        style={{ background: 'var(--c-sidebar-bg)' }}
       >
+        {/* Logo */}
         <div
-          className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0 text-sm font-extrabold text-white"
-          style={{ background: 'var(--c-accent)', boxShadow: '0 4px 14px var(--c-accent-glow)' }}
+          className={cn(
+            'flex items-center gap-2.5 shrink-0 overflow-hidden border-b border-[var(--c-border)]',
+            expanded ? 'px-4 py-4' : 'py-4 justify-center'
+          )}
         >
-          F
-        </div>
-        {expanded && (
-          <div className="overflow-hidden">
-            <p className="text-sm font-bold text-[var(--c-text)] leading-tight whitespace-nowrap">FleetOpsX</p>
-            <p className="text-[11px] text-[var(--c-muted)] whitespace-nowrap mt-0.5">Dispatch Intelligence</p>
-          </div>
-        )}
-      </div>
-
-      {/* Main nav */}
-      <div className={cn('flex-1 flex flex-col gap-0.5 px-2.5', !expanded && 'items-center')}>
-        {mainItems.map((item) => (
-          <NavItem
-            key={item.id}
-            item={item}
-            active={location.pathname === item.path}
-            expanded={expanded}
-            badge={getBadge(item.id)}
-          />
-        ))}
-
-        {/* Roadmap section */}
-        {expanded && (
-          <div className="mt-4 mb-1 px-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)] opacity-50">Roadmap</p>
-          </div>
-        )}
-        {!expanded && <div className="my-2 w-5 h-px bg-[var(--c-border)]" />}
-
-        {roadmapItems.map((item) => (
-          <NavItem
-            key={item.id}
-            item={item}
-            active={false}
-            expanded={expanded}
-          />
-        ))}
-      </div>
-
-      {/* Bottom actions */}
-      <div
-        className={cn(
-          'flex flex-col gap-0.5 border-t border-[var(--c-border)] pt-3 mt-2 mx-2.5 pb-3',
-          !expanded && 'items-center'
-        )}
-      >
-        <Tooltip label="Settings" side="right">
-          <Link
-            to="/settings"
-            className={cn(
-              'flex items-center rounded-[10px] transition-all duration-150',
-              expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
-              location.pathname === '/settings'
-                ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
-                : 'text-[var(--c-muted)] hover:bg-[var(--c-elevated)] hover:text-[var(--c-text)]'
-            )}
+          <div
+            className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 text-white"
+            style={{
+              background: 'linear-gradient(135deg, var(--c-accent), #6d28d9)',
+              boxShadow:  '0 2px 10px var(--c-accent-glow)',
+            }}
           >
-            <Settings size={18} className="shrink-0" />
-            {expanded && <span className="text-[13.5px] font-medium">Settings</span>}
-          </Link>
-        </Tooltip>
-      </div>
+            <Truck size={15} />
+          </div>
+          {expanded && (
+            <div className="overflow-hidden">
+              <p className="text-[13px] font-bold leading-tight whitespace-nowrap tracking-tight">
+                <span className="text-[var(--c-text)]">Fleet</span><span style={{ color: 'var(--c-accent)' }}>OpsX</span>
+              </p>
+              <p className="text-[10px] text-[var(--c-muted)] whitespace-nowrap tracking-wide uppercase font-medium" style={{ letterSpacing: '0.05em' }}>
+                Dispatch Intel
+              </p>
+            </div>
+          )}
+        </div>
 
-      {/* Expand / collapse toggle */}
+        {/* Scrollable nav area */}
+        <div className={cn('flex-1 flex flex-col gap-0.5 px-2.5 py-3 overflow-y-auto', !expanded && 'items-center')}>
+          {mainItems.map((item) => (
+            <NavItem
+              key={item.id}
+              item={item}
+              active={location.pathname === item.path}
+              expanded={expanded}
+              badge={getBadge(item.id)}
+            />
+          ))}
+
+          {/* Roadmap divider */}
+          {expanded ? (
+            <div className="mt-3 mb-1 px-1 flex items-center gap-2">
+              <div className="flex-1 h-px bg-[var(--c-border)]" />
+              <p className="text-[9.5px] font-bold uppercase tracking-widest text-[var(--c-muted)] opacity-50 shrink-0">Roadmap</p>
+              <div className="flex-1 h-px bg-[var(--c-border)]" />
+            </div>
+          ) : (
+            <div className="my-2 w-5 h-px bg-[var(--c-border)]" />
+          )}
+
+          {roadmapItems.map((item) => (
+            <NavItem
+              key={item.id}
+              item={item}
+              active={false}
+              expanded={expanded}
+            />
+          ))}
+        </div>
+
+        {/* Bottom actions */}
+        <div
+          className={cn(
+            'flex flex-col gap-1 border-t border-[var(--c-border)] pt-2.5 mx-2.5 pb-2.5 shrink-0',
+            !expanded && 'items-center'
+          )}
+        >
+          <Tooltip label="Settings" side="right">
+            <Link
+              to="/settings"
+              className={cn(
+                'flex items-center rounded-[10px] transition-all duration-150',
+                expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
+                location.pathname === '/settings'
+                  ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
+                  : 'text-[var(--c-muted)] hover:bg-[var(--c-elevated)] hover:text-[var(--c-text)]'
+              )}
+            >
+              <Settings size={18} className="shrink-0" />
+              {expanded && <span className="text-[13.5px] font-medium">Settings</span>}
+            </Link>
+          </Tooltip>
+        </div>
+      </nav>
+
+      {/* Toggle button lives outside <nav> so overflow-hidden cannot clip it */}
       <button
         onClick={onToggle}
         className="absolute top-1/2 -right-[13px] -translate-y-1/2 w-[26px] h-[26px] rounded-full flex items-center justify-center text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] transition-all duration-150 z-20"
@@ -190,6 +207,6 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
           className={cn('transition-transform duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]', expanded && 'rotate-180')}
         />
       </button>
-    </nav>
+    </div>
   )
 }

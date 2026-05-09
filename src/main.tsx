@@ -15,8 +15,9 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   })
 }
 
-// Register service worker for Driver PWA
-if ('serviceWorker' in navigator) {
+// Register service worker for Driver PWA — production only.
+// In dev the SW's cache-first strategy serves stale Vite chunks causing duplicate React.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {/* not critical */})
   })

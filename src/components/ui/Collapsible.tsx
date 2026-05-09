@@ -13,10 +13,10 @@ type CollapsibleProps = {
   className?:    string
 }
 
-const badgeColors: Record<string, string> = {
-  danger:  'bg-[var(--c-red)]    text-white',
-  warning: 'bg-[var(--c-orange)] text-white',
-  accent:  'bg-[var(--c-accent)] text-white',
+const badgeStyle: Record<string, { bg: string; color: string }> = {
+  danger:  { bg: 'var(--c-red-dim)',    color: 'var(--c-red)'    },
+  warning: { bg: 'var(--c-orange-dim)', color: 'var(--c-orange)' },
+  accent:  { bg: 'var(--c-accent-dim)', color: 'var(--c-accent)' },
 }
 
 export const Collapsible = ({
@@ -24,40 +24,57 @@ export const Collapsible = ({
   defaultOpen = true, children, className,
 }: CollapsibleProps) => {
   const [open, setOpen] = useState(defaultOpen)
+  const bs = badgeVariant ? badgeStyle[badgeVariant] : null
 
   return (
-    <div className={cn('bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl overflow-hidden', className)}>
+    <div
+      className={cn('rounded-2xl overflow-hidden', className)}
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-[var(--c-elevated)] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors"
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
-        {icon && <span className="text-[var(--c-muted)] flex shrink-0">{icon}</span>}
+        {icon && (
+          <span
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'var(--c-elevated)', color: 'var(--c-muted)' }}
+          >
+            {icon}
+          </span>
+        )}
 
         <span className="flex-1 text-sm font-semibold text-[var(--c-text)]">{title}</span>
 
         {badge != null && (
           <span
-            className={cn(
-              'text-[11px] font-bold font-mono px-2 py-0.5 rounded-full',
-              badge > 0 && badgeVariant ? badgeColors[badgeVariant] : 'bg-[var(--c-elevated)] text-[var(--c-muted)]'
-            )}
+            className="text-[10.5px] font-bold font-mono px-2 py-0.5 rounded-full"
+            style={
+              badge > 0 && bs
+                ? { background: bs.bg, color: bs.color }
+                : { background: 'var(--c-elevated)', color: 'var(--c-muted)' }
+            }
           >
             {badge}
           </span>
         )}
 
         {refreshLabel && (
-          <span className="text-[11px] text-[var(--c-muted)] font-mono">{refreshLabel}</span>
+          <span className="text-[10px] text-[var(--c-subtle)] font-mono hidden sm:inline">
+            {refreshLabel}
+          </span>
         )}
 
         <ChevronDown
-          size={16}
+          size={15}
           className={cn('text-[var(--c-muted)] transition-transform duration-200 shrink-0', open && 'rotate-180')}
         />
       </button>
 
       {open && (
-        <div className="border-t border-[var(--c-border)]">
+        <div style={{ borderTop: '1px solid var(--c-border)' }}>
           {children}
         </div>
       )}
