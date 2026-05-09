@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils/cn'
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string
+  containerClass?: string
 }
 
 const inputBase = [
@@ -15,8 +16,8 @@ const inputBase = [
 ].join(' ')
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ error, className, ...props }, ref) => (
-    <div className="flex flex-col gap-1 w-full">
+  ({ error, className, containerClass, ...props }, ref) => (
+    <div className={cn('flex flex-col gap-1 w-full', containerClass)}>
       <input
         ref={ref}
         className={cn(inputBase, error && 'border-[var(--c-red)]', className)}

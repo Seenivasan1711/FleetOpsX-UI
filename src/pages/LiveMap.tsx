@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery }          from '@tanstack/react-query'
-import { MapPin, Route, Layers } from 'lucide-react'
+import { MapPin, Route, Layers, PlayCircle, StopCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -10,10 +11,18 @@ import StopMarker          from '../components/map/StopMarker'
 import RoutePolyline       from '../components/map/RoutePolyline'
 import MapLegend           from '../components/map/MapLegend'
 import { fetchLivePositions } from '../api/tracking'
+import type { LivePosition }  from '../api/tracking'
 import { fetchOrders }     from '../api/orders'
 import { QUERY_KEYS }      from '../lib/utils/constants'
 import { usePlanStore }    from '../store/plan.store'
 import type { Order }      from '../types'
+
+// Demo fleet: Bangalore area coords, each driver drifts slowly on simulate
+const DEMO_SEED: LivePosition[] = [
+  { driver_id: 'demo-1', driver_name: 'Ravi Kumar (demo)',   latitude: 12.9279, longitude: 77.6271, speed_kmh: 28, recorded_at: new Date().toISOString() },
+  { driver_id: 'demo-2', driver_name: 'Arjun Singh (demo)',  latitude: 12.9716, longitude: 77.5946, speed_kmh: 15, recorded_at: new Date().toISOString() },
+  { driver_id: 'demo-3', driver_name: 'Priya Nair (demo)',   latitude: 13.0012, longitude: 77.5930, speed_kmh: 33, recorded_at: new Date().toISOString() },
+]
 
 const ROUTE_COLORS = [
   '#3b82f6', '#34d399', '#f59e0b', '#f87171',
@@ -36,7 +45,30 @@ function AutoFitPlan({ points }: { points: [number, number][] }) {
 
 export default function LiveMap() {
   const [view, setView]          = useState<ViewMode>('live')
+  const [demoMode, setDemoMode]  = useState(false)
+  const [demoPos, setDemoPos]    = useState<LivePosition[]>(DEMO_SEED)
+  const demoRef                  = useRef<ReturnType<typeof setInterval> | null>(null)
   const { lastPlan, lastPlanDate } = usePlanStore()
+
+  useEffect(() => {
+    if (demoMode) {
+      toast.success('Demo GPS active — 3 simulated drivers moving', { id: 'demo-gps' })
+      demoRef.current = setInterval(() => {
+        setDemoPos(prev => prev.map(p => ({
+          ...p,
+          latitude:    p.latitude  + (Math.random() - 0.5) * 0.003,
+          longitude:   p.longitude + (Math.random() - 0.5) * 0.003,
+          speed_kmh:   Math.round(10 + Math.random() * 40),
+          recorded_at: new Date().toISOString(),
+        })))
+      }, 3000)
+    } else {
+      if (demoRef.current) { clearInterval(demoRef.current); demoRef.current = null }
+      setDemoPos(DEMO_SEED)
+      toast.dismiss('demo-gps')
+    }
+    return () => { if (demoRef.current) clearInterval(demoRef.current) }
+  }, [demoMode])
 
   const { data: positions = [], dataUpdatedAt } = useQuery({
     queryKey:        QUERY_KEYS.livePositions,
@@ -90,9 +122,13 @@ export default function LiveMap() {
     [routes],
   )
 
-  const lastUpdated = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : '—'
+  const activePositions = demoMode ? demoPos : (positions as LivePosition[])
+
+  const lastUpdated = demoMode
+    ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : dataUpdatedAt
+      ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '—'
 
   return (
     <AppShell>
@@ -130,23 +166,38 @@ export default function LiveMap() {
                 <span
                   className="w-2 h-2 rounded-full"
                   style={{
-                    background: positions.length > 0 ? 'var(--c-green)'  : 'var(--c-orange)',
-                    boxShadow:  positions.length > 0 ? '0 0 6px var(--c-green)' : '0 0 6px var(--c-orange)',
+                    background: activePositions.length > 0 ? 'var(--c-green)'  : 'var(--c-orange)',
+                    boxShadow:  activePositions.length > 0 ? '0 0 6px var(--c-green)' : '0 0 6px var(--c-orange)',
                   }}
                 />
                 <p className="text-sm font-semibold text-[var(--c-text)]">
-                  {positions.length} driver{positions.length !== 1 ? 's' : ''} active
+                  {activePositions.length} driver{activePositions.length !== 1 ? 's' : ''} active
+                  {demoMode && <span className="ml-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: 'var(--c-orange)' }}>DEMO</span>}
                 </p>
               </div>
-              <p className="text-xs text-[var(--c-muted)]">Refreshes every 10s · last at {lastUpdated}</p>
-              {positions.length === 0 && (
+              <p className="text-xs text-[var(--c-muted)]">{demoMode ? 'Simulating · updates every 3s ·' : 'Refreshes every 10s ·'} last at {lastUpdated}</p>
+              {activePositions.length === 0 && !demoMode && (
                 <span
-                  className="text-xs font-semibold px-3 py-1 rounded-full ml-auto"
+                  className="text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: 'rgba(251,191,36,0.12)', color: 'var(--c-orange)' }}
                 >
                   Waiting for GPS pings…
                 </span>
               )}
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setDemoMode(v => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: demoMode ? 'rgba(251,191,36,0.15)' : 'var(--c-elevated)',
+                    color:      demoMode ? 'var(--c-orange)'        : 'var(--c-muted)',
+                    border:     '1px solid var(--c-border)',
+                  }}
+                >
+                  {demoMode ? <StopCircle size={12} /> : <PlayCircle size={12} />}
+                  {demoMode ? 'Stop Demo' : 'Simulate GPS'}
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -176,7 +227,7 @@ export default function LiveMap() {
           style={{ height: 'calc(100vh - 220px)', border: '1px solid var(--c-border)' }}
         >
           {view === 'live' ? (
-            <FleetMap positions={positions} />
+            <FleetMap positions={activePositions} />
           ) : (
             <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
               <TileLayer
@@ -216,9 +267,9 @@ export default function LiveMap() {
         </div>
 
         {/* Driver chips (live only) */}
-        {view === 'live' && positions.length > 0 && (
+        {view === 'live' && activePositions.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {(positions as { driver_id: string; driver_name: string; latitude: number; longitude: number }[]).map((p) => (
+            {activePositions.map((p) => (
               <div
                 key={p.driver_id}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"

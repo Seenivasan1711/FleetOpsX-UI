@@ -97,7 +97,7 @@ export default function Analytics() {
             type="date"
             value={etlDate}
             onChange={(e) => setEtlDate(e.target.value)}
-            className="w-auto"
+            containerClass="w-[155px] shrink-0"
           />
           <Button
             onClick={() => etlMutation.mutate()}
