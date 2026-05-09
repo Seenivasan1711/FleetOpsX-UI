@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Bot }                      from 'lucide-react'
 import { Sidebar }                  from './Sidebar'
 import { Topbar }                   from './Topbar'
 import { SuperadminBanner }         from './SuperadminBanner'
@@ -15,7 +16,7 @@ type AppShellProps = {
 
 export const AppShell = ({ children, pendingOrders }: AppShellProps) => {
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const { sidebarExpanded, toggleSidebar } = useUiStore()
+  const { sidebarExpanded, toggleSidebar, chatOpen, toggleChat } = useUiStore()
   const { isSuperadmin, effectiveTenantId } = useAuthStore()
 
   useKeyboardShortcuts({ onShowShortcuts: () => setShowShortcuts(true) })
@@ -43,6 +44,23 @@ export const AppShell = ({ children, pendingOrders }: AppShellProps) => {
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
       <ChatPanel />
+
+      {/* Floating AI chat button (hidden when panel is open) */}
+      {!chatOpen && (
+        <button
+          onClick={toggleChat}
+          className="fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full flex items-center justify-center shadow-xl transition-transform hover:scale-105 active:scale-95"
+          style={{
+            width:      52,
+            height:     52,
+            background: 'linear-gradient(135deg, var(--c-accent), var(--c-purple))',
+            boxShadow:  '0 4px 24px rgba(124,58,237,0.4)',
+          }}
+          title="Fleet AI (⌘K)"
+        >
+          <Bot size={22} className="text-white" />
+        </button>
+      )}
     </div>
   )
 }
