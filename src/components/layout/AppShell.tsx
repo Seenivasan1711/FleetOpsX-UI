@@ -34,16 +34,18 @@ export const AppShell = ({ children, pendingOrders }: AppShellProps) => {
         <Topbar onShowShortcuts={() => setShowShortcuts(true)} />
         {isSuperadmin && effectiveTenantId && <SuperadminBanner />}
 
-        <main
-          className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{ background: 'var(--c-bg)' }}
-        >
-          {children}
-        </main>
+        <div className="flex-1 flex overflow-hidden min-w-0">
+          <main
+            className="flex-1 overflow-y-auto overflow-x-hidden"
+            style={{ background: 'var(--c-bg)' }}
+          >
+            {children}
+          </main>
+          <ChatPanel />
+        </div>
       </div>
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
-      <ChatPanel />
 
       {/* Floating AI chat button (hidden when panel is open) */}
       {!chatOpen && (

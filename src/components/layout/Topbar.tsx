@@ -46,7 +46,7 @@ export const Topbar = ({ onShowShortcuts }: TopbarProps) => {
 
   return (
     <header
-      className="h-[60px] flex items-center px-6 gap-4 shrink-0"
+      className="h-[64px] flex items-center px-6 gap-4 shrink-0"
       style={{
         background:   'var(--c-surface)',
         borderBottom: '1px solid var(--c-border)',

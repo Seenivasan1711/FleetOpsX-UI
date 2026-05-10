@@ -20,15 +20,15 @@ const ONBOARDING_KEY = 'fleetopsx_ob_dismissed'
 function FleetBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0
   return (
-    <div className="mb-2.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-[var(--c-muted)]">{label}</span>
-        <span className="text-xs font-bold text-[var(--c-text)]">{value}</span>
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[12px] text-[var(--c-muted)]">{label}</span>
+        <span className="text-[12px] font-bold font-mono text-[var(--c-text)]">{value}</span>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
         <div
-          className="h-1.5 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: color }}
+          className="h-2 rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: color, boxShadow: pct > 0 ? `0 0 6px ${color}60` : 'none' }}
         />
       </div>
     </div>
@@ -84,7 +84,7 @@ export default function Dashboard() {
 
   return (
     <AppShell pendingOrders={unassigned}>
-      <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="p-7 flex flex-col gap-6" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
         {showBanner && (
           <OnboardingBanner
@@ -95,7 +95,7 @@ export default function Dashboard() {
         )}
 
         {/* KPI stats */}
-        <div className="flex gap-3.5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Orders" value={orders.length} color="accent" delay={0}
             icon={<Package size={14} />}
@@ -117,36 +117,56 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Fleet Availability Widget — PP-E3 */}
+        {/* Fleet Availability */}
         {(drivers.length > 0 || vehicles.length > 0) && (
           <div
-            className="rounded-2xl p-5"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Truck size={14} style={{ color: 'var(--c-accent)' }} />
-              <p className="text-sm font-bold text-[var(--c-text)]">Fleet Availability</p>
-              <span className="text-xs text-[var(--c-muted)] ml-auto">Live · click status pills on Drivers / Vehicles pages to update</span>
+            {/* Card header */}
+            <div
+              className="flex items-center gap-3 px-5 py-4"
+              style={{ borderBottom: '1px solid var(--c-border)' }}
+            >
+              <span
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'var(--c-accent-dim)' }}
+              >
+                <Truck size={14} style={{ color: 'var(--c-accent)' }} />
+              </span>
+              <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Fleet Availability</p>
+              <span
+                className="text-[10px] font-mono px-2 py-1 rounded-full"
+                style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}
+              >
+                Live
+              </span>
+              <span className="text-[11px] text-[var(--c-subtle)] hidden sm:inline">
+                Click status pills on Drivers / Vehicles to update
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-6">
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 divide-x" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
               {/* Drivers */}
-              <div>
-                <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <div className="p-6">
+                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
                   <Users size={10} /> Drivers · {driverStats.total} total
                 </p>
-                <FleetBar label="Available"   value={driverStats.available} total={driverStats.total} color="var(--c-green)"  />
-                <FleetBar label="On Break"    value={driverStats.on_break}  total={driverStats.total} color="var(--c-orange)" />
-                <FleetBar label="Off Duty"    value={driverStats.off_duty}  total={driverStats.total} color="var(--c-muted)"  />
+                <FleetBar label="Available" value={driverStats.available} total={driverStats.total} color="var(--c-green)"  />
+                <FleetBar label="On Break"  value={driverStats.on_break}  total={driverStats.total} color="var(--c-orange)" />
+                <FleetBar label="Off Duty"  value={driverStats.off_duty}  total={driverStats.total} color="var(--c-muted)"  />
               </div>
+
               {/* Vehicles */}
-              <div>
-                <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <div className="p-6" style={{ borderLeft: '1px solid var(--c-border)' }}>
+                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
                   <Truck size={10} /> Vehicles · {vehicleStats.total} total
                 </p>
-                <FleetBar label="Available"   value={vehicleStats.available}   total={vehicleStats.total} color="var(--c-green)"  />
-                <FleetBar label="In Use"      value={vehicleStats.in_use}      total={vehicleStats.total} color="var(--c-accent)" />
-                <FleetBar label="Maintenance" value={vehicleStats.maintenance}  total={vehicleStats.total} color="var(--c-red)"    />
-                <FleetBar label="Low Fuel"    value={vehicleStats.low_fuel}    total={vehicleStats.total} color="var(--c-orange)" />
+                <FleetBar label="Available"   value={vehicleStats.available}  total={vehicleStats.total} color="var(--c-green)"  />
+                <FleetBar label="In Use"      value={vehicleStats.in_use}     total={vehicleStats.total} color="var(--c-accent)" />
+                <FleetBar label="Maintenance" value={vehicleStats.maintenance} total={vehicleStats.total} color="var(--c-red)"    />
+                <FleetBar label="Low Fuel"    value={vehicleStats.low_fuel}   total={vehicleStats.total} color="var(--c-orange)" />
               </div>
             </div>
           </div>
@@ -163,12 +183,17 @@ export default function Dashboard() {
         {unassigned > 0 && (
           <div
             className="flex items-center justify-between gap-4 px-6 py-5 rounded-2xl"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+            style={{
+              background: 'linear-gradient(135deg, var(--c-accent-dim), var(--c-purple-dim))',
+              border: '1px solid var(--c-accent)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
           >
             <div>
-              <p className="text-sm font-bold text-[var(--c-text)] mb-0.5">Ready to dispatch?</p>
+              <p className="text-sm font-bold text-[var(--c-text)] mb-1">Ready to dispatch?</p>
               <p className="text-xs text-[var(--c-muted)]">
-                {unassigned} unassigned orders awaiting route optimisation for today.
+                <span className="font-semibold" style={{ color: 'var(--c-red)' }}>{unassigned} unassigned orders</span>{' '}
+                awaiting route optimisation for today.
               </p>
             </div>
             <Button onClick={() => navigate('/planning')}>

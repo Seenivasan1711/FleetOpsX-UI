@@ -498,7 +498,7 @@ export default function Planning() {
               <p className="text-sm font-bold text-[var(--c-text)]">Choose a Plan</p>
               <p className="text-xs text-[var(--c-muted)]">Select one of the optimisation strategies below</p>
             </div>
-            <div className="flex gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {planOptions.map((opt) => (
                 <PlanOptionsCard
                   key={opt.mode}
@@ -678,7 +678,7 @@ export default function Planning() {
             />
           </div>
           <div className="flex gap-3 pt-1">
-            <Button className="flex-1" onClick={handleStartAiPlan}>
+            <Button className="flex-1 whitespace-nowrap" onClick={handleStartAiPlan}>
               <Brain size={14} />
               Generate AI Scenarios
             </Button>

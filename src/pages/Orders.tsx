@@ -233,14 +233,14 @@ export default function Orders() {
             containerClass="flex-1 min-w-[200px]"
           />
           <Button variant="secondary" onClick={handleExport} loading={exporting}>
-            <Download size={15} /> Export
+            <Upload size={15} /> Export
           </Button>
           <Button
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
             loading={importing}
           >
-            <Upload size={15} /> Import
+            <Download size={15} /> Import
           </Button>
           <input
             ref={fileInputRef}
