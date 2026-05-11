@@ -15,25 +15,25 @@ export interface ChatMessage {
 }
 
 export async function fetchConversations(): Promise<Conversation[]> {
-  const { data } = await client.get('/chat/conversations/')
+  const { data } = await client.get('/api/v1/chat/conversations/')
   return data
 }
 
 export async function createConversation(title?: string): Promise<Conversation> {
-  const { data } = await client.post('/chat/conversations/', { title: title ?? 'New Conversation' })
+  const { data } = await client.post('/api/v1/chat/conversations/', { title: title ?? 'New Conversation' })
   return data
 }
 
 export async function fetchMessages(conversationId: string): Promise<ChatMessage[]> {
-  const { data } = await client.get(`/chat/conversations/${conversationId}/messages`)
+  const { data } = await client.get(`/api/v1/chat/conversations/${conversationId}/messages`)
   return data
 }
 
 export async function sendMessage(conversationId: string, content: string): Promise<ChatMessage[]> {
-  const { data } = await client.post(`/chat/conversations/${conversationId}/messages`, { content })
+  const { data } = await client.post(`/api/v1/chat/conversations/${conversationId}/messages`, { content })
   return data
 }
 
 export async function deleteConversation(conversationId: string): Promise<void> {
-  await client.delete(`/chat/conversations/${conversationId}`)
+  await client.delete(`/api/v1/chat/conversations/${conversationId}`)
 }

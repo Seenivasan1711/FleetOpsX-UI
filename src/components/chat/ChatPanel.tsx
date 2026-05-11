@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUiStore } from '../../store/ui.store'
+import client from '../../api/client'
 import {
   fetchConversations,
   createConversation,
@@ -498,14 +499,11 @@ export function ChatPanel() {
 
     const init = async () => {
       try {
-        const res = await fetch('/api/v1/chat/conversations/status')
-        if (res.ok) {
-          const data: { mongodb_active: boolean } = await res.json()
-          setMongoActive(data.mongodb_active)
-          if (data.mongodb_active) {
-            const convs = await fetchConversations()
-            setConversations(convs)
-          }
+        const { data } = await client.get<{ mongodb_active: boolean }>('/api/v1/chat/conversations/status')
+        setMongoActive(data.mongodb_active)
+        if (data.mongodb_active) {
+          const convs = await fetchConversations()
+          setConversations(convs)
         }
       } catch { /* ignore — service may not be running */ }
     }
