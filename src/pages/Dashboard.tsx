@@ -1,33 +1,57 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Package, AlertTriangle, CheckCircle, Users, Truck } from 'lucide-react'
+import { Package, AlertTriangle, CheckCircle, Users, Truck, Gauge } from 'lucide-react'
 import { AppShell }           from '../components/layout/AppShell'
 import { StatCard }           from '../components/features/dashboard/StatCard'
 import { OnboardingBanner }   from '../components/features/dashboard/OnboardingBanner'
 import { QuickActions }       from '../components/features/dashboard/QuickActions'
 import { AtRiskPanel }        from '../components/features/dashboard/AtRiskPanel'
 import { AiSuggestionsPanel } from '../components/features/dashboard/AiSuggestionsPanel'
+import { LiveOpsTicker }      from '../components/features/dashboard/LiveOpsTicker'
+import { RouteTimeline }      from '../components/features/dashboard/RouteTimeline'
 import { Button }             from '../components/ui/Button'
 import { fetchOrders }        from '../api/orders'
 import { fetchDrivers }       from '../api/drivers'
 import { fetchVehicles }      from '../api/vehicles'
+import { fetchKpiTrend }      from '../api/analytics'
 import { QUERY_KEYS }         from '../lib/utils/constants'
 import { today }              from '../lib/utils/format'
 
 const ONBOARDING_KEY = 'fleetopsx_ob_dismissed'
 
+function FleetAvailCard({
+  title, icon, color, dim, children,
+}: {
+  title: string; icon: React.ReactNode; color: string; dim: string; children: React.ReactNode
+}) {
+  return (
+    <div
+      className="flex-1 rounded-2xl p-5 min-w-0"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: dim, color }}>
+          {icon}
+        </div>
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.8px] text-[var(--c-muted)]">{title}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
 function FleetBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] text-[var(--c-muted)]">{label}</span>
-        <span className="text-[12px] font-bold font-mono text-[var(--c-text)]">{value}</span>
+    <div className="mb-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11.5px] text-[var(--c-muted)]">{label}</span>
+        <span className="text-[11.5px] font-bold font-mono text-[var(--c-text)]">{value}</span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
         <div
-          className="h-2 rounded-full transition-all duration-700"
+          className="h-1.5 rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, background: color, boxShadow: pct > 0 ? `0 0 6px ${color}60` : 'none' }}
         />
       </div>
@@ -63,9 +87,20 @@ export default function Dashboard() {
     queryFn:  () => fetchVehicles({ active_only: false }),
   })
 
+  const { data: kpiTrend = [] } = useQuery({
+    queryKey: QUERY_KEYS.kpiTrend(7),
+    queryFn:  () => fetchKpiTrend(7),
+    staleTime: 5 * 60_000,
+  })
+
   const unassigned    = orders.filter((o) => o.status === 'PENDING').length
   const assigned      = orders.filter((o) => o.status === 'ASSIGNED').length
   const activeDrivers = drivers.filter((d) => d.is_active).length
+
+  // Sparkline data from KPI trend
+  const orderSparkline = kpiTrend.map((p) => p.orders_count)
+  const onTimePct      = kpiTrend.map((p) => p.on_time_pct ?? 0)
+  const driverSparkline= kpiTrend.map((p) => p.active_drivers)
 
   const driverStats = useMemo(() => ({
     available: drivers.filter((d) => d.is_active && d.availability_status !== 'ON_BREAK' && d.availability_status !== 'OFF_DUTY').length,
@@ -82,9 +117,14 @@ export default function Dashboard() {
     total:       vehicles.length,
   }), [vehicles])
 
+  // Efficiency = vehicles in use / total active (as %)
+  const efficiencyPct = vehicleStats.total > 0
+    ? Math.round((vehicleStats.in_use / vehicleStats.total) * 100)
+    : 0
+
   return (
     <AppShell pendingOrders={unassigned}>
-      <div className="p-7 flex flex-col gap-6" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="p-7 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
         {showBanner && (
           <OnboardingBanner
@@ -94,12 +134,16 @@ export default function Dashboard() {
           />
         )}
 
-        {/* KPI stats */}
+        {/* Live Ops Ticker */}
+        <LiveOpsTicker orders={orders} drivers={drivers} />
+
+        {/* KPI stats with sparklines */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Orders" value={orders.length} color="accent" delay={0}
             icon={<Package size={14} />}
-            trend={{ up: true, val: '+4', label: 'vs yesterday' }}
+            sparkline={orderSparkline}
+            trend={{ up: true, val: '7d trend', label: 'sparkline' }}
           />
           <StatCard
             label="Unassigned" value={unassigned} color="danger" delay={80}
@@ -109,71 +153,60 @@ export default function Dashboard() {
           <StatCard
             label="Assigned" value={assigned} color="success" delay={160}
             icon={<CheckCircle size={14} />}
+            sparkline={onTimePct}
           />
           <StatCard
             label="Active Drivers" value={activeDrivers} color="info" delay={240}
             icon={<Users size={14} />}
-            trend={{ up: true, val: '100%', label: 'available' }}
+            sparkline={driverSparkline}
           />
         </div>
 
-        {/* Fleet Availability */}
+        {/* Fleet Availability — 3 cards: Drivers / Vehicles / Efficiency */}
         {(drivers.length > 0 || vehicles.length > 0) && (
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
-          >
-            {/* Card header */}
-            <div
-              className="flex items-center gap-3 px-5 py-4"
-              style={{ borderBottom: '1px solid var(--c-border)' }}
-            >
-              <span
-                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'var(--c-accent-dim)' }}
-              >
-                <Truck size={14} style={{ color: 'var(--c-accent)' }} />
-              </span>
-              <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Fleet Availability</p>
-              <span
-                className="text-[10px] font-mono px-2 py-1 rounded-full"
-                style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}
-              >
-                Live
-              </span>
-              <span className="text-[11px] text-[var(--c-subtle)] hidden sm:inline">
-                Click status pills on Drivers / Vehicles to update
-              </span>
-            </div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 divide-x" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
-              {/* Drivers */}
-              <div className="p-6">
-                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
-                  <Users size={10} /> Drivers · {driverStats.total} total
-                </p>
+          <div>
+            <p className="text-[10.5px] font-bold uppercase tracking-[1px] text-[var(--c-muted)] mb-3">
+              Fleet Availability
+              <span className="ml-2 px-2 py-0.5 rounded-full text-[9px] font-mono" style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}>Live</span>
+            </p>
+            <div className="flex gap-3">
+              {/* Drivers card */}
+              <FleetAvailCard title={`Drivers · ${driverStats.total}`} icon={<Users size={13} />} color="var(--c-accent)" dim="var(--c-accent-dim)">
                 <FleetBar label="Available" value={driverStats.available} total={driverStats.total} color="var(--c-green)"  />
                 <FleetBar label="On Break"  value={driverStats.on_break}  total={driverStats.total} color="var(--c-orange)" />
                 <FleetBar label="Off Duty"  value={driverStats.off_duty}  total={driverStats.total} color="var(--c-muted)"  />
-              </div>
+              </FleetAvailCard>
 
-              {/* Vehicles */}
-              <div className="p-6" style={{ borderLeft: '1px solid var(--c-border)' }}>
-                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
-                  <Truck size={10} /> Vehicles · {vehicleStats.total} total
-                </p>
+              {/* Vehicles card */}
+              <FleetAvailCard title={`Vehicles · ${vehicleStats.total}`} icon={<Truck size={13} />} color="var(--c-purple)" dim="var(--c-purple-dim)">
                 <FleetBar label="Available"   value={vehicleStats.available}  total={vehicleStats.total} color="var(--c-green)"  />
                 <FleetBar label="In Use"      value={vehicleStats.in_use}     total={vehicleStats.total} color="var(--c-accent)" />
                 <FleetBar label="Maintenance" value={vehicleStats.maintenance} total={vehicleStats.total} color="var(--c-red)"    />
                 <FleetBar label="Low Fuel"    value={vehicleStats.low_fuel}   total={vehicleStats.total} color="var(--c-orange)" />
-              </div>
+              </FleetAvailCard>
+
+              {/* Efficiency card */}
+              <FleetAvailCard title="Fleet Efficiency" icon={<Gauge size={13} />} color="var(--c-green)" dim="var(--c-green-dim)">
+                <div
+                  className="text-[42px] font-extrabold leading-none tracking-[-2px] font-mono mb-3"
+                  style={{ color: efficiencyPct >= 70 ? 'var(--c-green)' : efficiencyPct >= 40 ? 'var(--c-orange)' : 'var(--c-red)' }}
+                >
+                  {efficiencyPct}<span className="text-[22px] ml-0.5 opacity-60">%</span>
+                </div>
+                <p className="text-[11px] text-[var(--c-muted)] leading-relaxed">
+                  {vehicleStats.in_use} of {vehicleStats.total} vehicles in active use.<br />
+                  {vehicleStats.available} ready for assignment.
+                </p>
+              </FleetAvailCard>
             </div>
           </div>
         )}
 
         {/* Quick actions */}
         <QuickActions />
+
+        {/* Route Timeline Gantt */}
+        <RouteTimeline planDate={planDate} />
 
         {/* At-risk + AI panels */}
         <AtRiskPanel planDate={planDate} />

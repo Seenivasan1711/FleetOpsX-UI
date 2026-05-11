@@ -1,8 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUiStore } from '../../store/ui.store'
-import { today }      from '../../lib/utils/format'
+import {
+  fetchConversations,
+  createConversation,
+  fetchMessages,
+  sendMessage,
+  deleteConversation,
+  type Conversation,
+  type ChatMessage,
+} from '../../api/conversations'
 
-// ── Design tokens — matte-black fixed palette ─────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
   panelBg:   '#0d0d0f',
   bg:        '#0d0d12',
@@ -19,11 +27,12 @@ const C = {
   green:     '#34d399',
   greenGlow: 'rgba(52,211,153,0.15)',
   amber:     '#f59e0b',
+  red:       '#f87171',
   mono:      "'JetBrains Mono', monospace",
   sans:      "'DM Sans', system-ui, sans-serif",
 }
 
-// ── CSS injection (keyframes can't be inline) ─────────────────────────────────
+// ── CSS injection ─────────────────────────────────────────────────────────────
 const STYLE_ID = 'fox-chat-styles'
 if (!document.getElementById(STYLE_ID)) {
   const el = document.createElement('style')
@@ -34,10 +43,12 @@ if (!document.getElementById(STYLE_ID)) {
     @keyframes fox-up    { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fox-in    { from{opacity:0;transform:scale(.96) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes fox-slide { from{opacity:0;transform:translateX(100%)} to{opacity:1;transform:translateX(0)} }
+    @keyframes fox-hist  { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
     .fox-msg   { animation: fox-up   .22s ease both; }
     .fox-panel { animation: fox-in   .20s ease both; }
     .fox-slide { animation: fox-slide .25s cubic-bezier(0.4,0,0.2,1) both; }
     .fox-spin  { animation: fox-spin 1s linear infinite; }
+    .fox-hist  { animation: fox-hist .18s ease both; }
   `
   document.head.appendChild(el)
 }
@@ -58,16 +69,15 @@ type Msg = {
   time:       string
   card?:      StructuredCard | null
   followUps?: string[]
-  loading?:   boolean
 }
 
 // ── Slash commands ─────────────────────────────────────────────────────────────
 const SLASH_COMMANDS = [
-  { cmd: '/plan',     desc: "Today's dispatch plan summary"        },
-  { cmd: '/atrisk',  desc: 'Orders likely to miss SLA window'      },
-  { cmd: '/drivers', desc: 'Driver availability & shift status'    },
-  { cmd: '/capacity',desc: 'Load vs available vehicle capacity'    },
-  { cmd: '/help',    desc: 'Show all available commands'           },
+  { cmd: '/plan',     desc: "Today's dispatch plan summary"     },
+  { cmd: '/atrisk',  desc: 'Orders likely to miss SLA window'  },
+  { cmd: '/drivers', desc: 'Driver availability & shift status' },
+  { cmd: '/capacity',desc: 'Load vs available vehicle capacity' },
+  { cmd: '/help',    desc: 'Show all available commands'        },
 ]
 
 const STARTERS = [
@@ -105,7 +115,6 @@ function inferFollowUps(text: string): string[] {
   return ['Tell me more', 'What should I do next?']
 }
 
-// ── Simple inline markdown → JSX ──────────────────────────────────────────────
 function renderText(text: string) {
   const parts = text.split(/(\*\*.*?\*\*|`[^`]+`)/g)
   return parts.map((part, i) => {
@@ -121,6 +130,19 @@ function renderText(text: string) {
       )
     return <span key={i}>{part}</span>
   })
+}
+
+function apiMsgToMsg(m: ChatMessage): Msg {
+  const card = tryParseCard(m.content)
+  const displayText = card ? m.content.replace(/```json[\s\S]*?```/, '').trim() : m.content
+  return {
+    id:       m.id,
+    role:     m.role,
+    text:     displayText,
+    time:     new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    card,
+    followUps: m.role === 'assistant' ? inferFollowUps(m.content) : undefined,
+  }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -180,7 +202,7 @@ function CardBlock({ card }: { card: StructuredCard }) {
             <span style={{ fontSize: 11.5, color: C.textMute }}>{row.label}</span>
             <span style={{
               fontSize: 11.5, fontWeight: 600, fontFamily: C.mono,
-              color: row.highlight ? '#f87171' : C.textMid,
+              color: row.highlight ? C.red : C.textMid,
             }}>{row.value}</span>
           </div>
         ))}
@@ -254,10 +276,7 @@ function MessageBubble({ msg, onFollowUp, isLast }: { msg: Msg; onFollowUp: (t: 
         <AIAvatar />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           {msg.text && (
-            <div style={{
-              color: C.textMid, fontSize: 13, lineHeight: 1.65,
-              fontFamily: C.sans,
-            }}>
+            <div style={{ color: C.textMid, fontSize: 13, lineHeight: 1.65, fontFamily: C.sans }}>
               {msg.text.split('\n').map((line, i) => (
                 <p key={i} style={{ margin: i > 0 ? '6px 0 0' : 0 }}>
                   {renderText(line)}
@@ -277,19 +296,11 @@ function MessageBubble({ msg, onFollowUp, isLast }: { msg: Msg; onFollowUp: (t: 
 }
 
 function SlashLauncher({
-  query,
-  activeIndex,
-  onSelect,
-  onIndexChange,
+  query, activeIndex, onSelect, onIndexChange,
 }: {
-  query:         string
-  activeIndex:   number
-  onSelect:      (cmd: string) => void
-  onIndexChange: (i: number) => void
+  query: string; activeIndex: number; onSelect: (cmd: string) => void; onIndexChange: (i: number) => void
 }) {
-  const filtered = SLASH_COMMANDS.filter((c) =>
-    c.cmd.slice(1).startsWith(query.toLowerCase())
-  )
+  const filtered = SLASH_COMMANDS.filter((c) => c.cmd.slice(1).startsWith(query.toLowerCase()))
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -305,7 +316,6 @@ function SlashLauncher({
       background: C.card, border: `1px solid ${C.border}`, borderRadius: 11,
       boxShadow: '0 12px 28px rgba(0,0,0,0.55)', overflow: 'hidden', zIndex: 50,
     }}>
-      {/* header */}
       <div style={{
         padding: '7px 12px', borderBottom: `1px solid ${C.border}`,
         display: 'flex', alignItems: 'center', gap: 6,
@@ -317,8 +327,6 @@ function SlashLauncher({
         </svg>
         Commands · /{query || '…'}
       </div>
-
-      {/* list */}
       <div ref={listRef}>
         {filtered.map((item, i) => (
           <button
@@ -336,14 +344,10 @@ function SlashLauncher({
               {item.cmd}
             </span>
             <span style={{ flex: 1, fontSize: 12, color: C.textDim }}>{item.desc}</span>
-            {i === activeIndex && (
-              <kbd style={{ fontSize: 9, color: C.textGhost, fontFamily: C.mono }}>↵</kbd>
-            )}
+            {i === activeIndex && <kbd style={{ fontSize: 9, color: C.textGhost, fontFamily: C.mono }}>↵</kbd>}
           </button>
         ))}
       </div>
-
-      {/* footer */}
       <div style={{
         padding: '5px 12px', borderTop: `1px solid ${C.border}`,
         display: 'flex', gap: 10, fontSize: 10, color: C.textGhost,
@@ -363,27 +367,165 @@ function SlashLauncher({
   )
 }
 
+// ── Conversation History Dropdown ─────────────────────────────────────────────
+
+function HistoryDropdown({
+  conversations,
+  activeId,
+  onSelect,
+  onDelete,
+  onNew,
+  onClose,
+}: {
+  conversations: Conversation[]
+  activeId: string | null
+  onSelect: (conv: Conversation) => void
+  onDelete: (id: string) => void
+  onNew: () => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fox-hist"
+      style={{
+        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, marginTop: 4,
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+        boxShadow: '0 16px 40px rgba(0,0,0,0.6)', overflow: 'hidden',
+        maxHeight: 320, display: 'flex', flexDirection: 'column',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        padding: '9px 12px 8px',
+        borderBottom: `1px solid ${C.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.textMute, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Chat History
+        </span>
+        <button
+          onClick={onNew}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px',
+            background: C.accentDim, border: `1px solid ${C.accent}`,
+            borderRadius: 6, cursor: 'pointer', fontSize: 11, color: C.accent, fontWeight: 600,
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Chat
+        </button>
+      </div>
+
+      {/* List */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {conversations.length === 0 ? (
+          <p style={{ fontSize: 12, color: C.textGhost, textAlign: 'center', padding: '20px 12px' }}>
+            No past conversations
+          </p>
+        ) : conversations.map((conv) => (
+          <div
+            key={conv.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px',
+              background: conv.id === activeId ? C.accentDim : 'transparent',
+              borderLeft: `2px solid ${conv.id === activeId ? C.accent : 'transparent'}`,
+              cursor: 'pointer', transition: 'background .12s',
+            }}
+            onClick={() => { onSelect(conv); onClose() }}
+            onMouseEnter={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)' }}
+            onMouseLeave={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={conv.id === activeId ? C.accent : C.textGhost} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span style={{
+              flex: 1, fontSize: 12.5,
+              color: conv.id === activeId ? C.accent : C.textMid,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {conv.title}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(conv.id) }}
+              style={{
+                padding: '2px 4px', background: 'transparent', border: 'none',
+                color: C.textGhost, cursor: 'pointer', borderRadius: 4,
+                flexShrink: 0, display: 'flex', alignItems: 'center',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = C.red }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = C.textGhost }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function ChatPanel() {
   const { chatOpen, toggleChat } = useUiStore()
-  const [msgs,        setMsgs]       = useState<Msg[]>([])
-  const [input,       setInput]      = useState('')
-  const [loading,     setLoading]    = useState(false)
-  const [slashOpen,   setSlashOpen]  = useState(false)
-  const [slashQuery,  setSlashQuery] = useState('')
-  const [slashIdx,    setSlashIdx]   = useState(0)
+  const [msgs,         setMsgs]        = useState<Msg[]>([])
+  const [input,        setInput]       = useState('')
+  const [loading,      setLoading]     = useState(false)
+  const [slashOpen,    setSlashOpen]   = useState(false)
+  const [slashQuery,   setSlashQuery]  = useState('')
+  const [slashIdx,     setSlashIdx]    = useState(0)
+  const [convId,       setConvId]      = useState<string | null>(null)
+  const [convTitle,    setConvTitle]   = useState<string>('New Chat')
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [histOpen,     setHistOpen]    = useState(false)
+  const [histLoading,  setHistLoading] = useState(false)
+  const [mongoActive,  setMongoActive] = useState(false)
+
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const inputWrap  = useRef<HTMLDivElement>(null)
+  const headerRef  = useRef<HTMLDivElement>(null)
 
-  // focus on open
-  useEffect(() => { if (chatOpen) setTimeout(() => inputRef.current?.focus(), 80) }, [chatOpen])
+  // On open: detect MongoDB mode and load conversation list
+  useEffect(() => {
+    if (!chatOpen) { setHistOpen(false); return }
+    setTimeout(() => inputRef.current?.focus(), 80)
 
-  // scroll to bottom on new messages
+    const init = async () => {
+      try {
+        const res = await fetch('/api/v1/chat/conversations/status')
+        if (res.ok) {
+          const data: { mongodb_active: boolean } = await res.json()
+          setMongoActive(data.mongodb_active)
+          if (data.mongodb_active) {
+            const convs = await fetchConversations()
+            setConversations(convs)
+          }
+        }
+      } catch { /* ignore — service may not be running */ }
+    }
+    init()
+  }, [chatOpen])
+
+  // Close history dropdown on outside click
+  useEffect(() => {
+    if (!histOpen) return
+    const handler = (e: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setHistOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [histOpen])
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, loading])
 
-  // auto-resize textarea
   const resizeInput = useCallback(() => {
     const el = inputRef.current
     if (!el) return
@@ -409,42 +551,85 @@ export function ChatPanel() {
     inputRef.current?.focus()
   }
 
+  // Ensure conversation exists before sending
+  const ensureConv = useCallback(async (): Promise<string> => {
+    if (convId) return convId
+    const conv = await createConversation()
+    setConvId(conv.id)
+    setConvTitle(conv.title)
+    if (mongoActive && conv.id !== 'session') {
+      setConversations((prev) => [conv, ...prev])
+    }
+    return conv.id
+  }, [convId, mongoActive])
+
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || loading) return
     setSlashOpen(false)
     setInput('')
-    if (inputRef.current) { inputRef.current.style.height = 'auto' }
+    if (inputRef.current) inputRef.current.style.height = 'auto'
 
     const userMsg: Msg = { id: crypto.randomUUID(), role: 'user', text: trimmed, time: ts() }
     setMsgs((m) => [...m, userMsg])
     setLoading(true)
 
     try {
-      const { sendChatMessage } = await import('../../api/chat')
-      const res = await sendChatMessage(trimmed, today())
-      const card = tryParseCard(res.content)
-      const displayText = card ? res.content.replace(/```json[\s\S]*?```/, '').trim() : res.content
-      setMsgs((m) => [...m, {
-        id:       res.id,
-        role:     'assistant',
-        text:     displayText,
-        time:     ts(),
-        card,
-        followUps: inferFollowUps(res.content),
-      }])
+      const cid = await ensureConv()
+      const returned: ChatMessage[] = await sendMessage(cid, trimmed)
+      const assistantMsg = returned.find((m) => m.role === 'assistant')
+      if (assistantMsg) {
+        const mapped = apiMsgToMsg(assistantMsg)
+        setMsgs((m) => [...m, mapped])
+
+        // Update conversation title in list after first message
+        if (mongoActive && cid !== 'session') {
+          setConversations((prev) => prev.map((c) =>
+            c.id === cid ? { ...c, title: trimmed.slice(0, 60), updated_at: new Date().toISOString() } : c
+          ))
+          setConvTitle(trimmed.slice(0, 60))
+        }
+      }
     } catch {
       setMsgs((m) => [...m, {
-        id:       crypto.randomUUID(),
-        role:     'assistant',
-        text:     'Fleet AI is offline — the backend will be available once the API is deployed.',
-        time:     ts(),
+        id:   crypto.randomUUID(),
+        role: 'assistant',
+        text: 'Fleet AI is offline — the backend will be available once the API is deployed.',
+        time: ts(),
         followUps: ['Try again', 'Check API status'],
       }])
     } finally {
       setLoading(false)
     }
-  }, [loading])
+  }, [loading, ensureConv, mongoActive])
+
+  const loadConversation = async (conv: Conversation) => {
+    setHistLoading(true)
+    setConvId(conv.id)
+    setConvTitle(conv.title)
+    setMsgs([])
+    try {
+      const apiMsgs = await fetchMessages(conv.id)
+      setMsgs(apiMsgs.map(apiMsgToMsg))
+    } catch { /* ignore */ } finally {
+      setHistLoading(false)
+    }
+  }
+
+  const startNewChat = async () => {
+    setConvId(null)
+    setConvTitle('New Chat')
+    setMsgs([])
+    setHistOpen(false)
+  }
+
+  const handleDeleteConv = async (id: string) => {
+    try {
+      await deleteConversation(id)
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      if (convId === id) startNewChat()
+    } catch { /* ignore */ }
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (slashOpen) {
@@ -476,13 +661,16 @@ export function ChatPanel() {
       }}
     >
       {/* ── Header ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 18px', flexShrink: 0,
-        borderBottom: `1px solid ${C.border}`, background: C.bg,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Logo */}
+      <div
+        ref={headerRef}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 18px', flexShrink: 0,
+          borderBottom: `1px solid ${C.border}`, background: C.bg,
+          position: 'relative',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{
             width: 30, height: 30, borderRadius: 8, flexShrink: 0,
             background: 'linear-gradient(140deg, #8b5cf6, #6d28d9)',
@@ -493,8 +681,33 @@ export function ChatPanel() {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <div>
-            <p style={{ fontSize: 13.5, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Fleet AI</p>
+
+          {/* Title — clickable to open history when MongoDB active */}
+          <div
+            onClick={() => mongoActive && setHistOpen((o) => !o)}
+            style={{
+              cursor: mongoActive ? 'pointer' : 'default',
+              display: 'flex', flexDirection: 'column', minWidth: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <p style={{
+                fontSize: 13.5, fontWeight: 700, color: C.text, lineHeight: 1.2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: mongoActive ? 140 : 180,
+              }}>
+                {convTitle || 'Fleet AI'}
+              </p>
+              {mongoActive && (
+                <svg
+                  width="10" height="10" viewBox="0 0 24 24" fill="none"
+                  stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ flexShrink: 0, transform: histOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
+                >
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%',
@@ -502,18 +715,34 @@ export function ChatPanel() {
                 boxShadow: loading ? `0 0 6px ${C.amber}` : `0 0 6px ${C.greenGlow}`,
               }} />
               <span style={{ fontSize: 10.5, color: C.textMute }}>
-                {loading ? 'Thinking…' : 'Ready · Claude-powered'}
+                {loading ? 'Thinking…' : mongoActive ? 'History · Claude-powered' : 'Ready · Claude-powered'}
               </span>
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* Clear chat */}
+          {/* New Chat (always visible) */}
+          <button
+            onClick={startNewChat}
+            title="New chat"
+            style={{
+              padding: '5px 7px', background: 'transparent', border: 'none',
+              borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.accent }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          {/* Clear messages */}
           {msgs.length > 0 && !loading && (
             <button
               onClick={() => setMsgs([])}
-              title="Clear chat"
+              title="Clear messages"
               style={{
                 padding: '5px 7px', background: 'transparent', border: 'none',
                 borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
@@ -522,8 +751,8 @@ export function ChatPanel() {
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
               </svg>
             </button>
           )}
@@ -542,13 +771,33 @@ export function ChatPanel() {
             </svg>
           </button>
         </div>
+
+        {/* History dropdown */}
+        {histOpen && mongoActive && (
+          <HistoryDropdown
+            conversations={conversations}
+            activeId={convId}
+            onSelect={loadConversation}
+            onDelete={handleDeleteConv}
+            onNew={startNewChat}
+            onClose={() => setHistOpen(false)}
+          />
+        )}
       </div>
 
       {/* ── Messages ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Empty state */}
-        {msgs.length === 0 && (
+        {histLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: C.textGhost, fontSize: 12 }}>
+            <span className="fox-spin" style={{ marginRight: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            </span>
+            Loading conversation…
+          </div>
+        ) : msgs.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
             <div style={{ textAlign: 'center', paddingBottom: 4 }}>
               <p style={{ fontSize: 20, marginBottom: 4 }}>👋</p>
@@ -574,12 +823,10 @@ export function ChatPanel() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = C.accent
-                  e.currentTarget.style.background = C.card
                   e.currentTarget.style.color = C.text
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = C.border
-                  e.currentTarget.style.background = C.card
                   e.currentTarget.style.color = C.textMid
                 }}
               >
@@ -590,28 +837,24 @@ export function ChatPanel() {
               </button>
             ))}
           </div>
+        ) : (
+          msgs.map((msg, idx) => (
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              onFollowUp={send}
+              isLast={idx === lastAssistantIdx && !loading}
+            />
+          ))
         )}
 
-        {/* Message list */}
-        {msgs.map((msg, idx) => (
-          <MessageBubble
-            key={msg.id}
-            msg={msg}
-            onFollowUp={send}
-            isLast={idx === lastAssistantIdx && !loading}
-          />
-        ))}
-
-        {/* Typing indicator */}
         {loading && <TypingDots />}
-
         <div ref={bottomRef} />
       </div>
 
       {/* ── Composer ── */}
       <div style={{ flexShrink: 0, padding: '10px 14px 14px', borderTop: `1px solid ${C.border}` }}>
         <div ref={inputWrap} style={{ position: 'relative' }}>
-          {/* Slash launcher */}
           {slashOpen && (
             <SlashLauncher
               query={slashQuery}
@@ -620,16 +863,12 @@ export function ChatPanel() {
               onIndexChange={setSlashIdx}
             />
           )}
-
-          {/* Input row */}
           <div style={{
             display: 'flex', alignItems: 'flex-end', gap: 8,
             padding: '10px 12px 10px 14px', borderRadius: 12,
             background: C.card, border: `1px solid ${C.border2}`,
             transition: 'border-color .15s',
-          }}
-            onFocus={() => {/* border handled by textarea focus */}}
-          >
+          }}>
             <textarea
               ref={inputRef}
               rows={1}
@@ -642,7 +881,6 @@ export function ChatPanel() {
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
                 color: loading ? C.textGhost : C.text, fontSize: 13, lineHeight: 1.5,
                 resize: 'none', maxHeight: 100, fontFamily: C.sans,
-                ':placeholder': { color: C.textGhost },
               } as React.CSSProperties}
             />
             <button
@@ -664,11 +902,9 @@ export function ChatPanel() {
             </button>
           </div>
         </div>
-
-        {/* Footer hint */}
         <p style={{ fontSize: 10.5, color: C.textGhost, textAlign: 'center', marginTop: 8 }}>
           <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>Enter</kbd>
-          {' '}send · {' '}
+          {' '}send ·{' '}
           <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>Shift+Enter</kbd>
           {' '}new line
         </p>

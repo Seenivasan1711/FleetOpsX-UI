@@ -4,12 +4,14 @@ import { useCounterAnimation } from '../../../hooks/useCounterAnimation'
 type Color = 'accent' | 'danger' | 'success' | 'info'
 
 type StatCardProps = {
-  label:  string
-  value:  number
-  color:  Color
-  icon:   ReactNode
-  trend?: { up: boolean; val: string; label: string }
-  delay?: number
+  label:     string
+  value:     number
+  color:     Color
+  icon:      ReactNode
+  trend?:    { up: boolean; val: string; label: string }
+  delay?:    number
+  sparkline?: number[]
+  unit?:     string
 }
 
 const colorTokens: Record<Color, { text: string; bg: string; bar: string; glow: string }> = {
@@ -19,7 +21,44 @@ const colorTokens: Record<Color, { text: string; bg: string; bar: string; glow: 
   info:    { text: 'var(--c-purple)',  bg: 'var(--c-purple-dim)',  bar: 'var(--c-purple)',  glow: 'rgba(167,139,250,0.22)'},
 }
 
-export const StatCard = ({ label, value, color, icon, trend, delay = 0 }: StatCardProps) => {
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null
+  const w = 80, h = 28
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w
+    const y = h - ((v - min) / range) * (h - 4) - 2
+    return `${x},${y}`
+  })
+  const lastX = w.toString()
+  const lastVal = data[data.length - 1] ?? 0
+  const lastY = (h - ((lastVal - min) / range) * (h - 4) - 2).toString()
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={`sg-${color.replace(/[^a-z]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polyline
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.7"
+      />
+      <circle cx={lastX} cy={lastY} r="2.5" fill={color} opacity="0.9" />
+    </svg>
+  )
+}
+
+export const StatCard = ({ label, value, color, icon, trend, delay = 0, sparkline, unit }: StatCardProps) => {
   const animated = useCounterAnimation(value, 900, delay)
   const c        = colorTokens[color]
 
@@ -53,11 +92,18 @@ export const StatCard = ({ label, value, color, icon, trend, delay = 0 }: StatCa
           </div>
         </div>
 
-        <div
-          className="text-[40px] font-extrabold leading-none tracking-[-2px] font-mono"
-          style={{ color: c.text }}
-        >
-          {animated}
+        <div className="flex items-end justify-between gap-2">
+          <div
+            className="text-[40px] font-extrabold leading-none tracking-[-2px] font-mono"
+            style={{ color: c.text }}
+          >
+            {animated}{unit && <span className="text-[22px] ml-1 opacity-60">{unit}</span>}
+          </div>
+          {sparkline && sparkline.length >= 2 && (
+            <div style={{ opacity: 0.85, marginBottom: 2 }}>
+              <Sparkline data={sparkline} color={c.bar} />
+            </div>
+          )}
         </div>
 
         {trend && (
