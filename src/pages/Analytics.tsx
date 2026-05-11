@@ -10,7 +10,7 @@ import { AppShell }   from '../components/layout/AppShell'
 import { Button }     from '../components/ui/Button'
 import { Input }      from '../components/ui/Input'
 import { Skeleton }   from '../components/ui/Skeleton'
-import { fetchKpis, fetchDriverPerformance, triggerEtl } from '../api/analytics'
+import { fetchKpis, fetchDriverPerformance, fetchKpiTrend, triggerEtl } from '../api/analytics'
 import { QUERY_KEYS } from '../lib/utils/constants'
 
 const refEnd   = new Date().toISOString().split('T')[0] as string
@@ -19,19 +19,40 @@ const refStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().s
 // ─── KPI card ──────────────────────────────────────────────────────────────────
 
 type KpiCardProps = {
-  label:  string
-  value:  string | number
-  sub?:   string
-  accent: string
-  dim:    string
+  label:     string
+  value:     string | number
+  sub?:      string
+  accent:    string
+  dim:       string
+  sparkline?: number[]
 }
 
-const KpiCard = ({ label, value, sub, accent, dim }: KpiCardProps) => (
+function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null
+  const w = 72, h = 24
+  const min = Math.min(...data), max = Math.max(...data)
+  const range = max - min || 1
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w
+    const y = h - ((v - min) / range) * (h - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+    </svg>
+  )
+}
+
+const KpiCard = ({ label, value, sub, accent, dim, sparkline }: KpiCardProps) => (
   <div
-    className="rounded-2xl p-5 flex flex-col gap-2"
+    className="rounded-2xl p-5 flex flex-col gap-2 hover:-translate-y-[2px] transition-transform duration-150"
     style={{ background: dim, border: `1px solid ${accent}33` }}
   >
-    <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)]">{label}</p>
+    <div className="flex items-start justify-between">
+      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)]">{label}</p>
+      {sparkline && sparkline.length >= 2 && <MiniSparkline data={sparkline} color={accent} />}
+    </div>
     <p className="text-3xl font-extrabold" style={{ color: accent }}>{value}</p>
     {sub && <p className="text-xs text-[var(--c-muted)]">{sub}</p>}
   </div>
@@ -67,6 +88,12 @@ export default function Analytics() {
     queryFn:  () => fetchDriverPerformance(refStart),
   })
 
+  const { data: kpiTrend = [] } = useQuery({
+    queryKey: QUERY_KEYS.kpiTrend(30),
+    queryFn:  () => fetchKpiTrend(30),
+    staleTime: 5 * 60_000,
+  })
+
   const etlMutation = useMutation({
     mutationFn: () => triggerEtl(etlDate),
     onSuccess: (data) => {
@@ -80,6 +107,10 @@ export default function Analytics() {
   const onTimeRate   = kpis?.on_time_rate != null ? `${(kpis.on_time_rate * 100).toFixed(1)}%` : '—'
   const avgDelay     = kpis?.avg_delay_minutes != null ? `${kpis.avg_delay_minutes.toFixed(1)} min` : '—'
   const isGoodRate   = kpis?.on_time_rate != null && kpis.on_time_rate >= 0.85
+
+  const trendDeliveries = kpiTrend.map((p) => p.orders_count)
+  const trendOnTime     = kpiTrend.map((p) => p.on_time_pct ?? 0)
+  const trendDrivers    = kpiTrend.map((p) => p.active_drivers)
 
   return (
     <AppShell>
@@ -124,6 +155,7 @@ export default function Analytics() {
               value={kpis?.total_deliveries ?? 0}
               accent="var(--c-accent)"
               dim="var(--c-accent-dim)"
+              sparkline={trendDeliveries}
             />
             <KpiCard
               label="On-Time Rate"
@@ -131,6 +163,7 @@ export default function Analytics() {
               sub="target ≥ 85%"
               accent={isGoodRate ? 'var(--c-green)' : 'var(--c-orange)'}
               dim={isGoodRate ? 'var(--c-green-dim)' : 'rgba(251,191,36,0.08)'}
+              sparkline={trendOnTime}
             />
             <KpiCard
               label="Avg Delay"
@@ -140,10 +173,11 @@ export default function Analytics() {
               dim="rgba(251,191,36,0.08)"
             />
             <KpiCard
-              label="Zones Served"
-              value={kpis?.deliveries_by_zone.length ?? 0}
+              label="Active Drivers (avg)"
+              value={trendDrivers.length > 0 ? Math.round(trendDrivers.reduce((a, b) => a + b, 0) / trendDrivers.length) : (kpis?.deliveries_by_zone.length ?? 0)}
               accent="var(--c-purple)"
               dim="var(--c-purple-dim)"
+              sparkline={trendDrivers}
             />
           </div>
         )}
@@ -204,6 +238,48 @@ export default function Analytics() {
             </ResponsiveContainer>
           )}
         </div>
+
+        {/* Driver utilization bars */}
+        {driverPerf.length > 0 && (
+          <div
+            className="rounded-2xl p-5"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <p className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-5">
+              <Clock size={15} style={{ color: 'var(--c-accent)' }} />
+              Driver On-Time Rate · Utilization
+            </p>
+            <div className="flex flex-col gap-3">
+              {(driverPerf as { driver_id: string; driver_name: string; total_deliveries: number; on_time_rate?: number }[])
+                .slice(0, 8)
+                .sort((a, b) => (b.on_time_rate ?? 0) - (a.on_time_rate ?? 0))
+                .map((d, i) => {
+                  const pct  = d.on_time_rate != null ? d.on_time_rate * 100 : null
+                  const color = pct == null ? 'var(--c-muted)' : pct >= 85 ? 'var(--c-green)' : pct >= 60 ? 'var(--c-orange)' : 'var(--c-red)'
+                  return (
+                    <div key={d.driver_id} className="flex items-center gap-3">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                        style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
+                      >
+                        {i + 1}
+                      </div>
+                      <span className="text-[12px] font-medium text-[var(--c-text)] w-36 shrink-0 truncate">{d.driver_name}</span>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+                        <div
+                          className="h-2 rounded-full transition-all duration-700"
+                          style={{ width: `${pct ?? 0}%`, background: color, boxShadow: `0 0 6px ${color}60` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-bold font-mono w-10 text-right shrink-0" style={{ color }}>
+                        {pct != null ? `${pct.toFixed(0)}%` : '—'}
+                      </span>
+                    </div>
+                  )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Driver leaderboard */}
         <div
