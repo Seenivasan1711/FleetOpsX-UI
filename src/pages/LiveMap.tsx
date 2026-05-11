@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient }          from '@tanstack/react-query'
-import { MapPin, Route, Layers, PlayCircle, StopCircle, Wifi } from 'lucide-react'
+import { MapPin, Route, Layers, PlayCircle, StopCircle, Wifi, Zap, Users, ChevronRight, ChevronLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -158,6 +159,9 @@ export default function LiveMap() {
       ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       : '—'
 
+  const navigate = useNavigate()
+  const [showFeed, setShowFeed] = useState(true)
+
   return (
     <AppShell>
       <div className="flex flex-col h-full p-6 gap-4" style={{ animation: 'page-slide-in 0.22s ease' }}>
@@ -217,20 +221,18 @@ export default function LiveMap() {
                   Waiting for GPS pings…
                 </span>
               )}
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  onClick={() => setDemoMode(v => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: demoMode ? 'rgba(251,191,36,0.15)' : 'var(--c-elevated)',
-                    color:      demoMode ? 'var(--c-orange)'        : 'var(--c-muted)',
-                    border:     '1px solid var(--c-border)',
-                  }}
-                >
-                  {demoMode ? <StopCircle size={12} /> : <PlayCircle size={12} />}
-                  {demoMode ? 'Stop Demo' : 'Simulate GPS'}
-                </button>
-              </div>
+              <button
+                onClick={() => setDemoMode(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{
+                  background: demoMode ? 'rgba(251,191,36,0.15)' : 'var(--c-elevated)',
+                  color:      demoMode ? 'var(--c-orange)'        : 'var(--c-muted)',
+                  border:     '1px solid var(--c-border)',
+                }}
+              >
+                {demoMode ? <StopCircle size={12} /> : <PlayCircle size={12} />}
+                {demoMode ? 'Stop Demo' : 'Simulate GPS'}
+              </button>
             </>
           ) : (
             <>
@@ -252,71 +254,152 @@ export default function LiveMap() {
               )}
             </>
           )}
+
+          {/* Right-side actions */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Optimize Live */}
+            <button
+              onClick={() => navigate('/planning')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: 'var(--c-accent-dim)',
+                border:     '1px solid var(--c-accent)',
+                color:      'var(--c-accent)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--c-accent)'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--c-accent-dim)'; e.currentTarget.style.color = 'var(--c-accent)' }}
+            >
+              <Zap size={12} />
+              Optimize Live
+            </button>
+            {/* Driver feed toggle */}
+            <button
+              onClick={() => setShowFeed((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: showFeed ? 'var(--c-elevated)' : 'transparent',
+                border:     '1px solid var(--c-border)',
+                color:      showFeed ? 'var(--c-text)' : 'var(--c-muted)',
+              }}
+            >
+              <Users size={12} />
+              Feed
+              {showFeed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+            </button>
+          </div>
         </div>
 
-        {/* Map */}
-        <div
-          className="flex-1 min-h-0 rounded-2xl overflow-hidden relative"
-          style={{ height: 'calc(100vh - 220px)', border: '1px solid var(--c-border)' }}
-        >
-          {view === 'live' ? (
-            <FleetMap positions={activePositions} />
-          ) : (
-            <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-              />
-              {allPlanPoints.length > 0 && <AutoFitPlan points={allPlanPoints} />}
-              {routes.map((route) => (
-                <RoutePolyline
-                  key={`poly-${route.driverName}`}
-                  positions={route.stops.map((s) => [s.lat, s.lng])}
-                  color={route.color}
+        {/* Map + Driver Feed row */}
+        <div className="flex-1 min-h-0 flex gap-3" style={{ minHeight: 0 }}>
+
+          {/* Map */}
+          <div
+            className="flex-1 min-h-0 rounded-2xl overflow-hidden relative"
+            style={{ border: '1px solid var(--c-border)' }}
+          >
+            {view === 'live' ? (
+              <FleetMap positions={activePositions} />
+            ) : (
+              <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
                 />
-              ))}
-              {routes.flatMap((route) =>
-                route.stops.map((stop) => (
-                  <StopMarker
-                    key={`${route.driverName}-${stop.seq}`}
-                    lat={stop.lat}
-                    lng={stop.lng}
-                    sequence={stop.seq}
-                    driverName={route.driverName}
-                    address={stop.address}
+                {allPlanPoints.length > 0 && <AutoFitPlan points={allPlanPoints} />}
+                {routes.map((route) => (
+                  <RoutePolyline
+                    key={`poly-${route.driverName}`}
+                    positions={route.stops.map((s) => [s.lat, s.lng])}
                     color={route.color}
                   />
-                ))
-              )}
-              <MapLegend
-                entries={routes.map((r) => ({
-                  driverName: r.driverName,
-                  color:      r.color,
-                  stopCount:  r.stops.length,
-                }))}
-              />
-            </MapContainer>
-          )}
-        </div>
+                ))}
+                {routes.flatMap((route) =>
+                  route.stops.map((stop) => (
+                    <StopMarker
+                      key={`${route.driverName}-${stop.seq}`}
+                      lat={stop.lat}
+                      lng={stop.lng}
+                      sequence={stop.seq}
+                      driverName={route.driverName}
+                      address={stop.address}
+                      color={route.color}
+                    />
+                  ))
+                )}
+                <MapLegend
+                  entries={routes.map((r) => ({
+                    driverName: r.driverName,
+                    color:      r.color,
+                    stopCount:  r.stops.length,
+                  }))}
+                />
+              </MapContainer>
+            )}
+          </div>
 
-        {/* Driver chips (live only) */}
-        {view === 'live' && activePositions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {activePositions.map((p) => (
-              <div
-                key={p.driver_id}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-              >
-                <MapPin size={12} style={{ color: 'var(--c-accent)', flexShrink: 0 }} />
-                <span className="font-medium text-[var(--c-text)]">{p.driver_name}</span>
-                <span className="text-xs font-mono text-[var(--c-muted)]">
-                  {p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}
+          {/* Driver feed panel */}
+          {showFeed && (
+            <div
+              className="w-64 shrink-0 rounded-2xl flex flex-col overflow-hidden"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+            >
+              {/* Feed header */}
+              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'var(--c-accent-dim)' }}>
+                  <Users size={12} style={{ color: 'var(--c-accent)' }} />
+                </div>
+                <p className="text-xs font-semibold text-[var(--c-text)] flex-1">Driver Feed</p>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}>
+                  {activePositions.length} active
                 </span>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Driver list */}
+              <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
+                {activePositions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 py-8">
+                    <MapPin size={24} style={{ color: 'var(--c-subtle)' }} />
+                    <p className="text-xs text-[var(--c-muted)] text-center">No active drivers.<br />Start demo mode to simulate.</p>
+                  </div>
+                ) : activePositions.map((p) => (
+                  <div
+                    key={p.driver_id}
+                    className="flex items-start gap-2.5 p-3 rounded-xl transition-colors cursor-default"
+                    style={{ background: 'var(--c-elevated)' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-accent-dim)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-elevated)' }}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                      style={{ background: 'linear-gradient(135deg, var(--c-accent), var(--c-purple))', color: '#fff' }}
+                    >
+                      {p.driver_name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11.5px] font-semibold text-[var(--c-text)] truncate leading-tight">{p.driver_name.replace(' (demo)', '')}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--c-green)' }} />
+                        <span className="text-[10px] text-[var(--c-muted)]">
+                          {p.speed_kmh != null ? `${p.speed_kmh} km/h` : 'Stationary'}
+                        </span>
+                      </div>
+                      <p className="text-[9.5px] text-[var(--c-subtle)] font-mono mt-0.5">
+                        {p.latitude.toFixed(3)}, {p.longitude.toFixed(3)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Feed footer */}
+              <div className="px-4 py-2.5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <p className="text-[10px] text-[var(--c-subtle)] text-center">
+                  {demoMode ? 'Simulated · updates 3s' : 'Live · updates 10s'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   )
