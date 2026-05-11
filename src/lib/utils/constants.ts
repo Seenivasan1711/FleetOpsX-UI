@@ -38,7 +38,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'vehicles',  label: 'Vehicles',   path: '/vehicles',  icon: Truck,           section: 'main' },
   { id: 'depots',    label: 'Depots',     path: '/depots',    icon: Warehouse,       section: 'main' },
   // Phase P — PP-E4 (coming soon)
-  { id: 'chat',          label: 'Chat AI',            path: '/chat',         icon: MessageSquare, section: 'roadmap', comingSoon: true },
+  { id: 'chat',          label: 'Chat AI',            path: '/chat',         icon: MessageSquare, section: 'roadmap' },
   // Phase 4 — live
   { id: 'integrations',  label: 'Integrations',        path: '/integrations', icon: Plug,         section: 'roadmap' },
   // Phase 4 — live

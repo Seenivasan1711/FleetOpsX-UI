@@ -161,7 +161,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
             <NavItem
               key={item.id}
               item={item}
-              active={false}
+              active={!item.comingSoon && location.pathname === item.path}
               expanded={expanded}
             />
           ))}
