@@ -13,6 +13,7 @@ const PAGE_META: Record<string, { title: string; subtitle: (date: string) => str
   '/drivers':   { title: 'Drivers',           subtitle: () => 'Driver management' },
   '/vehicles':  { title: 'Vehicles',          subtitle: () => 'Fleet management' },
   '/depots':    { title: 'Depots',            subtitle: () => 'Depot locations' },
+  '/chat':      { title: 'Chat AI',            subtitle: () => 'Conversations with Fleet AI' },
   '/settings':  { title: 'Settings',          subtitle: () => 'Preferences & configuration' },
 }
 

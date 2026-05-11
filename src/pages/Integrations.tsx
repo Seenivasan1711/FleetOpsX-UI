@@ -111,31 +111,41 @@ export default function Integrations() {
         </div>
 
         {/* Webhook registry */}
-        <section>
-          <h2 className="text-sm font-semibold text-[var(--c-text)] mb-3">Webhook Registry</h2>
-          {wLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
-            </div>
-          ) : webhooks.length === 0 ? (
-            <EmptyState
-              title="No webhooks registered"
-              subtitle="Register a partner URL to receive real-time delivery events."
-            />
-          ) : (
-            <div className="space-y-2">
-              {webhooks.map((wh) => <WebhookRow key={wh.id} wh={wh}
-                onDelete={() => deleteMutation.mutate(wh.id)}
-                onTest={() => testMutation.mutate(wh.id)}
-                testing={testMutation.isPending}
-              />)}
-            </div>
-          )}
+        <section
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        >
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <h2 className="text-sm font-semibold text-[var(--c-text)]">Webhook Registry</h2>
+          </div>
+          <div className="p-5">
+            {wLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+              </div>
+            ) : webhooks.length === 0 ? (
+              <EmptyState
+                title="No webhooks registered"
+                subtitle="Register a partner URL to receive real-time delivery events."
+              />
+            ) : (
+              <div className="space-y-2">
+                {webhooks.map((wh) => <WebhookRow key={wh.id} wh={wh}
+                  onDelete={() => deleteMutation.mutate(wh.id)}
+                  onTest={() => testMutation.mutate(wh.id)}
+                  testing={testMutation.isPending}
+                />)}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Integration logs */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
+        <section
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        >
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
             <h2 className="text-sm font-semibold text-[var(--c-text)]">Integration Logs</h2>
             <button
               onClick={() => refetchLogs()}
@@ -145,18 +155,15 @@ export default function Integrations() {
               <RefreshCw size={14} />
             </button>
           </div>
-          {lLoading ? (
-            <Skeleton className="h-48 rounded-xl" />
-          ) : logs.length === 0 ? (
-            <EmptyState
-              title="No integration logs"
-              subtitle="Ingest orders via POST /api/v1/integrations/ingest to see logs here."
-            />
-          ) : (
-            <div
-              className="rounded-xl border border-[var(--c-border)] overflow-hidden"
-              style={{ background: 'var(--c-surface)' }}
-            >
+          <div className="p-5">
+            {lLoading ? (
+              <Skeleton className="h-48 rounded-xl" />
+            ) : logs.length === 0 ? (
+              <EmptyState
+                title="No integration logs"
+                subtitle="Ingest orders via POST /api/v1/integrations/ingest to see logs here."
+              />
+            ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--c-border)]" style={{ background: 'var(--c-elevated)' }}>
@@ -171,8 +178,8 @@ export default function Integrations() {
                   {logs.map((log, i) => <LogRow key={log.id} log={log} i={i} />)}
                 </tbody>
               </table>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       </div>
 
