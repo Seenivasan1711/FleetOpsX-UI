@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children, role }: Props) {
 
   if (!user) return <Navigate to="/login" replace />
 
-  if (role && user.role !== role && user.role !== 'admin') {
+  if (role && user.role !== role && user.role !== 'admin' && user.role !== 'superadmin') {
     return <Navigate to={user.role === 'driver' ? '/driver' : '/'} replace />
   }
 

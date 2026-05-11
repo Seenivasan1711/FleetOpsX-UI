@@ -120,15 +120,24 @@ export default function TenantSelector() {
         <div className="border-t border-[#2a2a2a] pt-8">
           <p className="text-xs text-[#6b7280] uppercase tracking-wider mb-4">Platform Management</p>
           <div className="flex flex-wrap gap-3">
-            <button className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors">
+            <button
+              onClick={() => navigate('/admin/ai-providers')}
+              className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors"
+            >
               <Zap className="w-4 h-4 text-[#7c3aed]" />
               AI Providers
             </button>
-            <button className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors">
+            <button
+              onClick={() => navigate('/select-tenant')}
+              className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors"
+            >
               <Users className="w-4 h-4 text-[#6b7280]" />
               All Tenants
             </button>
-            <button className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors">
+            <button
+              onClick={() => window.open((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1/health', '_blank')}
+              className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#7c3aed]/40 text-sm px-4 py-2.5 rounded-xl transition-colors"
+            >
               <Settings className="w-4 h-4 text-[#6b7280]" />
               System Health
             </button>
