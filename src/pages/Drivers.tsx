@@ -152,8 +152,35 @@ export default function Drivers() {
       ),
     },
     {
-      key: 'email', header: 'Email',
-      render: (d: Driver) => <span className="text-sm text-[var(--c-muted)]">{d.email ?? '—'}</span>,
+      key: 'score', header: 'Performance',
+      render: (d: Driver) => {
+        const score = d.performance_score
+        if (score == null) return <span className="text-xs text-[var(--c-muted)]">—</span>
+        const color = score >= 80 ? 'var(--c-green)' : score >= 60 ? 'var(--c-orange)' : 'var(--c-red)'
+        return (
+          <div className="flex items-center gap-2" style={{ minWidth: 80 }}>
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+              <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+            </div>
+            <span className="text-xs font-mono text-[var(--c-muted)] shrink-0">{score.toFixed(0)}%</span>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'utilization', header: 'Utilization',
+      render: (d: Driver) => {
+        const pct = d.utilization_pct
+        if (pct == null) return <span className="text-xs text-[var(--c-muted)]">—</span>
+        return (
+          <div className="flex items-center gap-2" style={{ minWidth: 80 }}>
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
+              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--c-accent)' }} />
+            </div>
+            <span className="text-xs font-mono text-[var(--c-muted)] shrink-0">{pct.toFixed(0)}%</span>
+          </div>
+        )
+      },
     },
     {
       key: 'availability', header: 'Status',

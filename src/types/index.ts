@@ -46,6 +46,8 @@ export interface Driver {
   home_depot_id?: string
   is_active: boolean
   availability_status?: DriverAvailability
+  utilization_pct?: number
+  performance_score?: number
 }
 
 export type VehicleStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'LOW_FUEL'
@@ -80,6 +82,7 @@ export interface Order {
   assigned_driver_id?: string
   weight_kg?: number
   quantity_units?: number
+  value?: number
   notes?: string
   created_at: string
 }

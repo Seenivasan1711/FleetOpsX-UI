@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Pencil, Plus, Package, Download, Upload } from 'lucide-react'
+import { Pencil, Plus, Package, Download, Upload, IndianRupee } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }       from '../components/layout/AppShell'
 import { Button }         from '../components/ui/Button'
@@ -29,11 +29,15 @@ const orderSchema = z.object({
   priority:           z.string().default('NORMAL'),
   weight_kg:          z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().positive().optional()),
   quantity_units:     z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().int().positive().optional()),
+  value:              z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().nonnegative().optional()),
   notes:              z.string().optional(),
   external_ref:       z.string().optional(),
 })
 
 type OrderFormData = z.infer<typeof orderSchema>
+
+const STATUS_TABS = ['ALL', 'PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED'] as const
+type StatusTab = typeof STATUS_TABS[number]
 
 const STATUS_OPTIONS  = ['', 'PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED']
 const PRIORITY_OPTIONS = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL']
@@ -58,6 +62,7 @@ export default function Orders() {
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [search,       setSearch]       = useState('')
+  const [statusTab,    setStatusTab]    = useState<StatusTab>('ALL')
   const [statusFilter, setStatusFilter] = useState('')
   const [dateFilter,   setDateFilter]   = useState(new Date().toISOString().split('T')[0])
   const [exporting,    setExporting]    = useState(false)
@@ -131,6 +136,7 @@ export default function Orders() {
       priority:           order.priority,
       weight_kg:          order.weight_kg,
       quantity_units:     order.quantity_units,
+      value:              order.value,
       notes:              order.notes ?? '',
       external_ref:       order.external_ref ?? '',
     } : { priority: 'NORMAL', scheduled_date: dateFilter })
@@ -141,7 +147,9 @@ export default function Orders() {
 
   const filtered = (orders as Order[]).filter((o) => {
     const q = search.toLowerCase()
-    return o.delivery_address.toLowerCase().includes(q) || (o.external_ref ?? '').toLowerCase().includes(q)
+    const matchSearch = o.delivery_address.toLowerCase().includes(q) || (o.external_ref ?? '').toLowerCase().includes(q)
+    const matchTab = statusTab === 'ALL' || o.status === statusTab
+    return matchSearch && matchTab
   })
 
   const columns = [
@@ -181,6 +189,17 @@ export default function Orders() {
         : <span className="text-xs text-[var(--c-muted)]">—</span>,
     },
     {
+      key: 'value', header: 'Value',
+      render: (o: Order) => o.value != null
+        ? (
+          <span className="text-xs font-mono text-[var(--c-text)] flex items-center gap-0.5">
+            <IndianRupee size={10} className="text-[var(--c-muted)]" />
+            {o.value.toLocaleString('en-IN')}
+          </span>
+        )
+        : <span className="text-xs text-[var(--c-muted)]">—</span>,
+    },
+    {
       key: 'priority', header: 'Priority',
       render: (o: Order) => <PriorityBadge priority={o.priority} />,
     },
@@ -208,24 +227,38 @@ export default function Orders() {
     <AppShell>
       <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
+        {/* Status tab strip */}
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {STATUS_TABS.map((tab) => {
+            const count = tab === 'ALL'
+              ? (orders as Order[]).length
+              : (orders as Order[]).filter((o) => o.status === tab).length
+            return (
+              <button
+                key={tab}
+                onClick={() => setStatusTab(tab)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0"
+                style={{
+                  background: statusTab === tab ? 'var(--c-accent-dim)' : 'var(--c-elevated)',
+                  color:      statusTab === tab ? 'var(--c-accent)'     : 'var(--c-muted)',
+                  border:     `1px solid ${statusTab === tab ? 'var(--c-accent)' : 'var(--c-border)'}`,
+                }}
+              >
+                {tab === 'ALL' ? 'All' : tab.replace('_', ' ')}
+                <span className="font-mono text-[10px]">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 -mt-2">
           <Input
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             className="w-auto"
           />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={selectCls}
-            style={{ width: 'auto' }}
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s || 'All Statuses'}</option>
-            ))}
-          </select>
           <SearchInput
             placeholder="Search address or ref…"
             value={search}
@@ -307,8 +340,16 @@ export default function Orders() {
                 {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </FormField>
+            <FormField label="Value (₹)">
+              <Input {...register('value')} type="number" step="0.01" placeholder="0.00" />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <FormField label="Weight (kg)">
               <Input {...register('weight_kg')} type="number" step="0.1" placeholder="5" />
+            </FormField>
+            <FormField label="Quantity">
+              <Input {...register('quantity_units')} type="number" step="1" placeholder="1" />
             </FormField>
           </div>
           <FormField label="Notes">

@@ -1,12 +1,14 @@
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Settings, ChevronRight, Lock, Truck } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronUp, Truck } from 'lucide-react'
 import { cn } from '../../lib/utils/cn'
 import { Tooltip } from '../ui/Tooltip'
 import { NAV_ITEMS, type NavItemDef } from '../../lib/utils/constants'
+import { useAuthStore } from '../../store/auth.store'
 
 type SidebarProps = {
-  expanded:      boolean
-  onToggle:      () => void
+  expanded:       boolean
+  onToggle:       () => void
   pendingOrders?: number
 }
 
@@ -15,16 +17,10 @@ type NavItemProps = {
   active:   boolean
   expanded: boolean
   badge?:   number | null
-  compact?: boolean
 }
 
-const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
+const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
   const Icon = item.icon
-  const iconSize  = compact ? 16 : 18
-  const textSize  = compact ? 'text-[12.5px]' : 'text-[13.5px]'
-  const rowPad    = compact
-    ? (expanded ? 'w-full px-3 py-[5px] gap-2' : 'w-10 h-8 justify-center')
-    : (expanded ? 'w-full px-3 py-2.5 gap-2.5'  : 'w-11 h-10 justify-center')
 
   const button = (
     <Link
@@ -32,7 +28,7 @@ const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
       onClick={item.comingSoon ? (e) => e.preventDefault() : undefined}
       className={cn(
         'relative flex items-center rounded-[10px] transition-all duration-150 group',
-        rowPad,
+        expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
         active
           ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
           : item.comingSoon
@@ -44,11 +40,11 @@ const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
         <span className="absolute left-0 top-[18%] w-[3px] h-[64%] bg-[var(--c-accent)] rounded-r-full" />
       )}
 
-      <Icon size={iconSize} className="shrink-0" />
+      <Icon size={18} className="shrink-0" />
 
       {expanded && (
         <>
-          <span className={cn('flex-1 text-left', textSize, active ? 'font-semibold' : 'font-medium')}>
+          <span className={cn('flex-1 text-left text-[13.5px]', active ? 'font-semibold' : 'font-medium')}>
             {item.label}
           </span>
           {item.comingSoon && (
@@ -69,10 +65,6 @@ const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
           {badge > 9 ? '9+' : badge}
         </span>
       )}
-
-      {!expanded && item.comingSoon && (
-        <Lock size={8} className="absolute top-1 right-1 text-[var(--c-muted)]" />
-      )}
     </Link>
   )
 
@@ -83,25 +75,37 @@ const NavItem = ({ item, active, expanded, badge, compact }: NavItemProps) => {
   )
 }
 
+const SectionLabel = ({ label, expanded }: { label: string; expanded: boolean }) =>
+  expanded ? (
+    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--c-muted)] opacity-50 px-3 pt-3 pb-1 select-none">
+      {label}
+    </p>
+  ) : (
+    <div className="my-1.5 w-5 h-px bg-[var(--c-border)] mx-auto" />
+  )
+
 export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => {
-  const location = useLocation()
+  const location  = useLocation()
+  const user      = useAuthStore((s) => s.user)
+  const [platformOpen, setPlatformOpen] = useState(false)
 
-  const mainItems    = NAV_ITEMS.filter((i) => i.section === 'main')
-  const roadmapItems = NAV_ITEMS.filter((i) => i.section === 'roadmap')
+  const ops      = NAV_ITEMS.filter((i) => i.section === 'operations')
+  const insights = NAV_ITEMS.filter((i) => i.section === 'insights')
+  const platform = NAV_ITEMS.filter((i) => i.section === 'platform')
 
-  const getBadge = (id: string) => {
-    if (id === 'orders') return pendingOrders ?? null
-    return null
-  }
+  const getBadge = (id: string) => id === 'orders' ? (pendingOrders ?? null) : null
+
+  const isPlatformActive = platform.some((i) => location.pathname === i.path)
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+    : '?'
 
   return (
-    // Wrapper owns the width transition. No overflow-hidden here so the
-    // toggle button (positioned at -right-[13px]) is never clipped.
     <div
       className="relative flex shrink-0 transition-[width] duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] h-full"
       style={{ width: expanded ? '224px' : '64px' }}
     >
-      {/* overflow-hidden on nav clips labels during the width transition */}
       <nav
         className="flex flex-col w-full h-full border-r border-[var(--c-border)] overflow-hidden"
         style={{ background: 'var(--c-sidebar-bg)' }}
@@ -125,7 +129,8 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
           {expanded && (
             <div className="overflow-hidden">
               <p className="text-[13px] font-bold leading-tight whitespace-nowrap tracking-tight">
-                <span className="text-[var(--c-text)]">Fleet</span><span style={{ color: 'var(--c-accent)' }}>OpsX</span>
+                <span className="text-[var(--c-text)]">Fleet</span>
+                <span style={{ color: 'var(--c-accent)' }}>OpsX</span>
               </p>
               <p className="text-[10px] text-[var(--c-muted)] whitespace-nowrap tracking-wide uppercase font-medium" style={{ letterSpacing: '0.05em' }}>
                 Dispatch Intel
@@ -135,64 +140,95 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
         </div>
 
         {/* Scrollable nav area */}
-        <div className={cn('flex-1 flex flex-col gap-0.5 px-2.5 py-3 overflow-y-auto', !expanded && 'items-center')}>
-          {mainItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              active={location.pathname === item.path}
-              expanded={expanded}
-              badge={getBadge(item.id)}
-            />
-          ))}
+        <div className={cn('flex-1 flex flex-col px-2.5 pb-3 overflow-y-auto', !expanded && 'items-center')}>
+          {/* OPERATIONS */}
+          <SectionLabel label="Operations" expanded={expanded} />
+          <div className="flex flex-col gap-0.5">
+            {ops.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                active={location.pathname === item.path}
+                expanded={expanded}
+                badge={getBadge(item.id)}
+              />
+            ))}
+          </div>
 
-          {/* Roadmap divider */}
+          {/* INSIGHTS */}
+          <SectionLabel label="Insights" expanded={expanded} />
+          <div className="flex flex-col gap-0.5">
+            {insights.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                active={location.pathname === item.path}
+                expanded={expanded}
+              />
+            ))}
+          </div>
+
+          {/* FLEET & PLATFORM (collapsible) */}
           {expanded ? (
-            <div className="mt-3 mb-1 px-1 flex items-center gap-2">
-              <div className="flex-1 h-px bg-[var(--c-border)]" />
-              <p className="text-[9.5px] font-bold uppercase tracking-widest text-[var(--c-muted)] opacity-50 shrink-0">Roadmap</p>
-              <div className="flex-1 h-px bg-[var(--c-border)]" />
-            </div>
-          ) : (
-            <div className="my-2 w-5 h-px bg-[var(--c-border)]" />
-          )}
-
-          {roadmapItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              active={!item.comingSoon && location.pathname === item.path}
-              expanded={expanded}
-            />
-          ))}
-        </div>
-
-        {/* Bottom actions */}
-        <div
-          className={cn(
-            'flex flex-col gap-1 border-t border-[var(--c-border)] pt-2.5 mx-2.5 pb-2.5 shrink-0',
-            !expanded && 'items-center'
-          )}
-        >
-          <Tooltip label="Settings" side="right">
-            <Link
-              to="/settings"
+            <button
+              onClick={() => setPlatformOpen((v) => !v)}
               className={cn(
-                'flex items-center rounded-[10px] transition-all duration-150',
-                expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
-                location.pathname === '/settings'
-                  ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
-                  : 'text-[var(--c-muted)] hover:bg-[var(--c-elevated)] hover:text-[var(--c-text)]'
+                'flex items-center gap-2 mt-3 mb-1 px-3 py-1 rounded-lg transition-colors w-full text-left',
+                isPlatformActive ? 'text-[var(--c-accent)]' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'
               )}
             >
-              <Settings size={18} className="shrink-0" />
-              {expanded && <span className="text-[13.5px] font-medium">Settings</span>}
-            </Link>
-          </Tooltip>
+              <span className="text-[10px] font-bold uppercase tracking-[0.08em] opacity-60 flex-1 select-none">
+                Fleet &amp; Platform
+              </span>
+              {platformOpen
+                ? <ChevronUp size={12} className="opacity-50" />
+                : <ChevronDown size={12} className="opacity-50" />}
+            </button>
+          ) : (
+            <div className="my-1.5 w-5 h-px bg-[var(--c-border)] mx-auto" />
+          )}
+
+          {(platformOpen || !expanded) && (
+            <div className="flex flex-col gap-0.5">
+              {platform.map((item) => (
+                <NavItem
+                  key={item.id}
+                  item={item}
+                  active={location.pathname === item.path}
+                  expanded={expanded}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* User profile footer */}
+        <div
+          className={cn(
+            'flex items-center gap-2.5 border-t border-[var(--c-border)] px-3 py-3 shrink-0 overflow-hidden',
+            !expanded && 'justify-center'
+          )}
+        >
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+            style={{ background: 'linear-gradient(135deg, var(--c-accent), #6d28d9)' }}
+          >
+            {initials}
+          </div>
+          {expanded && user && (
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold text-[var(--c-text)] truncate leading-tight">
+                {user.full_name}
+              </p>
+              <p className="text-[10px] text-[var(--c-muted)] truncate leading-tight">
+                {user.role}
+              </p>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* Toggle button lives outside <nav> so overflow-hidden cannot clip it */}
+      {/* Toggle button */}
       <button
         onClick={onToggle}
         className="absolute top-1/2 -right-[13px] -translate-y-1/2 w-[26px] h-[26px] rounded-full flex items-center justify-center text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] transition-all duration-150 z-20"
