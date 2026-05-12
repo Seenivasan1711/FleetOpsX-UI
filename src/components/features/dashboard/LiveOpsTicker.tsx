@@ -8,16 +8,38 @@ type TickerItem = {
   label: string
 }
 
-const TYPE_COLORS = {
-  critical: { text: 'var(--c-red)',    bg: 'rgba(248,113,113,0.12)',  dot: '#f87171' },
-  warning:  { text: 'var(--c-orange)', bg: 'rgba(245,158,11,0.12)',   dot: '#f59e0b' },
-  info:     { text: 'var(--c-accent)', bg: 'rgba(139,92,246,0.12)',   dot: '#8b5cf6' },
-  success:  { text: 'var(--c-green)',  bg: 'rgba(52,211,153,0.12)',   dot: '#34d399' },
-}
-
 type Props = {
   orders:  Order[]
   drivers: Driver[]
+}
+
+function ItemIcon({ type }: { type: TickerItem['type'] }) {
+  if (type === 'info') return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  )
+  if (type === 'warning') return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  )
+  if (type === 'success') return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  )
+  return (
+    <span className="w-[5px] h-[5px] rounded-full shrink-0 inline-block" style={{ background: '#f87171' }} />
+  )
+}
+
+const TYPE_COLORS: Record<TickerItem['type'], string> = {
+  critical: '#f87171',
+  warning:  '#f59e0b',
+  info:     '#a78bfa',
+  success:  '#34d399',
 }
 
 export function LiveOpsTicker({ orders, drivers }: Props) {
@@ -27,19 +49,22 @@ export function LiveOpsTicker({ orders, drivers }: Props) {
     const critical  = orders.filter((o) => o.priority === 'CRITICAL' && o.status === 'PENDING')
     const pending   = orders.filter((o) => o.status === 'PENDING')
     const delivered = orders.filter((o) => o.status === 'DELIVERED')
+    const assigned  = orders.filter((o) => o.status === 'ASSIGNED')
     const available = drivers.filter((d) => d.is_active && d.availability_status === 'AVAILABLE')
     const onBreak   = drivers.filter((d) => d.availability_status === 'ON_BREAK')
 
     if (critical.length > 0)
-      result.push({ id: 'crit', type: 'critical', label: `${critical.length} CRITICAL order${critical.length > 1 ? 's' : ''} awaiting dispatch` })
+      result.push({ id: 'crit', type: 'critical', label: `${critical.length} CRITICAL order${critical.length > 1 ? 's' : ''} need immediate dispatch` })
+    if (assigned.length > 0)
+      result.push({ id: 'ai', type: 'info', label: `AI plan active for ${assigned.length} routes` })
     if (pending.length > 0)
-      result.push({ id: 'pend', type: 'warning', label: `${pending.length} unassigned order${pending.length > 1 ? 's' : ''} need routing` })
+      result.push({ id: 'pend', type: 'warning', label: `SLA risk on ${pending.length} unassigned order${pending.length > 1 ? 's' : ''}` })
     if (available.length > 0)
       result.push({ id: 'avail', type: 'success', label: `${available.length} driver${available.length > 1 ? 's' : ''} available for assignment` })
     if (delivered.length > 0)
-      result.push({ id: 'del', type: 'info', label: `${delivered.length} deliveries completed today` })
+      result.push({ id: 'del', type: 'success', label: `${delivered.length} deliveries completed on time today` })
     if (onBreak.length > 0)
-      result.push({ id: 'brk', type: 'info', label: `${onBreak.length} driver${onBreak.length > 1 ? 's' : ''} currently on break` })
+      result.push({ id: 'brk', type: 'info', label: `${onBreak.length} driver${onBreak.length > 1 ? 's' : ''} on break · back soon` })
 
     if (result.length === 0)
       result.push({ id: 'ok', type: 'success', label: 'All systems operational — fleet running smoothly' })
@@ -47,11 +72,8 @@ export function LiveOpsTicker({ orders, drivers }: Props) {
     return result
   }, [orders, drivers])
 
-  // Duplicate for seamless loop
-  const doubled = [...items, ...items]
-
-  const totalItems = items.length
-  const duration   = Math.max(totalItems * 8, 20)
+  const doubled  = [...items, ...items]
+  const duration = Math.max(items.length * 10, 24)
 
   return (
     <div
@@ -59,19 +81,21 @@ export function LiveOpsTicker({ orders, drivers }: Props) {
       style={{
         background: 'var(--c-surface)',
         border:     '1px solid var(--c-border)',
-        height:     36,
+        height:     40,
       }}
     >
-      {/* "LIVE" badge */}
+      {/* "LIVE OPS" badge */}
       <div
         className="flex items-center gap-2 px-3 shrink-0 h-full"
         style={{ borderRight: '1px solid var(--c-border)', background: 'var(--c-elevated)' }}
       >
         <span
-          className="w-[6px] h-[6px] rounded-full notif-pulse relative"
-          style={{ background: 'var(--c-red)', flexShrink: 0 }}
+          className="w-[6px] h-[6px] rounded-full notif-pulse relative shrink-0"
+          style={{ background: '#f87171' }}
         />
-        <span className="text-[10px] font-bold tracking-[1px] text-[var(--c-muted)] uppercase">Live</span>
+        <span className="text-[10px] font-bold tracking-[1.5px] uppercase whitespace-nowrap" style={{ color: 'var(--c-muted)' }}>
+          Live Ops
+        </span>
       </div>
 
       {/* Scrolling strip */}
@@ -83,22 +107,16 @@ export function LiveOpsTicker({ orders, drivers }: Props) {
             width: 'max-content',
           }}
         >
-          {doubled.map((item, idx) => {
-            const c = TYPE_COLORS[item.type]
-            return (
-              <span
-                key={`${item.id}-${idx}`}
-                className="inline-flex items-center gap-2 px-4 h-full"
-                style={{ borderRight: '1px solid var(--c-border)' }}
-              >
-                <span
-                  className="w-[5px] h-[5px] rounded-full shrink-0"
-                  style={{ background: c.dot }}
-                />
-                <span className="text-[12px]" style={{ color: c.text }}>{item.label}</span>
-              </span>
-            )
-          })}
+          {doubled.map((item, idx) => (
+            <span
+              key={`${item.id}-${idx}`}
+              className="inline-flex items-center gap-2 px-5 h-full text-[12px]"
+              style={{ borderRight: '1px solid var(--c-border)', color: TYPE_COLORS[item.type] }}
+            >
+              <ItemIcon type={item.type} />
+              {item.label}
+            </span>
+          ))}
         </div>
       </div>
     </div>

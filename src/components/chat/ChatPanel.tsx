@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUiStore } from '../../store/ui.store'
+import { useAuthStore } from '../../store/auth.store'
 import client from '../../api/client'
 import {
   fetchConversations,
@@ -82,10 +83,10 @@ const SLASH_COMMANDS = [
 ]
 
 const STARTERS = [
-  'How many unassigned orders today?',
-  'Which drivers are available right now?',
-  'Show me at-risk deliveries',
-  "What's today's dispatch plan status?",
+  'Which deliveries are at risk right now?',
+  "Show me today's driver utilization.",
+  'How much time did AI planning save today?',
+  "What's the on-time rate this week?",
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -148,15 +149,17 @@ function apiMsgToMsg(m: ChatMessage): Msg {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function AIAvatar() {
+function AIAvatar({ size = 26 }: { size?: number }) {
   return (
     <div style={{
-      width: 26, height: 26, borderRadius: 7, flexShrink: 0, marginTop: 1,
-      background: 'linear-gradient(140deg, #8b5cf6, #6d28d9)',
+      width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, marginTop: 1,
+      background: 'linear-gradient(140deg, #7c3aed, #4f46e5)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/>
+        <path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"/>
+        <path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"/>
       </svg>
     </div>
   )
@@ -165,7 +168,7 @@ function AIAvatar() {
 function TypingDots() {
   return (
     <div className="fox-msg" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-      <AIAvatar />
+      <AIAvatar size={26} />
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: '10px 14px', background: C.card,
@@ -474,6 +477,8 @@ function HistoryDropdown({
 
 export function ChatPanel() {
   const { chatOpen, toggleChat } = useUiStore()
+  const user = useAuthStore((s) => s.user)
+  const firstName = user?.full_name?.split(' ')[0] ?? 'there'
   const [msgs,         setMsgs]        = useState<Msg[]>([])
   const [input,        setInput]       = useState('')
   const [loading,      setLoading]     = useState(false)
@@ -669,16 +674,7 @@ export function ChatPanel() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-            background: 'linear-gradient(140deg, #8b5cf6, #6d28d9)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(139,92,246,0.4)',
-          }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
+          <AIAvatar size={36} />
 
           {/* Title — clickable to open history when MongoDB active */}
           <div
@@ -690,11 +686,11 @@ export function ChatPanel() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <p style={{
-                fontSize: 13.5, fontWeight: 700, color: C.text, lineHeight: 1.2,
+                fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 maxWidth: mongoActive ? 140 : 180,
               }}>
-                {convTitle || 'Fleet AI'}
+                FleetOpsX AI
               </p>
               {mongoActive && (
                 <svg
@@ -713,7 +709,7 @@ export function ChatPanel() {
                 boxShadow: loading ? `0 0 6px ${C.amber}` : `0 0 6px ${C.greenGlow}`,
               }} />
               <span style={{ fontSize: 10.5, color: C.textMute }}>
-                {loading ? 'Thinking…' : mongoActive ? 'History · Claude-powered' : 'Ready · Claude-powered'}
+                {loading ? 'Thinking…' : 'Operations assistant · live context'}
               </span>
             </div>
           </div>
@@ -797,17 +793,19 @@ export function ChatPanel() {
           </div>
         ) : msgs.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
-            <div style={{ textAlign: 'center', paddingBottom: 4 }}>
-              <p style={{ fontSize: 20, marginBottom: 4 }}>👋</p>
-              <p style={{ fontSize: 13.5, fontWeight: 600, color: C.textMid }}>How can I help?</p>
-              <p style={{ fontSize: 11.5, color: C.textMute, marginTop: 3 }}>
-                Ask me anything about your fleet · type{' '}
-                <kbd style={{
-                  padding: '1px 5px', background: C.card, border: `1px solid ${C.border2}`,
-                  borderRadius: 4, fontSize: 10, color: C.accent, fontFamily: C.mono,
-                }}>/</kbd>
-                {' '}for commands
-              </p>
+            <div style={{ paddingBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                <AIAvatar size={32} />
+                <div style={{
+                  background: C.card, border: `1px solid ${C.border}`,
+                  borderRadius: '12px 12px 12px 4px', padding: '12px 14px',
+                  flex: 1,
+                }}>
+                  <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
+                    Hi {firstName} — ready to help with today's ops. I can answer questions on orders, drivers, routes, and SLA risks. What's on your mind?
+                  </p>
+                </div>
+              </div>
             </div>
             {STARTERS.map((s) => (
               <button
@@ -863,8 +861,9 @@ export function ChatPanel() {
           )}
           <div style={{
             display: 'flex', alignItems: 'flex-end', gap: 8,
-            padding: '10px 12px 10px 14px', borderRadius: 12,
-            background: C.card, border: `1px solid ${C.border2}`,
+            padding: '10px 12px 10px 14px', borderRadius: 14,
+            background: C.card,
+            border: `1.5px solid ${C.accent}`,
             transition: 'border-color .15s',
           }}>
             <textarea
@@ -874,38 +873,58 @@ export function ChatPanel() {
               onChange={(e) => handleInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={loading}
-              placeholder={loading ? 'Thinking…' : 'Ask about your fleet… or type /'}
+              placeholder={loading ? 'Thinking…' : 'Ask anything about your fleet…'}
               style={{
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
                 color: loading ? C.textGhost : C.text, fontSize: 13, lineHeight: 1.5,
                 resize: 'none', maxHeight: 100, fontFamily: C.sans,
               } as React.CSSProperties}
             />
+            {/* Mic icon */}
             <button
-              onClick={() => send(input)}
-              disabled={!input.trim() || loading}
               style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: !input.trim() || loading ? C.card : C.accent,
-                border: 'none', cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
-                transition: 'background .15s',
+                padding: '4px', background: 'transparent', border: 'none',
+                color: C.textGhost, cursor: 'pointer', borderRadius: 6,
+                display: 'flex', alignItems: 'center', flexShrink: 0,
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = C.textDim }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = C.textGhost }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity: !input.trim() || loading ? 0.3 : 1, transform: 'rotate(90deg)' }}
-              >
-                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
             </button>
           </div>
         </div>
-        <p style={{ fontSize: 10.5, color: C.textGhost, textAlign: 'center', marginTop: 8 }}>
-          <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>Enter</kbd>
-          {' '}send ·{' '}
-          <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>Shift+Enter</kbd>
-          {' '}new line
-        </p>
+
+        {/* Send button + footer */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 }}>
+          <p style={{ fontSize: 10, color: C.textGhost, flex: 1, lineHeight: 1.4 }}>
+            FleetOpsX AI uses live ops data. Always cites its source. Press{' '}
+            <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>⌘K</kbd>
+            {' '}for command palette.
+          </p>
+          <button
+            onClick={() => send(input)}
+            disabled={!input.trim() || loading}
+            style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: !input.trim() || loading ? C.card : C.accent,
+              border: `1px solid ${!input.trim() || loading ? C.border : C.accent}`,
+              cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
+              transition: 'background .15s',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+              style={{ opacity: !input.trim() || loading ? 0.3 : 1, transform: 'rotate(90deg)' }}
+            >
+              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   )

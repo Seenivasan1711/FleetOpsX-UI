@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, ChevronDown, ChevronUp, Truck } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '../../lib/utils/cn'
 import { Tooltip } from '../ui/Tooltip'
 import { NAV_ITEMS, type NavItemDef } from '../../lib/utils/constants'
@@ -13,13 +13,15 @@ type SidebarProps = {
 }
 
 type NavItemProps = {
-  item:     NavItemDef
-  active:   boolean
-  expanded: boolean
-  badge?:   number | null
+  item:       NavItemDef
+  active:     boolean
+  expanded:   boolean
+  badge?:     number | null
+  extraBadge?: React.ReactNode
+  dot?:       string
 }
 
-const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
+const NavItem = ({ item, active, expanded, badge, extraBadge, dot }: NavItemProps) => {
   const Icon = item.icon
 
   const button = (
@@ -30,21 +32,18 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
         'relative flex items-center rounded-[10px] transition-all duration-150 group',
         expanded ? 'w-full px-3 py-2.5 gap-2.5' : 'w-11 h-10 justify-center',
         active
-          ? 'bg-[var(--c-accent-dim)] text-[var(--c-accent)]'
+          ? 'text-white'
           : item.comingSoon
             ? 'text-[var(--c-muted)] opacity-40 cursor-not-allowed'
             : 'text-[var(--c-muted)] hover:bg-[var(--c-elevated)] hover:text-[var(--c-text)]'
       )}
+      style={active ? { background: 'var(--c-accent)' } : undefined}
     >
-      {active && (
-        <span className="absolute left-0 top-[18%] w-[3px] h-[64%] bg-[var(--c-accent)] rounded-r-full" />
-      )}
-
-      <Icon size={18} className="shrink-0" />
+      <Icon size={17} className="shrink-0" />
 
       {expanded && (
         <>
-          <span className={cn('flex-1 text-left text-[13.5px]', active ? 'font-semibold' : 'font-medium')}>
+          <span className={cn('flex-1 text-left text-[13px]', active ? 'font-semibold' : 'font-medium')}>
             {item.label}
           </span>
           {item.comingSoon && (
@@ -52,15 +51,22 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
               SOON
             </span>
           )}
+          {extraBadge}
           {!item.comingSoon && badge != null && badge > 0 && (
-            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full bg-[var(--c-accent)] text-white">
+            <span
+              className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full"
+              style={{ background: active ? 'rgba(255,255,255,0.25)' : 'var(--c-elevated)', color: active ? '#fff' : 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            >
               {badge > 99 ? '99+' : badge}
             </span>
+          )}
+          {dot && (
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} />
           )}
         </>
       )}
 
-      {!expanded && !item.comingSoon && badge != null && badge > 0 && (
+      {!expanded && badge != null && badge > 0 && (
         <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[var(--c-accent)] text-white text-[8px] font-bold flex items-center justify-center">
           {badge > 9 ? '9+' : badge}
         </span>
@@ -77,16 +83,17 @@ const NavItem = ({ item, active, expanded, badge }: NavItemProps) => {
 
 const SectionLabel = ({ label, expanded }: { label: string; expanded: boolean }) =>
   expanded ? (
-    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--c-muted)] opacity-50 px-3 pt-3 pb-1 select-none">
+    <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-[var(--c-muted)] opacity-40 px-3 pt-4 pb-1.5 select-none">
       {label}
     </p>
   ) : (
-    <div className="my-1.5 w-5 h-px bg-[var(--c-border)] mx-auto" />
+    <div className="my-2 w-5 h-px bg-[var(--c-border)] mx-auto" />
   )
 
 export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => {
   const location  = useLocation()
   const user      = useAuthStore((s) => s.user)
+  const { effectiveTenantId } = useAuthStore()
   const [platformOpen, setPlatformOpen] = useState(false)
 
   const ops      = NAV_ITEMS.filter((i) => i.section === 'operations')
@@ -95,11 +102,28 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
 
   const getBadge = (id: string) => id === 'orders' ? (pendingOrders ?? null) : null
 
+  const getExtraBadge = (id: string) => {
+    if (id === 'planning') return (
+      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)', border: '1px solid var(--c-accent)' }}>
+        AI
+      </span>
+    )
+    return undefined
+  }
+
+  const getDot = (id: string) => {
+    if (id === 'map') return 'var(--c-green)'
+    return undefined
+  }
+
   const isPlatformActive = platform.some((i) => location.pathname === i.path)
 
   const initials = user?.full_name
     ? user.full_name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
     : '?'
+
+  const tenantName = user?.tenants?.find((t) => t.id === effectiveTenantId)?.name
+  const subtitle = tenantName ?? (user?.role === 'superadmin' ? 'Platform Admin' : 'Dispatch Intel')
 
   return (
     <div
@@ -120,11 +144,14 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
           <div
             className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 text-white"
             style={{
-              background: 'linear-gradient(135deg, var(--c-accent), #6d28d9)',
-              boxShadow:  '0 2px 10px var(--c-accent-glow)',
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              boxShadow:  '0 2px 10px rgba(124,58,237,0.4)',
             }}
           >
-            <Truck size={15} />
+            {/* Triangle / arrow icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2L3 20h18L12 2z" />
+            </svg>
           </div>
           {expanded && (
             <div className="overflow-hidden">
@@ -132,8 +159,8 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
                 <span className="text-[var(--c-text)]">Fleet</span>
                 <span style={{ color: 'var(--c-accent)' }}>OpsX</span>
               </p>
-              <p className="text-[10px] text-[var(--c-muted)] whitespace-nowrap tracking-wide uppercase font-medium" style={{ letterSpacing: '0.05em' }}>
-                Dispatch Intel
+              <p className="text-[10px] text-[var(--c-muted)] whitespace-nowrap truncate max-w-[140px]" style={{ letterSpacing: '0.02em' }}>
+                {subtitle}
               </p>
             </div>
           )}
@@ -151,6 +178,8 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
                 active={location.pathname === item.path}
                 expanded={expanded}
                 badge={getBadge(item.id)}
+                extraBadge={getExtraBadge(item.id)}
+                dot={getDot(item.id)}
               />
             ))}
           </div>
@@ -177,7 +206,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
                 isPlatformActive ? 'text-[var(--c-accent)]' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'
               )}
             >
-              <span className="text-[10px] font-bold uppercase tracking-[0.08em] opacity-60 flex-1 select-none">
+              <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] opacity-40 flex-1 select-none">
                 Fleet &amp; Platform
               </span>
               {platformOpen
@@ -185,7 +214,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
                 : <ChevronDown size={12} className="opacity-50" />}
             </button>
           ) : (
-            <div className="my-1.5 w-5 h-px bg-[var(--c-border)] mx-auto" />
+            <div className="my-2 w-5 h-px bg-[var(--c-border)] mx-auto" />
           )}
 
           {(platformOpen || !expanded) && (
@@ -211,7 +240,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
-            style={{ background: 'linear-gradient(135deg, var(--c-accent), #6d28d9)' }}
+            style={{ background: 'linear-gradient(135deg, var(--c-accent), #4f46e5)' }}
           >
             {initials}
           </div>
@@ -220,10 +249,15 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders }: SidebarProps) => 
               <p className="text-[12px] font-semibold text-[var(--c-text)] truncate leading-tight">
                 {user.full_name}
               </p>
-              <p className="text-[10px] text-[var(--c-muted)] truncate leading-tight">
+              <p className="text-[10px] text-[var(--c-muted)] truncate leading-tight capitalize">
                 {user.role}
               </p>
             </div>
+          )}
+          {expanded && (
+            <button className="shrink-0 text-[var(--c-muted)] hover:text-[var(--c-text)] transition-colors">
+              <ChevronRight size={13} />
+            </button>
           )}
         </div>
       </nav>

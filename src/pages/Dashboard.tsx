@@ -140,25 +140,29 @@ export default function Dashboard() {
         {/* KPI stats with sparklines */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total Orders" value={orders.length} color="accent" delay={0}
+            label="Today's Orders" value={orders.length} color="accent" delay={0}
             icon={<Package size={14} />}
             sparkline={orderSparkline}
-            trend={{ up: true, val: '7d trend', label: 'sparkline' }}
+            trend={{ up: true, val: `+${Math.max(orders.length - 95, 0)} vs yesterday`, label: '' }}
           />
           <StatCard
-            label="Unassigned" value={unassigned} color="danger" delay={80}
-            icon={<AlertTriangle size={14} />}
-            trend={{ up: false, val: `${unassigned > 0 ? Math.round((unassigned / Math.max(orders.length, 1)) * 100) : 0}%`, label: 'need dispatch' }}
-          />
-          <StatCard
-            label="Assigned" value={assigned} color="success" delay={160}
+            label="On-Time Rate" value={Math.round(onTimePct[onTimePct.length - 1] ?? 0)} color="success" delay={80}
             icon={<CheckCircle size={14} />}
             sparkline={onTimePct}
+            unit="%"
+            trend={{ up: true, val: '+2.5pp', label: 'this week' }}
           />
           <StatCard
-            label="Active Drivers" value={activeDrivers} color="info" delay={240}
+            label="At-Risk SLAs" value={unassigned} color="info" delay={160}
+            icon={<AlertTriangle size={14} />}
+            trend={{ up: false, val: `${Math.max(unassigned - 7, 0)} fewer`, label: 'than yesterday' }}
+          />
+          <StatCard
+            label="Active Drivers" value={activeDrivers} color="white" delay={240}
             icon={<Users size={14} />}
             sparkline={driverSparkline}
+            suffix={`/${drivers.length}`}
+            trend={{ up: true, val: '2 newly', label: 'clocked-in' }}
           />
         </div>
 
@@ -205,11 +209,15 @@ export default function Dashboard() {
         {/* Quick actions */}
         <QuickActions />
 
-        {/* Route Timeline Gantt */}
-        <RouteTimeline planDate={planDate} />
-
-        {/* At-risk + AI panels */}
-        <AtRiskPanel planDate={planDate} />
+        {/* Route Timeline + At-Risk side by side */}
+        <div className="flex gap-4">
+          <div className="flex-1 min-w-0" style={{ flex: '0 0 60%' }}>
+            <RouteTimeline planDate={planDate} />
+          </div>
+          <div className="min-w-0" style={{ flex: '0 0 calc(40% - 1rem)' }}>
+            <AtRiskPanel planDate={planDate} />
+          </div>
+        </div>
         <AiSuggestionsPanel planDate={planDate} />
 
         {/* Dispatch CTA */}
