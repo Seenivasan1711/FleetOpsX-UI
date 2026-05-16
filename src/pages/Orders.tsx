@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowUpDown, Calendar, Download, FileSpreadsheet, Plus, SlidersHorizontal, Upload, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Calendar, Download, FileSpreadsheet, Plus, SlidersHorizontal, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }           from '../components/layout/AppShell'
 import { Button }             from '../components/ui/Button'
@@ -317,7 +317,7 @@ export default function Orders() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c-text)')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-muted)')}
           >
-            <ArrowUpDown size={14} />
+            {sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
             <span className="capitalize">{sortBy}</span>
           </button>
 

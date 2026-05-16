@@ -1,7 +1,8 @@
+import { useState }            from 'react'
 import { useQuery }            from '@tanstack/react-query'
 import toast                   from 'react-hot-toast'
 import { fetchAtRiskStops }    from '../../../api/sla'
-import { fetchSuggestions }    from '../../../api/agentSuggestions'
+import { fetchSuggestions, respondToSuggestion } from '../../../api/agentSuggestions'
 import { useMockData }         from '../../../mock/config'
 import { MOCK_AT_RISK }        from '../../../mock/data'
 import type { MockAtRiskItem } from '../../../mock/data'
@@ -14,9 +15,29 @@ function SpinIcon() {
   )
 }
 
+type AtRiskDisplayItem = MockAtRiskItem & { suggestionId?: string }
+
+function demoToast(item: AtRiskDisplayItem) {
+  const s = item.suggestion
+  if (/reassign|reroute/i.test(s)) {
+    const nameMatch = s.match(/(?:Reassign|Reroute) to ([^(]+)/i)
+    const name = (nameMatch?.[1] ?? '').trim() || 'nearest driver'
+    toast.success(`Rerouting ${item.id} to ${name}… ETA adjusted`)
+  } else if (/swap/i.test(s)) {
+    const ordMatch = s.match(/[Ss]wap with (\S+)/i)
+    const ord = (ordMatch?.[1] ?? '').replace(/[,.]/, '') || 'nearby stop'
+    toast.success(`Swapped ${item.id} with ${ord}… Route rebalanced`)
+  } else if (/skip/i.test(s)) {
+    toast.success(`Stop ${item.id} skipped — driver notified`)
+  } else {
+    toast.success(`Acting on AI suggestion for ${item.id}… Done`)
+  }
+}
+
 export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
   const isMock = useMockData()
   const date = planDate ?? new Date().toISOString().slice(0, 10)
+  const [actingOn, setActingOn] = useState<string | null>(null)
 
   const { data: atRiskStops } = useQuery({
     queryKey: ['at-risk-stops', date],
@@ -33,21 +54,42 @@ export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
   })
 
   // Map API data → UI shape, or fall back to mock
-  const items: MockAtRiskItem[] = isMock
+  const items: AtRiskDisplayItem[] = isMock
     ? MOCK_AT_RISK
     : (atRiskStops ?? []).map(stop => {
         const match = (suggestions ?? []).find(
           s => (s.context as Record<string, unknown>)?.order_id === stop.order_id
         )
         return {
-          id:         stop.order_id,
-          address:    stop.delivery_address,
-          minsLate:   stop.overdue_by_minutes,
-          reason:     stop.reason
+          id:           stop.order_id,
+          address:      stop.delivery_address,
+          minsLate:     stop.overdue_by_minutes,
+          reason:       stop.reason
             ?? `${stop.driver_name} running ${stop.overdue_by_minutes} min late`,
-          suggestion: match?.title ?? 'AI is analyzing this stop…',
+          suggestion:   match?.title ?? 'AI is analyzing this stop…',
+          suggestionId: match?.id,
         }
       })
+
+  async function handleAction(item: AtRiskDisplayItem) {
+    if (isMock) {
+      demoToast(item)
+      return
+    }
+    if (!item.suggestionId) {
+      toast('No actionable suggestion for this stop yet', { icon: '⚠️' })
+      return
+    }
+    setActingOn(item.id)
+    try {
+      await respondToSuggestion(item.suggestionId, 'ACCEPTED')
+      toast.success(`Action accepted — dispatching update for ${item.id}`)
+    } catch {
+      toast.error(`Failed to act on suggestion for ${item.id}`)
+    } finally {
+      setActingOn(null)
+    }
+  }
 
   return (
     <div
@@ -119,14 +161,15 @@ export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
 
             {/* AI suggestion action */}
             <button
-              onClick={() => toast(`AI: ${item.suggestion}`, { icon: '🤖' })}
-              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-[12.5px] font-medium text-left transition-all"
+              onClick={() => handleAction(item)}
+              disabled={actingOn === item.id}
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-[12.5px] font-medium text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+              onMouseEnter={(e) => { if (actingOn !== item.id) e.currentTarget.style.opacity = '0.8' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
             >
               <SpinIcon />
-              <span>{item.suggestion}</span>
+              <span>{actingOn === item.id ? 'Acting…' : item.suggestion}</span>
             </button>
           </div>
         ))}

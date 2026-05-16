@@ -19,6 +19,7 @@ const PAGE_META: Record<string, { title: string; section: string }> = {
   '/marketplace':   { title: 'Capacity Marketplace',   section: 'Offer & request capacity' },
   '/governance':    { title: 'Governance & Audit',     section: 'Audit log & compliance' },
   '/scenarios':     { title: 'Scenario Simulator',     section: 'What-if planning simulations' },
+  '/ai-config':          { title: 'AI Configuration',   section: 'Workspace AI provider settings' },
   '/admin/ai-providers': { title: 'AI Providers',      section: 'Manage LLM provider registry' },
   '/team':          { title: 'Team',                   section: 'User management' },
 }
@@ -92,7 +93,7 @@ export const Topbar = ({ onOpenCommandPalette }: TopbarProps) => {
               : '0 8px 22px rgba(124,58,237,0.35)',
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
           </svg>
           <span className="hidden sm:inline text-[13px]">Ask AI</span>

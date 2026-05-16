@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Bot, Brain, CheckCircle2, AlertTriangle, Info, Sparkles, Zap } from 'lucide-react'
+import { Bot, Brain, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }           from '../components/layout/AppShell'
 import { Button }             from '../components/ui/Button'
@@ -17,96 +17,9 @@ import { usePlanPolling }     from '../hooks/usePlanPolling'
 import { QUERY_KEYS }         from '../lib/utils/constants'
 import { usePlanStore }       from '../store/plan.store'
 import { useMockData }        from '../mock/config'
+import { MOCK_SCENARIOS, MOCK_PLAN_DETAIL } from '../mock/data'
+import type { ScenarioType, Scenario, PlanRoute } from '../mock/data'
 import type { PlanOption, Assignment, Order } from '../types'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ScenarioType = 'fastest' | 'economical' | 'balanced' | 'driver_fair'
-
-type Scenario = {
-  type:         ScenarioType
-  label:        string
-  accentColor:  string
-  primaryValue: string
-  primaryDot:   string
-  primaryUnit:  string
-  drivers:      number
-  distance_km:  number
-  cost_inr:     number
-  co2_kg:       number
-  recommended:  boolean
-}
-
-type PlanRoute = {
-  route:        string
-  driver:       string
-  stops:        number
-  departure:    string
-  return_time:  string
-  distance_km:  number
-  load_pct:     number
-  risk:         'low' | 'med' | 'high'
-}
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_SCENARIOS: Scenario[] = [
-  {
-    type: 'fastest',    label: 'FASTEST',     accentColor: '#22d3ee',
-    primaryValue: '4h 12m', primaryDot: 'Total', primaryUnit: 'time',
-    drivers: 11, distance_km: 192, cost_inr: 4820, co2_kg: 42,
-    recommended: false,
-  },
-  {
-    type: 'economical', label: 'ECONOMICAL',  accentColor: '#34d399',
-    primaryValue: '₹3,150', primaryDot: 'Total', primaryUnit: 'cost',
-    drivers: 8,  distance_km: 168, cost_inr: 3150, co2_kg: 31,
-    recommended: false,
-  },
-  {
-    type: 'balanced',   label: 'BALANCED',    accentColor: '#a78bfa',
-    primaryValue: '94%',    primaryDot: '',      primaryUnit: 'Optimality',
-    drivers: 9,  distance_km: 176, cost_inr: 3720, co2_kg: 34,
-    recommended: true,
-  },
-  {
-    type: 'driver_fair', label: 'DRIVER FAIR', accentColor: '#22d3ee',
-    primaryValue: '0.92',   primaryDot: '',      primaryUnit: 'Gini index',
-    drivers: 11, distance_km: 184, cost_inr: 4100, co2_kg: 38,
-    recommended: false,
-  },
-]
-
-const MOCK_PLAN_DETAIL: Record<ScenarioType, PlanRoute[]> = {
-  fastest: [
-    { route: 'R-001', driver: 'Arjun Mehta',  stops: 12, departure: '07:30', return_time: '12:45', distance_km: 42, load_pct: 95, risk: 'med'  },
-    { route: 'R-002', driver: 'Priya Sharma', stops: 10, departure: '07:30', return_time: '12:10', distance_km: 32, load_pct: 82, risk: 'low'  },
-    { route: 'R-003', driver: 'Sneha Reddy',  stops: 14, departure: '07:30', return_time: '13:00', distance_km: 51, load_pct: 97, risk: 'high' },
-    { route: 'R-004', driver: 'Vikram Singh', stops:  8, departure: '07:45', return_time: '12:00', distance_km: 28, load_pct: 71, risk: 'low'  },
-    { route: 'R-005', driver: 'Rohan Das',    stops: 10, departure: '07:30', return_time: '13:30', distance_km: 39, load_pct: 88, risk: 'med'  },
-  ],
-  economical: [
-    { route: 'R-001', driver: 'Arjun Mehta',  stops: 10, departure: '08:00', return_time: '14:15', distance_km: 31, load_pct: 90, risk: 'low'  },
-    { route: 'R-002', driver: 'Priya Sharma', stops:  9, departure: '08:15', return_time: '13:40', distance_km: 26, load_pct: 78, risk: 'low'  },
-    { route: 'R-003', driver: 'Sneha Reddy',  stops: 13, departure: '08:00', return_time: '14:55', distance_km: 44, load_pct: 93, risk: 'med'  },
-    { route: 'R-004', driver: 'Vikram Singh', stops:  7, departure: '08:30', return_time: '13:00', distance_km: 21, load_pct: 65, risk: 'low'  },
-    { route: 'R-005', driver: 'Rohan Das',    stops:  9, departure: '08:15', return_time: '14:30', distance_km: 46, load_pct: 87, risk: 'low'  },
-  ],
-  balanced: [
-    { route: 'R-001', driver: 'Arjun Mehta',  stops:  9, departure: '08:00', return_time: '13:42', distance_km: 38, load_pct: 88, risk: 'low'  },
-    { route: 'R-002', driver: 'Priya Sharma', stops:  7, departure: '08:30', return_time: '12:50', distance_km: 24, load_pct: 76, risk: 'low'  },
-    { route: 'R-003', driver: 'Sneha Reddy',  stops: 11, departure: '07:45', return_time: '14:20', distance_km: 46, load_pct: 94, risk: 'med'  },
-    { route: 'R-004', driver: 'Vikram Singh', stops:  6, departure: '09:00', return_time: '13:10', distance_km: 22, load_pct: 62, risk: 'low'  },
-    { route: 'R-005', driver: 'Rohan Das',    stops:  8, departure: '08:15', return_time: '14:00', distance_km: 30, load_pct: 80, risk: 'high' },
-  ],
-  driver_fair: [
-    { route: 'R-001', driver: 'Arjun Mehta',  stops:  8, departure: '08:00', return_time: '13:00', distance_km: 33, load_pct: 75, risk: 'low' },
-    { route: 'R-002', driver: 'Priya Sharma', stops:  8, departure: '08:00', return_time: '13:15', distance_km: 28, load_pct: 73, risk: 'low' },
-    { route: 'R-003', driver: 'Sneha Reddy',  stops:  8, departure: '08:00', return_time: '13:30', distance_km: 35, load_pct: 77, risk: 'low' },
-    { route: 'R-004', driver: 'Vikram Singh', stops:  9, departure: '08:00', return_time: '13:45', distance_km: 37, load_pct: 79, risk: 'low' },
-    { route: 'R-005', driver: 'Rohan Das',    stops:  7, departure: '08:00', return_time: '12:45', distance_km: 30, load_pct: 72, risk: 'low' },
-  ],
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -551,7 +464,9 @@ export default function Planning() {
             className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)', boxShadow: '0 0 16px rgba(124,58,237,0.4)' }}
           >
-            <Sparkles size={22} color="#fff" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
+            </svg>
           </div>
 
           <div className="flex-1 min-w-0">

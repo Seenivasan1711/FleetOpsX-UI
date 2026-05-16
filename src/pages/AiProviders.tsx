@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Edit2, Plus, Shield, Trash2, XCircle, Zap } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Shield, Trash2, XCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { AppShell }    from '../components/layout/AppShell'
 import { Button }      from '../components/ui/Button'
 import { Input }       from '../components/ui/Input'
 import { Modal }       from '../components/ui/Modal'
@@ -12,7 +12,6 @@ import {
   type AiProviderOut, type AiProviderIn,
 } from '../api/aiProviders'
 
-// Preset suggestions — admin can still type any custom provider name
 const PROVIDER_PRESETS = ['claude', 'openai', 'gemini', 'mistral', 'cohere', 'groq', 'together']
 const TASK_TYPES = ['planning', 'chat', 'analysis', 'all']
 
@@ -58,11 +57,13 @@ const defaultForm = (): FormState => ({
 })
 
 export default function AiProviders() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
-  const { effectiveTenantId } = useAuthStore()
-  const [modalOpen,   setModalOpen]   = useState(false)
-  const [editingId,   setEditingId]   = useState<string | null>(null)
-  const [form,        setForm]        = useState<FormState>(defaultForm())
+  const { clearAuth } = useAuthStore()
+
+  const [modalOpen,       setModalOpen]       = useState(false)
+  const [editingId,       setEditingId]       = useState<string | null>(null)
+  const [form,            setForm]            = useState<FormState>(defaultForm())
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const { data: providers = [], isLoading } = useQuery({
@@ -127,51 +128,70 @@ export default function AiProviders() {
   const suggestions = MODEL_SUGGESTIONS[form.provider_name] ?? []
 
   return (
-    <AppShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Platform-scope notice when acting as tenant */}
-        {effectiveTenantId && (
-          <div className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm"
-            style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.25)' }}>
-            <Zap className="w-4 h-4 text-[var(--c-accent)] shrink-0 mt-0.5" />
-            <span style={{ color: 'var(--c-muted)' }}>
-              You are managing <strong style={{ color: 'var(--c-accent)' }}>platform-level</strong> AI providers.
-              These are defaults for all tenants that have not configured their own. Changes here do not affect the currently impersonated tenant directly.
-            </span>
-          </div>
-        )}
+    <div className="min-h-screen bg-[#0a0a0a] text-[#f0f0f0] flex flex-col">
+      {/* Top bar — matches TenantSelector */}
+      <header className="flex items-center justify-between px-8 py-4 border-b border-[#2a2a2a] shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#7c3aed] flex items-center justify-center font-bold text-sm">F</div>
+          <span className="font-semibold text-lg">FleetOpsX</span>
+          <span className="text-xs text-[#6b7280] bg-[#141414] border border-[#2a2a2a] px-2 py-0.5 rounded-full">
+            Platform Admin
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { clearAuth(); navigate('/login') }}
+            className="text-sm text-[#6b7280] hover:text-[#f0f0f0] transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-8 py-10 space-y-6">
+        {/* Back link — prominent, above heading */}
+        <button
+          onClick={() => navigate('/select-tenant')}
+          className="flex items-center gap-1.5 text-sm text-[#6b7280] hover:text-[#a78bfa] transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Platform Home
+        </button>
+
+        {/* Page header */}
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-[var(--c-text)] flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[var(--c-accent)]" />
+            <h1 className="text-xl font-bold flex items-center gap-2 text-[#f0f0f0]">
+              <Zap className="w-5 h-5 text-[#7c3aed]" />
               AI Provider Management
             </h1>
-            <p className="text-sm text-[var(--c-muted)] mt-1">
+            <p className="text-sm text-[#6b7280] mt-1">
               Platform defaults — applies to all tenants without their own configuration
             </p>
           </div>
-          <Button onClick={() => handleOpen()} className="flex items-center gap-2">
+          <button
+            onClick={() => handleOpen()}
+            className="flex items-center gap-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          >
             <Plus className="w-4 h-4" />
             Add Provider
-          </Button>
+          </button>
         </div>
 
         {/* Provider table */}
-        <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl overflow-hidden overflow-x-auto">
           {isLoading ? (
-            <div className="p-8 text-center text-[var(--c-muted)] text-sm">Loading providers…</div>
+            <div className="p-8 text-center text-[#6b7280] text-sm">Loading providers…</div>
           ) : providers.length === 0 ? (
             <div className="p-12 text-center">
-              <Shield className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
-              <p className="text-sm text-[var(--c-muted)]">No AI providers configured yet.</p>
-              <p className="text-xs text-[var(--c-muted)] mt-1">Add one to enable AI-powered planning and chat.</p>
+              <Shield className="w-10 h-10 text-[#6b7280] mx-auto mb-3" />
+              <p className="text-sm text-[#6b7280]">No AI providers configured yet.</p>
+              <p className="text-xs text-[#6b7280] mt-1">Add one to enable AI-powered planning and chat.</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--c-border)] text-xs text-[var(--c-muted)] uppercase tracking-wider">
+                <tr className="border-b border-[#2a2a2a] text-xs text-[#6b7280] uppercase tracking-wider">
                   <th className="text-left px-5 py-3 font-medium">Provider</th>
                   <th className="text-left px-5 py-3 font-medium">Model ID</th>
                   <th className="text-left px-5 py-3 font-medium">Task</th>
@@ -183,14 +203,14 @@ export default function AiProviders() {
               </thead>
               <tbody>
                 {providers.map((p) => (
-                  <tr key={p.id} className="border-b border-[var(--c-border)] last:border-0 hover:bg-[var(--c-elevated)] transition-colors">
+                  <tr key={p.id} className="border-b border-[#2a2a2a] last:border-0 hover:bg-[#1c1c1c] transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className={`font-semibold capitalize ${PROVIDER_COLORS[p.provider_name] ?? 'text-[var(--c-text)]'}`}>
+                      <span className={`font-semibold capitalize ${PROVIDER_COLORS[p.provider_name] ?? 'text-[#f0f0f0]'}`}>
                         {p.provider_name}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <code className="text-xs font-mono text-[var(--c-text)] bg-[var(--c-elevated)] px-2 py-0.5 rounded-md">
+                      <code className="text-xs font-mono text-[#f0f0f0] bg-[#1c1c1c] border border-[#2a2a2a] px-2 py-0.5 rounded-md">
                         {p.model_id}
                       </code>
                     </td>
@@ -201,43 +221,43 @@ export default function AiProviders() {
                     </td>
                     <td className="px-5 py-3.5">
                       {p.key_set ? (
-                        <span className="flex items-center gap-1.5 text-[var(--c-green)] text-xs">
+                        <span className="flex items-center gap-1.5 text-[#10b981] text-xs">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Set
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-[var(--c-red)] text-xs">
+                        <span className="flex items-center gap-1.5 text-red-400 text-xs">
                           <XCircle className="w-3.5 h-3.5" /> Missing
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-3.5">
                       {p.is_platform_default ? (
-                        <span className="text-xs font-semibold text-[var(--c-accent)] bg-[var(--c-accent-dim)] px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-[#a78bfa] bg-[#7c3aed]/10 border border-[#7c3aed]/30 px-2 py-0.5 rounded-full">
                           DEFAULT
                         </span>
                       ) : (
                         <button
                           onClick={() => setDefaultMutation.mutate({ id: p.id })}
-                          className="text-xs text-[var(--c-muted)] hover:text-[var(--c-accent)] transition-colors"
+                          className="text-xs text-[#6b7280] hover:text-[#a78bfa] transition-colors"
                         >
                           Set default
                         </button>
                       )}
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`w-2 h-2 rounded-full inline-block ${p.is_active ? 'bg-[var(--c-green)]' : 'bg-[var(--c-red)]'}`} />
+                      <span className={`w-2 h-2 rounded-full inline-block ${p.is_active ? 'bg-[#10b981]' : 'bg-red-500'}`} />
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleOpen(p)}
-                          className="p-1.5 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] transition-colors"
+                          className="p-1.5 rounded-lg text-[#6b7280] hover:text-[#f0f0f0] hover:bg-[#2a2a2a] transition-colors"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(p.id)}
-                          className="p-1.5 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-red)] hover:bg-[var(--c-red-dim)] transition-colors"
+                          className="p-1.5 rounded-lg text-[#6b7280] hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -249,14 +269,14 @@ export default function AiProviders() {
             </table>
           )}
         </div>
-      </div>
+      </main>
 
       {/* Add / Edit modal */}
       <Modal open={modalOpen} onClose={handleClose} title={editingId ? 'Edit AI Provider' : 'Add AI Provider'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">Provider</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">Provider</label>
               <input
                 list="provider-presets"
                 value={form.provider_name}
@@ -269,7 +289,7 @@ export default function AiProviders() {
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">Task Type</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">Task Type</label>
               <select
                 value={form.task_type}
                 onChange={(e) => setForm(f => ({ ...f, task_type: e.target.value }))}
@@ -281,7 +301,7 @@ export default function AiProviders() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">Model ID</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">Model ID</label>
             <Input
               value={form.model_id}
               onChange={(e) => setForm(f => ({ ...f, model_id: e.target.value }))}
@@ -305,8 +325,8 @@ export default function AiProviders() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">
-              API Key {editingId && <span className="text-[var(--c-muted)] font-normal normal-case">(leave blank to keep existing)</span>}
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+              API Key {editingId && <span className="text-[#6b7280] font-normal normal-case">(leave blank to keep existing)</span>}
             </label>
             <Input
               type="password"
@@ -362,6 +382,6 @@ export default function AiProviders() {
           </Button>
         </div>
       </Modal>
-    </AppShell>
+    </div>
   )
 }

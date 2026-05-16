@@ -60,101 +60,109 @@ export default function Profile() {
 
   return (
     <AppShell>
-      <div className="p-6 flex flex-col gap-6 max-w-2xl" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="p-6 md:p-8" style={{ animation: 'page-slide-in 0.22s ease' }}>
+        <div className="mx-auto max-w-2xl flex flex-col gap-6">
 
-        {/* Avatar + name */}
-        <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-extrabold text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg, var(--c-accent) 0%, var(--c-purple, #a78bfa) 100%)' }}
-          >
-            {avatar}
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-[var(--c-text)]">{user?.full_name}</h1>
-            <p className="text-sm text-[var(--c-muted)]">{roleLabel[user?.role ?? ''] ?? user?.role}</p>
-          </div>
-        </div>
-
-        {/* Account info card */}
-        <div
-          className="rounded-2xl p-4"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)] mb-1">
-            Account Details
-          </p>
-          <InfoRow icon={User}      label="Full Name"  value={user?.full_name ?? '—'} />
-          <InfoRow icon={Mail}      label="Email"      value={user?.email ?? '—'} />
-          <InfoRow icon={Shield}    label="Role"       value={roleLabel[user?.role ?? ''] ?? (user?.role ?? '—')} />
-          <InfoRow icon={Building2} label="Tenant ID"  value={user?.tenant_id ?? '—'} />
-        </div>
-
-        {/* Change password card */}
-        <div
-          className="rounded-2xl p-4"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)] mb-4">
-            Change Password
-          </p>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <FormField label="Current Password">
-              <div className="relative">
-                <Input
-                  type={showCurrent ? 'text' : 'password'}
-                  value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
-                  placeholder="Enter current password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)] hover:text-[var(--c-text)]"
-                >
-                  {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </FormField>
-            <FormField label="New Password">
-              <div className="relative">
-                <Input
-                  type={showNext ? 'text' : 'password'}
-                  value={next}
-                  onChange={(e) => setNext(e.target.value)}
-                  placeholder="At least 8 characters"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNext((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)] hover:text-[var(--c-text)]"
-                >
-                  {showNext ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </FormField>
-            <FormField label="Confirm New Password">
-              <Input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Repeat new password"
-              />
-            </FormField>
-            <div className="pt-1">
-              <Button
-                type="submit"
-                loading={mutation.isPending}
-                disabled={!current || !next || !confirm}
-              >
-                <KeyRound size={14} /> Update Password
-              </Button>
+          {/* Avatar hero — centered at top */}
+          <div className="flex flex-col items-center gap-3 py-6">
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center text-2xl font-extrabold text-white shadow-lg"
+              style={{ background: 'linear-gradient(135deg, var(--c-accent) 0%, var(--c-purple, #a78bfa) 100%)' }}
+            >
+              {avatar}
             </div>
-          </form>
-        </div>
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-[var(--c-text)]">{user?.full_name}</h1>
+              <p className="text-sm text-[var(--c-muted)] mt-0.5">{roleLabel[user?.role ?? ''] ?? user?.role}</p>
+            </div>
+          </div>
 
+          {/* Account info card */}
+          <div
+            className="rounded-2xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)]">
+                Account Details
+              </p>
+            </div>
+            <div className="px-5">
+              <InfoRow icon={User}      label="Full Name"  value={user?.full_name ?? '—'} />
+              <InfoRow icon={Mail}      label="Email"      value={user?.email ?? '—'} />
+              <InfoRow icon={Shield}    label="Role"       value={roleLabel[user?.role ?? ''] ?? (user?.role ?? '—')} />
+              <InfoRow icon={Building2} label="Tenant ID"  value={user?.tenant_id ?? '—'} />
+            </div>
+          </div>
+
+          {/* Change password card */}
+          <div
+            className="rounded-2xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)]">
+                Change Password
+              </p>
+            </div>
+            <form onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
+              <FormField label="Current Password">
+                <div className="relative">
+                  <Input
+                    type={showCurrent ? 'text' : 'password'}
+                    value={current}
+                    onChange={(e) => setCurrent(e.target.value)}
+                    placeholder="Enter current password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                  >
+                    {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </FormField>
+              <FormField label="New Password">
+                <div className="relative">
+                  <Input
+                    type={showNext ? 'text' : 'password'}
+                    value={next}
+                    onChange={(e) => setNext(e.target.value)}
+                    placeholder="At least 8 characters"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNext((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                  >
+                    {showNext ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </FormField>
+              <FormField label="Confirm New Password">
+                <Input
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="Repeat new password"
+                />
+              </FormField>
+              <div className="pt-1">
+                <Button
+                  type="submit"
+                  loading={mutation.isPending}
+                  disabled={!current || !next || !confirm}
+                >
+                  <KeyRound size={14} /> Update Password
+                </Button>
+              </div>
+            </form>
+          </div>
+
+        </div>
       </div>
     </AppShell>
   )

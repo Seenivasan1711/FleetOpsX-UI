@@ -107,17 +107,16 @@ export function LiveOpsTicker({ orders: _orders, drivers: _drivers, planDate }: 
         return { id: s.id, type, variant, text: s.title, bold }
       })
 
-  // Fall back to mock items if suggestions are empty so ticker is never blank
-  const displayItems = items.length > 0 ? items : MOCK_TICKER_ITEMS
+  const isEmpty = !isMock && items.length === 0
 
   // Repeat enough sets so the track always exceeds the viewport width.
-  const minSets = Math.max(2, Math.ceil(8 / displayItems.length))
+  const minSets = Math.max(2, Math.ceil(8 / (items.length || 1)))
   const trackItems = Array.from({ length: minSets }, (_, s) =>
-    displayItems.map((item, i) => ({ ...item, _key: `${s}-${i}` }))
+    items.map((item, i) => ({ ...item, _key: `${s}-${i}` }))
   ).flat()
 
   const tickerEnd = `${(-(100 / minSets)).toFixed(4)}%`
-  const duration  = Math.max(displayItems.length * 5, 5)
+  const duration  = Math.max(items.length * 5, 5)
 
   return (
     <div
@@ -134,9 +133,9 @@ export function LiveOpsTicker({ orders: _orders, drivers: _drivers, planDate }: 
         <span
           className="w-[6px] h-[6px] rounded-full shrink-0"
           style={{
-            background: '#6ee7b7',
-            boxShadow:  '0 0 0 2px rgba(110,231,183,0.25)',
-            animation:  'pulse-dot 2s ease-in-out infinite',
+            background: isEmpty ? '#64748b' : '#6ee7b7',
+            boxShadow:  isEmpty ? 'none' : '0 0 0 2px rgba(110,231,183,0.25)',
+            animation:  isEmpty ? 'none' : 'pulse-dot 2s ease-in-out infinite',
           }}
         />
         <span
@@ -147,46 +146,56 @@ export function LiveOpsTicker({ orders: _orders, drivers: _drivers, planDate }: 
         </span>
       </div>
 
-      {/* Scroll area */}
-      <div className="flex-1 overflow-hidden relative h-full">
-        {/* Fade masks */}
-        <div
-          className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none"
-          style={{ width: 80, background: 'linear-gradient(to right, var(--c-surface) 25%, transparent)' }}
-        />
-        <div
-          className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none"
-          style={{ width: 80, background: 'linear-gradient(to left, var(--c-surface) 25%, transparent)' }}
-        />
-
-        {/* Scrolling track */}
-        <div
-          className="flex items-center h-full whitespace-nowrap"
-          style={{
-            animation:    `ticker-scroll ${duration}s linear infinite`,
-            willChange:   'transform',
-            width:        'max-content',
-            '--ticker-end': tickerEnd,
-          } as React.CSSProperties}
-        >
-          {trackItems.map((item) => (
-            <span
-              key={item._key}
-              className="inline-flex items-center gap-[7px] h-full text-[12px]"
-              style={{ paddingLeft: 36 }}
-            >
-              <span
-                style={{ color: 'var(--c-accent)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-              >
-                <ItemIcon type={item.type} variant={item.variant} />
-              </span>
-              <span style={{ color: '#adb5c7', fontSize: 12 }}>
-                {renderTickerText(item)}
-              </span>
-            </span>
-          ))}
+      {/* Empty state — live mode, no events yet */}
+      {isEmpty ? (
+        <div className="flex-1 flex items-center gap-2" style={{ color: 'var(--c-muted)' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span className="text-[12px]" style={{ opacity: 0.5 }}>No live updates yet</span>
         </div>
-      </div>
+      ) : (
+        /* Scroll area */
+        <div className="flex-1 overflow-hidden relative h-full">
+          {/* Fade masks */}
+          <div
+            className="absolute left-0 top-0 bottom-0 z-10 pointer-events-none"
+            style={{ width: 80, background: 'linear-gradient(to right, var(--c-surface) 25%, transparent)' }}
+          />
+          <div
+            className="absolute right-0 top-0 bottom-0 z-10 pointer-events-none"
+            style={{ width: 80, background: 'linear-gradient(to left, var(--c-surface) 25%, transparent)' }}
+          />
+
+          {/* Scrolling track */}
+          <div
+            className="flex items-center h-full whitespace-nowrap"
+            style={{
+              animation:    `ticker-scroll ${duration}s linear infinite`,
+              willChange:   'transform',
+              width:        'max-content',
+              '--ticker-end': tickerEnd,
+            } as React.CSSProperties}
+          >
+            {trackItems.map((item) => (
+              <span
+                key={item._key}
+                className="inline-flex items-center gap-[7px] h-full text-[12px]"
+                style={{ paddingLeft: 36 }}
+              >
+                <span
+                  style={{ color: 'var(--c-accent)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                >
+                  <ItemIcon type={item.type} variant={item.variant} />
+                </span>
+                <span style={{ color: '#adb5c7', fontSize: 12 }}>
+                  {renderTickerText(item)}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

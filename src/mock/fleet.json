@@ -1,0 +1,22 @@
+{
+  "drivers": [
+    { "label": "Available", "value": 13, "color": "#34d399" },
+    { "label": "On Route",  "value": 5,  "color": "#60a5fa" },
+    { "label": "On Break",  "value": 1,  "color": "#f59e0b" },
+    { "label": "Off Duty",  "value": 1,  "color": "#505065" }
+  ],
+  "driversTotal": 20,
+  "vehicles": [
+    { "label": "Available",   "value": 4,  "color": "#34d399" },
+    { "label": "In Use",      "value": 14, "color": "#60a5fa" },
+    { "label": "Maintenance", "value": 1,  "color": "#f59e0b" },
+    { "label": "Low Fuel",    "value": 1,  "color": "#f87171" }
+  ],
+  "vehiclesTotal": 20,
+  "efficiency": [
+    { "label": "Capacity used", "value": 78, "color": "#34d399" },
+    { "label": "Idle time",     "value": 14, "color": "#f59e0b" },
+    { "label": "Avg detour",    "value": 8,  "color": "#f87171" }
+  ],
+  "efficiencyTotal": 100
+}

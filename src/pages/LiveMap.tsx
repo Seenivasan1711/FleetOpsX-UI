@@ -17,34 +17,12 @@ import { QUERY_KEYS }      from '../lib/utils/constants'
 import { usePlanStore }    from '../store/plan.store'
 import { useFleetEvents }  from '../hooks/useFleetEvents'
 import { useMockData }     from '../mock/config'
+import { MOCK_DRIVER_FEED, MOCK_GPS_SEED } from '../mock/data'
+import type { DriverFeedItem, DriverStatus } from '../mock/data'
 import type { Order }      from '../types'
 
 // Depot centre (Bangalore MG Road area)
 const DEPOT: [number, number] = [12.9716, 77.5946]
-
-type DriverStatus = 'onRoute' | 'atRisk' | 'idle' | 'offDuty'
-
-interface DriverFeedItem {
-  driver_id:   string
-  driver_name: string
-  display_id:  string
-  area:        string
-  status:      DriverStatus
-  stops:       number
-  eta:         string
-  util:        number
-  color:       string
-}
-
-const MOCK_DRIVER_FEED: DriverFeedItem[] = [
-  { driver_id: 'mock-arjun',  driver_name: 'Arjun Mehta',  display_id: 'D-001', area: 'Koramangala',    status: 'onRoute',  stops: 9,  eta: '15:30', util: 72, color: '#3b82f6' },
-  { driver_id: 'mock-priya',  driver_name: 'Priya Sharma', display_id: 'D-002', area: 'Indiranagar',     status: 'onRoute',  stops: 7,  eta: '16:15', util: 58, color: '#34d399' },
-  { driver_id: 'mock-sneha',  driver_name: 'Sneha Reddy',  display_id: 'D-003', area: 'Whitefield',      status: 'onRoute',  stops: 11, eta: '17:00', util: 84, color: '#a78bfa' },
-  { driver_id: 'mock-vikram', driver_name: 'Vikram Singh', display_id: 'D-004', area: 'Hebbal',          status: 'onRoute',  stops: 6,  eta: '14:45', util: 61, color: '#f59e0b' },
-  { driver_id: 'mock-rohan',  driver_name: 'Rohan Das',    display_id: 'D-005', area: 'Yelahanka',       status: 'atRisk',   stops: 8,  eta: '17:45', util: 45, color: '#f87171' },
-  { driver_id: 'mock-ananya', driver_name: 'Ananya Iyer',  display_id: 'D-006', area: 'Electronic City', status: 'idle',     stops: 0,  eta: '—',     util: 0,  color: '#06b6d4' },
-  { driver_id: 'mock-rahul',  driver_name: 'Rahul Iyer',   display_id: 'D-007', area: 'HSR Layout',      status: 'offDuty',  stops: 0,  eta: '—',     util: 0,  color: '#64748b' },
-]
 
 const STATUS_COLOR: Record<DriverStatus, string> = {
   onRoute:  '#34d399',
@@ -53,16 +31,6 @@ const STATUS_COLOR: Record<DriverStatus, string> = {
   offDuty:  '#475569',
 }
 
-// Mock GPS seed — Bangalore positions for the 7 Figma drivers
-const MOCK_GPS_SEED: LivePosition[] = [
-  { driver_id: 'mock-arjun',  driver_name: 'Arjun Mehta',  latitude: 12.9352, longitude: 77.6245, speed_kmh: 32, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-priya',  driver_name: 'Priya Sharma', latitude: 12.9716, longitude: 77.5946, speed_kmh: 18, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-sneha',  driver_name: 'Sneha Reddy',  latitude: 12.9141, longitude: 77.6369, speed_kmh: 25, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-vikram', driver_name: 'Vikram Singh', latitude: 12.9770, longitude: 77.6360, speed_kmh: 41, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-rohan',  driver_name: 'Rohan Das',    latitude: 12.9010, longitude: 77.5846, speed_kmh: 15, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-ananya', driver_name: 'Ananya Iyer',  latitude: 12.8392, longitude: 77.6774, speed_kmh: 28, recorded_at: new Date().toISOString() },
-  { driver_id: 'mock-rahul',  driver_name: 'Rahul Iyer',   latitude: 13.0012, longitude: 77.5550, speed_kmh:  0, recorded_at: new Date().toISOString() },
-]
 
 const ROUTE_COLORS = [
   '#3b82f6', '#34d399', '#f59e0b', '#f87171',
@@ -324,36 +292,38 @@ export default function LiveMap() {
                   })}
                 </FleetMap>
 
-                {/* Fleet stats overlay — top left */}
-                <div className="absolute top-4 left-4 pointer-events-none" style={{ zIndex: 900 }}>
+                {/* Fleet stats overlay — top right */}
+                <div className="absolute top-4 right-4 pointer-events-none" style={{ zIndex: 900 }}>
                   <div
                     className="rounded-2xl p-4 flex flex-col gap-3 pointer-events-auto"
                     style={{
-                      background: 'var(--c-surface)',
-                      border:     '1px solid var(--c-border)',
-                      boxShadow:  '0 8px 32px rgba(0,0,0,0.28)',
-                      minWidth:   152,
+                      background:     'rgba(10, 11, 20, 0.76)',
+                      border:         '1px solid rgba(255,255,255,0.09)',
+                      backdropFilter: 'blur(14px) saturate(1.3)',
+                      WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
+                      boxShadow:      '0 8px 32px rgba(0,0,0,0.42)',
+                      minWidth:       152,
                     }}
                   >
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#34d399' }} />
-                      <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--c-muted)' }}>
+                      <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
                         Live Fleet
                       </p>
                     </div>
 
                     <div className="flex gap-5">
                       <div className="text-center">
-                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.onRoute}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>On Route</p>
+                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.onRoute}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>On Route</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.idle}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>Idle</p>
+                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.idle}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Idle</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.offDuty}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>Off Duty</p>
+                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.offDuty}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Off Duty</p>
                       </div>
                     </div>
 
@@ -380,9 +350,11 @@ export default function LiveMap() {
                   <div
                     className="flex items-center gap-4 px-4 py-2 rounded-xl pointer-events-auto whitespace-nowrap"
                     style={{
-                      background: 'var(--c-surface)',
-                      border:     '1px solid var(--c-border)',
-                      boxShadow:  '0 4px 16px rgba(0,0,0,0.18)',
+                      background:     'rgba(10, 11, 20, 0.76)',
+                      border:         '1px solid rgba(255,255,255,0.09)',
+                      backdropFilter: 'blur(14px) saturate(1.3)',
+                      WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
+                      boxShadow:      '0 4px 16px rgba(0,0,0,0.32)',
                     }}
                   >
                     {[
@@ -393,7 +365,7 @@ export default function LiveMap() {
                     ].map(({ color, label }) => (
                       <div key={label} className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                        <span className="text-[10px] font-medium" style={{ color: 'var(--c-muted)' }}>{label}</span>
+                        <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</span>
                       </div>
                     ))}
                   </div>
@@ -403,8 +375,8 @@ export default function LiveMap() {
               /* Plan view */
               <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
                 <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 />
                 {allPlanPoints.length > 0 && <AutoFitPlan points={allPlanPoints} />}
                 {routes.map((route) => (

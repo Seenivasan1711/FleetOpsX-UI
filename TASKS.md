@@ -15,6 +15,7 @@
 | F-05 | **Export / Import on Drivers, Vehicles, Depots** | Add Export (CSV download) + Import (CSV upload) buttons to each page toolbar alongside Add button. Demo mode: export generates CSV from mock data, import shows toast. Live mode: POST to `/api/v1/{resource}/import`, GET `/api/v1/{resource}/export` | — |
 | F-06 | **Fleet & Platform sidebar items** | Deprioritised — revisit after F-01–F-05 | — |
 | F-07 | **End-to-end QA** | Full manual + automated regression pass after ALL bugs + features complete. Block release on this. | — |
+| F-08 | **BE API contract spec + implementation — all unimplemented endpoints** | Write OpenAPI/contract spec for every FE-wired endpoint that has no BE yet, then implement in `FleetOpsX-API/`. Endpoints to cover: `GET /api/v1/analytics/route-timeline` (RouteTimeline), `GET /api/v1/fleet/availability` (FleetStatusCards — including `efficiency` block), `GET /api/v1/analytics/kpi-trend` (sparklines), `POST /api/v1/chat` (ChatPanel), `GET/POST /api/v1/plan/options` (PlanOptionsCard — currently 500), `GET /api/v1/drivers/export` + `POST /api/v1/drivers/import`, `GET /api/v1/vehicles/export` + `POST /api/v1/vehicles/import`, `GET /api/v1/depots/export` + `POST /api/v1/depots/import`, `GET /api/v1/orders/export` + `POST /api/v1/orders/import` (UUID coercion fix). For each: define request/response shape, map to existing DB models, add router + service layer. | — |
 
 ---
 
@@ -26,18 +27,18 @@ All items below were logged during a manual QA pass. Start a new session by work
 
 | # | Bug | Location | Fix Needed |
 |---|-----|----------|------------|
-| QA-01 | Stat card labels ("+2.5pp this week", "4 fewer than yesterday") appear in **live mode** — should only show in demo | `Dashboard` stat cards (SparklineCard) | Guard trend-label render behind `isMock`; live mode shows `—` or nothing |
-| QA-02 | "Today's Orders" stat card missing sparkline line entirely in live mode | `Dashboard` SparklineCard | Ensure a flat/empty sparkline path still renders when live data returns 0 |
-| QA-03 | Drivers fleet card shows **NaN** for "On Route" count | `Dashboard` FleetStatusCard | Divide-by-zero or undefined field when live API returns null — add fallback `?? 0` |
-| QA-04 | LiveOps Ticker shows **demo events in live mode** | `LiveOpsTicker` | Guard mock events behind `isMock`; in live mode render a centered "No live updates yet" empty state with icon |
-| QA-05 | Route Timeline blocks all same brightness — no active/past/future distinction | `RouteTimeline` | Currently-active block (now-time falls in range) = full brightness; past blocks = strikethrough text + opacity 0.35; future blocks = opacity 0.55 |
-| QA-06 | At-Risk Inbox AI suggestion buttons (Reroute / Swap / Notify) do nothing | `AtRiskInbox` / `Dashboard` | Demo: show a contextual toast ("Rerouting [driver]… ETA adjusted"); Live: POST to re-plan API then toast success/error |
-| QA-07 | Profile page layout is left-aligned, not modern | `src/pages/Profile.tsx` | Redesign to centered max-w-2xl card layout; avatar at top, sections as clean panels |
-| QA-08 | Settings page same issue as QA-07 | `src/pages/Settings.tsx` | Apply same centered modern card layout |
-| QA-11 | Orders sort button always shows static ↑↓ icon regardless of direction | `Orders.tsx` sort button | Show `↑` when asc, `↓` when desc (single arrow, not bidirectional) |
-| QA-12 | Import CSV fails: `badly formed hexadecimal UUID string` on rows 2 & 3 | `Orders.tsx` import handler / BE | FE: strip/ignore `id` column from CSV before sending. BE: investigate UUID parsing on import route |
-| QA-13 | Planning banner icon uses `Sparkles` which looks out of place | `Planning.tsx` AI Planner banner | Replace `<Sparkles>` with the 8-spoke loader SVG (same as Ask AI / ChatPanel — consistent AI identity) |
-| QA-15 | Live Fleet overlay covers Leaflet zoom controls (+/−) | `LiveMap.tsx` fleet stats overlay | Move overlay below zoom buttons — change `top-4` to `top-[80px]` or place in a non-conflicting quadrant |
+| ~~QA-01~~ | ~~Stat card labels appear in live mode~~ | ~~`Dashboard`~~ | ✅ Fixed — trend guarded by `isMock`; live mode derives real delta from API (`kpiTrend` / `deliveries_by_day`); hidden when delta = 0 or no data |
+| ~~QA-02~~ | ~~"Today's Orders" sparkline missing in live mode~~ | ~~`Dashboard`~~ | ✅ Fixed — empty `deliveries_by_day` array no longer silently drops sparkline; falls back to flat line at current value |
+| ~~QA-03~~ | ~~Drivers fleet card shows NaN for "On Route" count~~ | ~~`Dashboard`~~ | ✅ Fixed — `?? 0` on all driver/vehicle/efficiency fields; `onRoute` computed as remainder; `SegmentBar` guards total=0 |
+| ~~QA-04~~ | ~~LiveOps Ticker shows demo events in live mode~~ | ~~`LiveOpsTicker`~~ | ✅ Fixed — removed mock fallback; live mode with no suggestions shows "No live updates yet" empty state; dot turns grey and stops pulsing |
+| ~~QA-05~~ | ~~Route Timeline blocks all same brightness~~ | ~~`RouteTimeline`~~ | ✅ Fixed — 3-state logic: past = opacity 0.35 + strikethrough text + muted dot; active = full brightness + green dot; future = opacity 0.55 |
+| ~~QA-06~~ | ~~At-Risk Inbox AI suggestion buttons do nothing~~ | ~~`AtRiskInbox`~~ | ✅ Fixed — demo: contextual toast per action type (reroute/swap/skip); live: PATCH suggestion ACCEPTED with loading + error state |
+| ~~QA-07~~ | ~~Profile page layout is left-aligned~~ | ~~`src/pages/Profile.tsx`~~ | ✅ Fixed — `mx-auto max-w-2xl`; avatar hero centered at top (w-20, rounded-3xl); cards use header-bar / body split |
+| ~~QA-08~~ | ~~Settings page same issue as QA-07~~ | ~~`src/pages/Settings.tsx`~~ | ✅ Fixed — same `mx-auto` wrapper pattern; inner tab content already well-structured |
+| ~~QA-11~~ | ~~Orders sort button always shows static ↑↓ icon regardless of direction~~ | ~~`Orders.tsx` sort button~~ | ✅ Fixed — replaced `<ArrowUpDown>` with `<ArrowUp>` / `<ArrowDown>` conditional on `sortDir` state |
+| ~~QA-12~~ | ~~Import CSV fails: `badly formed hexadecimal UUID string` on rows 2 & 3~~ | ~~`Orders.tsx` import handler / BE~~ | ✅ Fixed — `User.tenant_id` is nullable for superadmins; `str(None)` → `UUID("None")` crashed per-row. Endpoint now returns 403 if no tenant context; import service accepts `UUID` directly, no string round-trip |
+| ~~QA-13~~ | ~~Planning banner icon uses `Sparkles` which looks out of place~~ | ~~`Planning.tsx` AI Planner banner~~ | ✅ Fixed — replaced `<Sparkles>` with 8-spoke SVG (matches Ask AI / Topbar AI identity); removed unused `Sparkles` import |
+| ~~QA-15~~ | ~~Live Fleet overlay covers Leaflet zoom controls (+/−)~~ | ✅ Fixed — moved overlay from `top-4 left-4` → `top-4 right-4` (no zoom conflict); frosted glass BG (`rgba(10,11,20,0.76)` + `backdrop-filter: blur(14px)`); CartoDB dark tiles in both live and plan views; legend also glass-styled; text hardcoded white (always on dark BG) |
 | QA-17 | Map blank / doesn't resize when Driver Feed panel is collapsed | `LiveMap.tsx` | Call `map.invalidateSize()` after toggling `showFeed`; or use a resize observer on the map wrapper div |
 | QA-18 | Some dashboard section shows empty in demo mode | `Dashboard` | Identify which widget; ensure mock data is wired for all widgets that guard behind `isMock` |
 
@@ -45,8 +46,8 @@ All items below were logged during a manual QA pass. Start a new session by work
 
 | # | Bug | Fix |
 |---|-----|-----|
-| QA-B25 | Orders badge only shows while on Orders page — not visible on other pages. Count also wrong (showed total not unassigned) | ✅ Fixed — moved count fetch to AppShell; always-on 60s refetch; PENDING count |
-| QA-B26 | Text sizes too small vs Figma across multiple pages | ✅ Fixed — Orders headers 10.5→12px, filter labels 11→12px, DataTable headers 11→12px, Analytics axes/drivers bumped |
+| ~~QA-B25~~ | ~~Orders badge only shows while on Orders page — not visible on other pages. Count also wrong (showed total not unassigned)~~ | ✅ Fixed — moved count fetch to AppShell; always-on 60s refetch; PENDING count |
+| ~~QA-B26~~ | ~~Text sizes too small vs Figma across multiple pages~~ | ✅ Fixed — Orders headers 10.5→12px, filter labels 11→12px, DataTable headers 11→12px, Analytics axes/drivers bumped |
 | QA-I1 | Sidebar "Planning" nav icon doesn't match "AI Plan Routes" Quick Action card icon (Image #13) | Update sidebar Planning icon to use the same SVG used in Quick Action card |
 | QA-I2 | Route Timeline widget header icon (Image #14) already has gradient — verify sidebar icon also uses violet→cyan gradient, not old purple-only |
 | QA-16 | "Live Map" label is wrong everywhere | Rename to **"Live Feed"** in: Sidebar nav label, `Topbar.tsx` PAGE_META key `/map`, router `<Route>` title, page heading |
@@ -55,14 +56,14 @@ All items below were logged during a manual QA pass. Start a new session by work
 
 | # | Bug | Fix |
 |---|-----|-----|
-| QA-14 | `POST /api/v1/plan/options` returns **500** when Generate Plan is clicked | Investigate BE traceback (ASGI middleware error); likely LLM provider key missing or prompt format broken. Check `app/services/planning.py` |
-| QA-14b | Import/Export BE route also suspected to have UUID parsing errors | Fix UUID coercion on import endpoint; export should return clean CSV without internal UUIDs |
+| ~~QA-14~~ | ~~`POST /api/v1/plan/options` returns **500** when Generate Plan is clicked~~ | ✅ Fixed — SQLAlchemy `uselist=False` back-populates eviction set old RouteStop `order_id=NULL` (NOT NULL violation) on 2nd/3rd mode iteration. Fixed by using Core `sa_insert(RouteStop)` to bypass ORM relationship management; also skip `RuleBasedPlanner` fallback when `commit_assignments=False`. Doc: `FleetOpsX-API/docs/bugfix-qa14-plan-options-500.md` |
+| ~~QA-14b~~ | ~~Import/Export BE route also suspected to have UUID parsing errors~~ | ✅ Fixed — `export_service.py` now takes `tenant_id: UUID` directly (no `UUID(str)` round-trip); removed internal "ID" UUID column from orders export; plan export replaces "Order ID" UUID column with "External Ref"; `export.py` passes `current_user.tenant_id` (UUID) without `str()` wrapping |
 
 ### Features / Scope (Do Not Fix Now — Plan Later)
 
 | # | Feature | Notes |
 |---|---------|-------|
-| QA-09 | AI Providers — tenant-level view needed | Superadmin admin page is separate. Tenant page: show platform default (read-only) + any custom providers they added. Warn if no provider selected for Planning / SLA categories. If custom set for planning but not others, silently fall back to platform default on BE |
+| ~~QA-09~~ | ~~AI Providers — superadmin platform view needed~~ | ✅ Fixed — `AiProviders.tsx` at `/admin/ai-providers` now uses standalone superadmin layout (no AppShell/tenant sidebar); ← Platform Home back link above heading; Sign out in header; accessible from `/select-tenant` Platform Management section |
 | QA-10 | All Tenants dropdown — show tenant list with recent + search | When clicking "All Tenants" chip, show popover: recently-used tenants at top, then search results. Not a new page |
 | QA-F1 | At Risk AI buttons — deep real-mode action | Real mode: POST re-plan suggestion → stream response → apply driver change → toast with ETA delta |
 | QA-F2 | Plan History page — view past plans | `/plan-history` route already exists in nav; wire to BE `GET /api/v1/plans/history` |
@@ -105,6 +106,19 @@ All items below were logged during a manual QA pass. Start a new session by work
 | 20 | **Orders filter — from/to date range (replaces single date)** | 2026-05-17 |
 | 21 | **AI gradient consistency — ChatPanel, RouteTimeline, Planning banner** | 2026-05-17 |
 | 22 | **Live Feed redesign — fleet stats overlay, dashed depot lines, driver cards** | 2026-05-17 |
+| 23 | **QA-01 — Stat card trend labels guarded (live mode shows real API delta or nothing)** | 2026-05-17 |
+| 24 | **QA-02 — Sparkline flat-line fallback when API returns 0/empty deliveries_by_day** | 2026-05-17 |
+| 25 | **Mock data → JSON files (9 JSON files in src/mock/; data.ts is now a thin typed wrapper)** | 2026-05-17 |
+| 26 | **QA-03 — FleetStatusCards NaN fixed (`?? 0` on all fleet fields; SegmentBar divide-by-zero guard)** | 2026-05-17 |
+| 27 | **QA-04 — LiveOpsTicker mock fallback removed; "No live updates yet" empty state in live mode** | 2026-05-17 |
+| 28 | **Efficiency card — removed MOCK_FLEET fallback; shows 0% when BE doesn't return efficiency data** | 2026-05-17 |
+| 29 | **Dashboard polling — added refetchInterval to all 5 queries (kpis 120s, fleet/orders/drivers 60s, kpiTrend 300s)** | 2026-05-17 |
+| 30 | **QA-06 — At-Risk Inbox: contextual demo toasts + live PATCH suggestion ACCEPTED** | 2026-05-17 |
+| 31 | **QA-07 — Profile page: centered max-w-2xl layout, avatar hero at top** | 2026-05-17 |
+| 32 | **QA-08 — Settings page: mx-auto centering (same pattern as QA-07)** | 2026-05-17 |
+| 33 | **QA-09 — TenantAiConfig page at /ai-config: platform defaults read-only, per-task overrides, warning banners** | 2026-05-17 |
+| 34 | **QA-11 — Orders sort icon: replaced static ArrowUpDown with ArrowUp/ArrowDown conditional on sortDir** | 2026-05-17 |
+| 35 | **QA-12 — Import UUID error: 403 guard for no-tenant superadmin; import service takes UUID directly** | 2026-05-17 |
 
 ---
 

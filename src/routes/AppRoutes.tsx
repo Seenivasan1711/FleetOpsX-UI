@@ -7,6 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton'
 const Login          = lazy(() => import('../pages/Login'))
 const TenantSelector = lazy(() => import('../pages/TenantSelector'))
 const AiProviders    = lazy(() => import('../pages/AiProviders'))
+const TenantAiConfig = lazy(() => import('../pages/TenantAiConfig'))
 const Dashboard  = lazy(() => import('../pages/Dashboard'))
 const Orders     = lazy(() => import('../pages/Orders'))
 const Planning   = lazy(() => import('../pages/Planning'))
@@ -71,6 +72,7 @@ export default function AppRoutes() {
           <Route path="/scenarios"     element={dispatcher(<Scenarios />)} />
 
           <Route path="/admin/ai-providers" element={superadmin(<AiProviders />)} />
+          <Route path="/ai-config"          element={dispatcher(<TenantAiConfig />)} />
           <Route path="/plan-history"       element={dispatcher(<PlanHistory />)} />
           <Route path="/team"               element={dispatcher(<UserManagement />)} />
           <Route path="/profile"            element={dispatcher(<Profile />)} />

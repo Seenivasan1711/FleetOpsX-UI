@@ -1,0 +1,20 @@
+{
+  "driverFeed": [
+    { "driver_id": "mock-arjun",  "driver_name": "Arjun Mehta",  "display_id": "D-001", "area": "Koramangala",    "status": "onRoute",  "stops": 9,  "eta": "15:30", "util": 72, "color": "#3b82f6" },
+    { "driver_id": "mock-priya",  "driver_name": "Priya Sharma", "display_id": "D-002", "area": "Indiranagar",    "status": "onRoute",  "stops": 7,  "eta": "16:15", "util": 58, "color": "#34d399" },
+    { "driver_id": "mock-sneha",  "driver_name": "Sneha Reddy",  "display_id": "D-003", "area": "Whitefield",     "status": "onRoute",  "stops": 11, "eta": "17:00", "util": 84, "color": "#a78bfa" },
+    { "driver_id": "mock-vikram", "driver_name": "Vikram Singh", "display_id": "D-004", "area": "Hebbal",         "status": "onRoute",  "stops": 6,  "eta": "14:45", "util": 61, "color": "#f59e0b" },
+    { "driver_id": "mock-rohan",  "driver_name": "Rohan Das",    "display_id": "D-005", "area": "Yelahanka",      "status": "atRisk",   "stops": 8,  "eta": "17:45", "util": 45, "color": "#f87171" },
+    { "driver_id": "mock-ananya", "driver_name": "Ananya Iyer",  "display_id": "D-006", "area": "Electronic City","status": "idle",     "stops": 0,  "eta": "—",     "util": 0,  "color": "#06b6d4" },
+    { "driver_id": "mock-rahul",  "driver_name": "Rahul Iyer",   "display_id": "D-007", "area": "HSR Layout",     "status": "offDuty",  "stops": 0,  "eta": "—",     "util": 0,  "color": "#64748b" }
+  ],
+  "gpsSeed": [
+    { "driver_id": "mock-arjun",  "driver_name": "Arjun Mehta",  "latitude": 12.9352, "longitude": 77.6245, "speed_kmh": 32 },
+    { "driver_id": "mock-priya",  "driver_name": "Priya Sharma", "latitude": 12.9716, "longitude": 77.5946, "speed_kmh": 18 },
+    { "driver_id": "mock-sneha",  "driver_name": "Sneha Reddy",  "latitude": 12.9141, "longitude": 77.6369, "speed_kmh": 25 },
+    { "driver_id": "mock-vikram", "driver_name": "Vikram Singh", "latitude": 12.9770, "longitude": 77.6360, "speed_kmh": 41 },
+    { "driver_id": "mock-rohan",  "driver_name": "Rohan Das",    "latitude": 12.9010, "longitude": 77.5846, "speed_kmh": 15 },
+    { "driver_id": "mock-ananya", "driver_name": "Ananya Iyer",  "latitude": 12.8392, "longitude": 77.6774, "speed_kmh": 28 },
+    { "driver_id": "mock-rahul",  "driver_name": "Rahul Iyer",   "latitude": 13.0012, "longitude": 77.5550, "speed_kmh":  0 }
+  ]
+}

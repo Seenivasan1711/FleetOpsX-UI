@@ -1,19 +1,10 @@
 import { useRef, useState } from 'react'
 import { Icon } from '../ui/icons'
 import { useOutsideClick } from '../../hooks/useOutsideClick'
+import { MOCK_NOTIFICATIONS } from '../../mock/data'
+import type { MockNotification } from '../../mock/data'
 
-type Notification = {
-  title: string
-  time:  string
-  read:  boolean
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { title: 'Orders pending dispatch for today',          time: 'Just now',   read: false },
-  { title: 'Route plan generation available',            time: '2 min ago',  read: false },
-  { title: 'Koramangala Depot: drivers checked in',      time: '18 min ago', read: true  },
-  { title: 'ETL last ran — analytics data refreshed',    time: '1 hr ago',   read: true  },
-]
+type Notification = MockNotification
 
 export const NotificationBell = () => {
   const [open, setOpen]       = useState(false)

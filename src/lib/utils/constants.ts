@@ -33,6 +33,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'marketplace',  label: 'Marketplace',        path: '/marketplace',        icon: Icon.Shop,     section: 'platform' },
   { id: 'governance',   label: 'Governance',         path: '/governance',         icon: Icon.Shield,   section: 'platform' },
   { id: 'scenarios',    label: 'Scenarios',          path: '/scenarios',          icon: Icon.Layers,   section: 'platform' },
+  { id: 'ai-config',    label: 'AI Configuration',    path: '/ai-config',          icon: Icon.Bolt,     section: 'platform' },
   { id: 'ai-providers', label: 'AI Providers',       path: '/admin/ai-providers', icon: Icon.Bolt,     section: 'platform', adminOnly: true },
   { id: 'team',         label: 'Team',               path: '/team',               icon: Icon.Users,    section: 'platform' },
 ]

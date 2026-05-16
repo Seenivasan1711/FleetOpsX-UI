@@ -39,13 +39,13 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const lastX   = w
   const lastY   = h - ((lastVal - min) / range) * (h - 8) - 4
   const gradId  = `sg-${color.replace(/[^a-z0-9]/gi, '')}`
-  const areaPoints = `0,${h} ${pts.join(' ')} ${w},${h}`
+  const areaPoints = `0,${h + 4} ${pts.join(' ')} ${w},${h + 4}`
 
   return (
     <svg
       width="100%"
       height={h}
-      viewBox={`0 0 ${w} ${h}`}
+      viewBox={`0 0 ${w + 8} ${h + 4}`}
       preserveAspectRatio="none"
       style={{ display: 'block' }}
     >
@@ -64,7 +64,8 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={lastX} cy={lastY} r="3" fill={color} />
+      <circle cx={lastX} cy={lastY} r="6" fill={color} fillOpacity="0.2" />
+      <circle cx={lastX} cy={lastY} r="3.5" fill={color} />
     </svg>
   )
 }

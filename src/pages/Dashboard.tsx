@@ -14,19 +14,11 @@ import { fetchFleetAvailability }   from '../api/fleet'
 import { fetchOrders }              from '../api/orders'
 import { fetchDrivers }             from '../api/drivers'
 import { QUERY_KEYS }               from '../lib/utils/constants'
-import { useMockData }              from '../mock/config'
-import { MOCK_FLEET, MOCK_AT_RISK } from '../mock/data'
+import { useMockData }                        from '../mock/config'
+import { MOCK_DASHBOARD }                     from '../mock/data'
 
 const todayStr = new Date().toISOString().slice(0, 10)
-
-// Mock stat values matching the fleet/orders mock data
-const MOCK_STATS = {
-  totalDeliveries: 118,
-  onTimeRate:      95,
-  atRiskSlas:      MOCK_AT_RISK.length,
-  driversAvail:    MOCK_FLEET.drivers.find(d => d.label === 'Available')?.value ?? 13,
-  driversTotal:    MOCK_FLEET.driversTotal,
-}
+const MOCK_STATS = MOCK_DASHBOARD.stats
 
 export default function Dashboard() {
   const isMock = useMockData()
@@ -35,28 +27,32 @@ export default function Dashboard() {
   const { data: kpis } = useQuery({
     queryKey: QUERY_KEYS.analyticsKpis,
     queryFn:  () => fetchKpis(),
-    staleTime: 120_000,
+    staleTime:       120_000,
+    refetchInterval: 120_000,
     enabled:  !isMock,
   })
 
   const { data: fleet } = useQuery({
     queryKey: ['fleet-availability'],
     queryFn:  fetchFleetAvailability,
-    staleTime: 60_000,
+    staleTime:       60_000,
+    refetchInterval: 60_000,
     enabled:  !isMock,
   })
 
   const { data: todayOrders = [] } = useQuery({
     queryKey: QUERY_KEYS.orders(todayStr),
     queryFn:  () => fetchOrders({ plan_date: todayStr }),
-    staleTime: 60_000,
+    staleTime:       60_000,
+    refetchInterval: 60_000,
     enabled:  !isMock,
   })
 
   const { data: allDrivers = [] } = useQuery({
     queryKey: QUERY_KEYS.drivers,
     queryFn:  () => fetchDrivers(),
-    staleTime: 60_000,
+    staleTime:       60_000,
+    refetchInterval: 60_000,
     enabled:  !isMock,
   })
 
@@ -64,7 +60,8 @@ export default function Dashboard() {
   const { data: kpiTrend = [] } = useQuery({
     queryKey: ['kpi-trend', 10],
     queryFn:  () => fetchKpiTrend(10),
-    staleTime: 300_000,
+    staleTime:       300_000,
+    refetchInterval: 300_000,
     enabled:  !isMock,
   })
 
@@ -77,22 +74,51 @@ export default function Dashboard() {
   const driversTotal    = isMock ? MOCK_STATS.driversTotal    : (fleet?.drivers.total ?? 0)
   const atRiskSlas      = isMock ? MOCK_STATS.atRiskSlas      : todayOrders.filter((o) => (o.priority === 'CRITICAL' || o.priority === 'HIGH') && o.status === 'PENDING').length
 
-  // Sparklines — last point always reflects the current live value.
-  // Orders and on-time rate use real deliveries_by_day / kpi-trend when available.
+  const { sparklines } = MOCK_DASHBOARD
+  const rawSparkOrders = kpis?.deliveries_by_day?.slice(-10).map(d => d.total) ?? []
   const sparkOrders  = isMock
-    ? [78, 82, 85, 90, 88, 92, 97, 100, 105, MOCK_STATS.totalDeliveries]
-    : (kpis?.deliveries_by_day?.slice(-10).map(d => d.total) ?? [78, 82, 85, 90, 88, 92, 97, 100, 105, totalDeliveries || 118])
+    ? sparklines.orders
+    : rawSparkOrders.length >= 2
+      ? rawSparkOrders
+      : Array(9).fill(totalDeliveries).concat([totalDeliveries])
   const sparkOnTime  = isMock
-    ? [88, 89, 89, 90, 91, 92, 91, 93, 94, MOCK_STATS.onTimeRate]
+    ? sparklines.onTime
     : kpiTrend.length >= 2
       ? kpiTrend.map(p => Math.round((p.on_time_pct ?? 0) * 100))
-      : [88, 89, 89, 90, 91, 92, 91, 93, 94, onTimeRate || 95]
-  const sparkAtRisk  = [8,  6,  7,  5,  4,  6,  4,  3,  3, atRiskSlas  || 3]
+      : [...sparklines.onTime.slice(0, 9), onTimeRate || 95]
+  const sparkAtRisk  = isMock ? sparklines.atRisk : Array(10).fill(atRiskSlas)
   const sparkDrivers = isMock
-    ? [10, 11, 12, 11, 13, 12, 14, 13, 13, MOCK_STATS.driversAvail]
+    ? sparklines.drivers
     : kpiTrend.length >= 2
       ? kpiTrend.map(p => p.active_drivers)
-      : [10, 11, 12, 11, 13, 12, 14, 13, 13, driversAvail || 13]
+      : [...sparklines.drivers.slice(0, 9), driversAvail || 13]
+
+  // Trend labels — demo: static strings; live: derived from API data if available
+  const deliveriesByDay = kpis?.deliveries_by_day
+  const ordersDelta = deliveriesByDay && deliveriesByDay.length >= 2
+    ? totalDeliveries - deliveriesByDay[deliveriesByDay.length - 2].total
+    : null
+  const ordersTrend = isMock
+    ? { up: true, val: '+21', label: 'vs yesterday' }
+    : (ordersDelta != null && ordersDelta !== 0)
+      ? { up: ordersDelta > 0, val: `${ordersDelta > 0 ? '+' : ''}${ordersDelta}`, label: 'vs yesterday' }
+      : undefined
+
+  const onTimePrev  = kpiTrend.length >= 2 ? Math.round((kpiTrend[kpiTrend.length - 2].on_time_pct ?? 0) * 100) : null
+  const onTimeDelta = onTimePrev != null ? onTimeRate - onTimePrev : null
+  const onTimeTrend = isMock
+    ? { up: true, val: '+2.5pp', label: 'this week' }
+    : (onTimeDelta != null && onTimeDelta !== 0)
+      ? { up: onTimeDelta > 0, val: `${onTimeDelta > 0 ? '+' : ''}${onTimeDelta}pp`, label: 'vs yesterday' }
+      : undefined
+
+  const driversPrev  = kpiTrend.length >= 2 ? kpiTrend[kpiTrend.length - 2].active_drivers : null
+  const driversDelta = driversPrev != null ? driversAvail - driversPrev : null
+  const driversTrend = isMock
+    ? { up: true, val: '2 newly', label: 'clocked-in' }
+    : (driversDelta != null && driversDelta !== 0)
+      ? { up: driversDelta > 0, val: `${Math.abs(driversDelta)} ${driversDelta > 0 ? 'more' : 'fewer'}`, label: 'vs yesterday' }
+      : undefined
 
   return (
     <AppShell>
@@ -120,7 +146,7 @@ export default function Dashboard() {
             value={totalDeliveries}
             color="accent"
             icon={<Icon.Package size={16} />}
-            trend={{ up: true, val: '+21', label: 'vs yesterday' }}
+            trend={ordersTrend}
             sparkline={sparkOrders}
             delay={0}
           />
@@ -130,7 +156,7 @@ export default function Dashboard() {
             color="success"
             suffix="%"
             icon={<Icon.Check size={16} />}
-            trend={{ up: true, val: '+2.5pp', label: 'this week' }}
+            trend={onTimeTrend}
             sparkline={sparkOnTime}
             delay={80}
           />
@@ -139,7 +165,7 @@ export default function Dashboard() {
             value={atRiskSlas}
             color="info"
             icon={<Icon.Alert size={16} />}
-            trend={{ up: true, val: '4 fewer', label: 'than yesterday' }}
+            trend={isMock ? { up: true, val: '4 fewer', label: 'than yesterday' } : undefined}
             sparkline={sparkAtRisk}
             delay={160}
           />
@@ -149,7 +175,7 @@ export default function Dashboard() {
             color="blue"
             suffix={`/${driversTotal}`}
             icon={<Icon.Drivers size={16} />}
-            trend={{ up: true, val: '2 newly', label: 'clocked-in' }}
+            trend={driversTrend}
             sparkline={sparkDrivers}
             delay={240}
           />

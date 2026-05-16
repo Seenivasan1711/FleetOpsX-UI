@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchRouteTimeline } from '../../../api/analytics'
 import { useMockData }        from '../../../mock/config'
 import { MOCK_ROUTES }        from '../../../mock/data'
-import type { MockRoute }     from '../../../mock/data'
+import type { MockRoute, RouteSegment } from '../../../mock/data'
 
 // 07:00–18:00 operating window
 const DAY_START = 7  * 60   // 420 min
@@ -40,11 +40,22 @@ function isoToMins(iso: string): number {
   return d.getHours() * 60 + d.getMinutes()
 }
 
+type BlockState = 'past' | 'active' | 'future'
+
+function classifyBlock(nowMins: number, start: number, end: number): BlockState {
+  if (nowMins > end)    return 'past'
+  if (nowMins >= start) return 'active'
+  return 'future'
+}
+
+function stripesBg(color: string) {
+  return `repeating-linear-gradient(-45deg, ${hexToRgba(color, 0.45)} 0px, ${hexToRgba(color, 0.45)} 3px, ${hexToRgba(color, 0.15)} 3px, ${hexToRgba(color, 0.15)} 8px)`
+}
+
 export function RouteTimeline({ planDate }: { planDate?: string }) {
   const isMock  = useMockData()
   const now     = new Date()
   const nowMins = now.getHours() * 60 + now.getMinutes()
-  // Only show the "now" marker when it falls within the visible window
   const showNow = nowMins >= DAY_START && nowMins <= DAY_END
 
   const { data: timelineData } = useQuery({
@@ -58,28 +69,59 @@ export function RouteTimeline({ planDate }: { planDate?: string }) {
   const routes: MockRoute[] = isMock
     ? MOCK_ROUTES
     : (timelineData ?? []).map((tl, idx) => {
-        const stopMins = tl.stops
+        const bStartMins = tl.break_start ? isoToMins(tl.break_start) : null
+        const bEndMins   = tl.break_end   ? isoToMins(tl.break_end)   : null
+
+        const allStopMins = tl.stops
           .flatMap(s => [
             s.start_time ? isoToMins(s.start_time) : null,
             s.end_time   ? isoToMins(s.end_time)   : null,
           ])
           .filter((m): m is number => m !== null)
 
-        const rStart = stopMins.length ? Math.min(...stopMins) : DAY_START
-        const rEnd   = stopMins.length ? Math.max(...stopMins) : DAY_START + 60
+        const segments: RouteSegment[] = []
 
-        const bStart = tl.break_start ? isoToMins(tl.break_start) : rEnd
-        const bEnd   = tl.break_end   ? isoToMins(tl.break_end)   : rEnd  // zero-width → no bar shown
+        if (bStartMins != null && bEndMins != null) {
+          const preStops  = allStopMins.filter(m => m <= bStartMins)
+          const postStops = allStopMins.filter(m => m >= bEndMins)
+
+          if (preStops.length) {
+            segments.push({
+              type:  'route',
+              start: Math.min(...preStops),
+              end:   Math.max(...preStops),
+              stops: tl.stops.filter(s => s.start_time && isoToMins(s.start_time) <= bStartMins).length,
+            })
+          }
+
+          segments.push({ type: 'break', start: bStartMins, end: bEndMins })
+
+          if (postStops.length) {
+            segments.push({
+              type:  'route',
+              start: Math.min(...postStops),
+              end:   Math.max(...postStops),
+              stops: tl.stops.filter(s => s.start_time && isoToMins(s.start_time) >= bEndMins).length,
+            })
+          }
+        } else {
+          if (allStopMins.length) {
+            segments.push({
+              type:  'route',
+              start: Math.min(...allStopMins),
+              end:   Math.max(...allStopMins),
+              stops: tl.stops.length,
+            })
+          } else {
+            segments.push({ type: 'route', start: DAY_START, end: DAY_START + 60, stops: 0 })
+          }
+        }
 
         return {
-          id:     tl.driver_id,
-          name:   tl.driver_name,
-          color:  DRIVER_COLORS[idx % DRIVER_COLORS.length] ?? '#8b5cf6',
-          stops:  tl.stops.length,
-          rStart,
-          rEnd,
-          bStart,
-          bEnd,
+          id:       tl.driver_id,
+          name:     tl.driver_name,
+          color:    DRIVER_COLORS[idx % DRIVER_COLORS.length] ?? '#8b5cf6',
+          segments,
         }
       })
 
@@ -144,12 +186,13 @@ export function RouteTimeline({ planDate }: { planDate?: string }) {
 
           {/* Driver rows */}
           {routes.map((route, idx) => {
-            // Past/future coloring — "touched" = current time has reached or passed bar start
-            const routeTouched = !showNow || nowMins >= route.rStart
-            const breakTouched = !showNow || nowMins >= route.bStart
-            const routeAlpha   = routeTouched ? 1    : 0.28
-            const breakAlpha   = breakTouched ? 0.38 : 0.12
-            const dotColor     = routeTouched ? '#34d399' : 'var(--c-subtle)'
+            const lastSeg   = route.segments[route.segments.length - 1]
+            const allDone   = lastSeg ? nowMins > lastSeg.end : false
+            const anyActive = route.segments.some(s => classifyBlock(nowMins, s.start, s.end) === 'active')
+
+            const dotColor = anyActive  ? '#34d399'
+                           : allDone    ? 'var(--c-subtle)'
+                           :              'rgba(148,163,184,0.4)'
 
             return (
             <div
@@ -170,7 +213,15 @@ export function RouteTimeline({ planDate }: { planDate?: string }) {
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ background: dotColor, transition: 'background 0.3s' }}
                 />
-                <span className="text-[13px] font-medium text-[var(--c-text)] truncate">
+                <span
+                  className="text-[13px] font-medium truncate"
+                  style={{
+                    color:          allDone ? 'var(--c-muted)' : 'var(--c-text)',
+                    textDecoration: allDone ? 'line-through'   : 'none',
+                    opacity:        allDone ? 0.55 : 1,
+                    transition:     'all 0.3s',
+                  }}
+                >
                   {route.name}
                 </span>
               </div>
@@ -180,43 +231,55 @@ export function RouteTimeline({ planDate }: { planDate?: string }) {
                 className="relative flex-1 overflow-hidden"
                 style={{ height: 34, borderRadius: 8, background: 'var(--c-elevated)' }}
               >
-                {/* Route bar */}
-                <div
-                  className="absolute top-[5px] bottom-[5px] rounded-md flex items-center px-2.5"
-                  style={{
-                    left:       pctOf(route.rStart),
-                    width:      wPctOf(route.rStart, route.rEnd),
-                    background: hexToRgba(route.color, routeAlpha),
-                    transition: 'background 0.4s',
-                  }}
-                >
-                  <span
-                    className="text-[11px] font-semibold whitespace-nowrap truncate select-none"
-                    style={{ color: routeTouched ? '#fff' : route.color }}
-                  >
-                    {route.stops} stops
-                  </span>
-                </div>
+                {route.segments.map((seg, sIdx) => {
+                  const state = classifyBlock(nowMins, seg.start, seg.end)
 
-                {/* Depot break bar — only shown when bEnd > bStart */}
-                {route.bEnd > route.bStart && (
-                  <div
-                    className="absolute top-[5px] bottom-[5px] rounded-md flex items-center justify-center"
-                    style={{
-                      left:       pctOf(route.bStart),
-                      width:      wPctOf(route.bStart, route.bEnd),
-                      background: hexToRgba(route.color, breakAlpha),
-                      transition: 'background 0.4s',
-                    }}
-                  >
-                    <span
-                      className="text-[9px] font-semibold text-center leading-[1.2] select-none"
-                      style={{ color: route.color, opacity: breakTouched ? 1 : 0.5 }}
+                  if (seg.type === 'route') {
+                    const bg = state === 'past'   ? stripesBg(route.color)
+                             : state === 'future'  ? hexToRgba(route.color, 0.45)
+                             :                       hexToRgba(route.color, 1)
+                    return (
+                      <div
+                        key={sIdx}
+                        className="absolute top-[5px] bottom-[5px] rounded-md flex items-center px-2.5"
+                        style={{ left: pctOf(seg.start), width: wPctOf(seg.start, seg.end), background: bg, transition: 'background 0.4s' }}
+                      >
+                        <span
+                          className="text-[11px] font-semibold whitespace-nowrap truncate select-none"
+                          style={{
+                            color:   state === 'active' ? '#fff' : route.color,
+                            opacity: state === 'past'   ? 0.6    : 1,
+                          }}
+                        >
+                          {seg.stops} stops
+                        </span>
+                      </div>
+                    )
+                  }
+
+                  // break segment — only render when it has non-zero width
+                  if (seg.end <= seg.start) return null
+                  const bg = state === 'past'   ? stripesBg(route.color)
+                           : state === 'future'  ? hexToRgba(route.color, 0.28)
+                           :                       hexToRgba(route.color, 0.92)
+                  return (
+                    <div
+                      key={sIdx}
+                      className="absolute top-[5px] bottom-[5px] rounded-md flex items-center justify-center"
+                      style={{ left: pctOf(seg.start), width: wPctOf(seg.start, seg.end), background: bg, transition: 'background 0.4s' }}
                     >
-                      depot<br />break
-                    </span>
-                  </div>
-                )}
+                      <span
+                        className="text-[9px] font-semibold text-center leading-[1.2] select-none"
+                        style={{
+                          color:   state === 'active' ? '#fff' : route.color,
+                          opacity: state === 'past'   ? 0.55   : 1,
+                        }}
+                      >
+                        depot<br />break
+                      </span>
+                    </div>
+                  )
+                })}
 
                 {/* Current time marker */}
                 {showNow && (

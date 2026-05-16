@@ -5,21 +5,23 @@ import { MOCK_FLEET }      from '../../../mock/data'
 import type { MockSegment } from '../../../mock/data'
 
 type CardData = {
-  title:    string
-  total:    number
-  unit?:    string
-  icon:     React.ReactNode
-  iconBg:   string
-  segments: MockSegment[]
+  title:       string
+  total:       number
+  showTotal?:  boolean
+  unit?:       string
+  icon:        React.ReactNode
+  iconBg:      string
+  segments:    MockSegment[]
 }
 
 function SegmentBar({ segments, total }: { segments: MockSegment[]; total: number }) {
+  const safeTotal = total > 0 ? total : 1
   return (
     <div className="flex h-[6px] rounded-full overflow-hidden gap-[2px]">
       {segments.map((s) => (
         <div
           key={s.label}
-          style={{ flex: s.value / total, background: s.color, borderRadius: 999 }}
+          style={{ flex: (s.value ?? 0) / safeTotal, background: s.color, borderRadius: 999 }}
         />
       ))}
     </div>
@@ -42,9 +44,11 @@ function FleetCard({ card }: { card: CardData }) {
         </div>
         <div>
           <p className="text-[15px] font-bold text-[var(--c-text)]">{card.title}</p>
-          <p className="text-[11px] font-mono mt-0.5" style={{ color: 'var(--c-muted)' }}>
-            {card.total} total
-          </p>
+          {card.showTotal !== false && (
+            <p className="text-[11px] font-mono mt-0.5" style={{ color: 'var(--c-muted)' }}>
+              {card.total} total
+            </p>
+          )}
         </div>
       </div>
 
@@ -117,9 +121,10 @@ export function FleetStatusCards() {
         segments: MOCK_FLEET.vehicles,
       },
       {
-        title:  'Efficiency',
-        total:  MOCK_FLEET.efficiencyTotal,
-        unit:   '%',
+        title:     'Efficiency',
+        total:     MOCK_FLEET.efficiencyTotal,
+        showTotal: false,
+        unit:      '%',
         iconBg: 'rgba(52,211,153,0.14)',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -133,37 +138,45 @@ export function FleetStatusCards() {
     ]
   } else {
     // Compute on_route as remainder if BE does not supply it yet
-    const onRoute = fleet.drivers.on_route
-      ?? Math.max(0, fleet.drivers.total - fleet.drivers.available - fleet.drivers.on_break - fleet.drivers.off_duty)
+    const dAvail   = fleet.drivers.available  ?? 0
+    const dBreak   = fleet.drivers.on_break   ?? 0
+    const dOff     = fleet.drivers.off_duty   ?? 0
+    const dTotal   = fleet.drivers.total      ?? 0
+    const onRoute  = fleet.drivers.on_route
+      ?? Math.max(0, dTotal - dAvail - dBreak - dOff)
 
     const driversSegments: MockSegment[] = [
-      { label: 'Available', value: fleet.drivers.available, color: '#34d399' },
-      { label: 'On Route',  value: onRoute,                 color: '#60a5fa' },
-      { label: 'On Break',  value: fleet.drivers.on_break,  color: '#f59e0b' },
-      { label: 'Off Duty',  value: fleet.drivers.off_duty,  color: '#505065' },
+      { label: 'Available', value: dAvail,   color: '#34d399' },
+      { label: 'On Route',  value: onRoute,  color: '#60a5fa' },
+      { label: 'On Break',  value: dBreak,   color: '#f59e0b' },
+      { label: 'Off Duty',  value: dOff,     color: '#505065' },
     ]
 
     const vehiclesSegments: MockSegment[] = [
-      { label: 'Available',   value: fleet.vehicles.available,   color: '#34d399' },
-      { label: 'In Use',      value: fleet.vehicles.in_use,      color: '#60a5fa' },
-      { label: 'Maintenance', value: fleet.vehicles.maintenance, color: '#f59e0b' },
-      { label: 'Low Fuel',    value: fleet.vehicles.low_fuel,    color: '#f87171' },
+      { label: 'Available',   value: fleet.vehicles.available    ?? 0, color: '#34d399' },
+      { label: 'In Use',      value: fleet.vehicles.in_use       ?? 0, color: '#60a5fa' },
+      { label: 'Maintenance', value: fleet.vehicles.maintenance  ?? 0, color: '#f59e0b' },
+      { label: 'Low Fuel',    value: fleet.vehicles.low_fuel     ?? 0, color: '#f87171' },
     ]
 
     // Efficiency: use real data if BE provides it; fall back to mock segments.
     // TODO: remove MOCK_FLEET.efficiency fallback once BE endpoint is implemented.
     const efficiencySegments: MockSegment[] = fleet.efficiency
       ? [
-          { label: 'Capacity used', value: fleet.efficiency.capacity_used_pct, color: '#34d399' },
-          { label: 'Idle time',     value: fleet.efficiency.idle_time_pct,     color: '#f59e0b' },
-          { label: 'Avg detour',    value: fleet.efficiency.avg_detour_pct,    color: '#f87171' },
+          { label: 'Capacity used', value: fleet.efficiency.capacity_used_pct ?? 0, color: '#34d399' },
+          { label: 'Idle time',     value: fleet.efficiency.idle_time_pct     ?? 0, color: '#f59e0b' },
+          { label: 'Avg detour',    value: fleet.efficiency.avg_detour_pct    ?? 0, color: '#f87171' },
         ]
-      : MOCK_FLEET.efficiency
+      : [
+          { label: 'Capacity used', value: 0, color: '#34d399' },
+          { label: 'Idle time',     value: 0, color: '#f59e0b' },
+          { label: 'Avg detour',    value: 0, color: '#f87171' },
+        ]
 
     cards = [
       {
         title:    'Drivers',
-        total:    fleet.drivers.total,
+        total:    dTotal,
         iconBg:   'rgba(139,92,246,0.18)',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -177,7 +190,7 @@ export function FleetStatusCards() {
       },
       {
         title:    'Vehicles',
-        total:    fleet.vehicles.total,
+        total:    fleet.vehicles.total ?? 0,
         iconBg:   'rgba(34,211,238,0.14)',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -190,9 +203,10 @@ export function FleetStatusCards() {
         segments: vehiclesSegments,
       },
       {
-        title:    'Efficiency',
-        total:    100,
-        unit:     '%',
+        title:     'Efficiency',
+        total:     100,
+        showTotal: false,
+        unit:      '%',
         iconBg:   'rgba(52,211,153,0.14)',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
