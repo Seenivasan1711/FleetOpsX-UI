@@ -152,14 +152,13 @@ function apiMsgToMsg(m: ChatMessage): Msg {
 function AIAvatar({ size = 26 }: { size?: number }) {
   return (
     <div style={{
-      width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, marginTop: 1,
-      background: 'linear-gradient(140deg, #7c3aed, #4f46e5)',
+      width: size, height: size, borderRadius: size * 0.28, flexShrink: 0, marginTop: 1,
+      background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 2px 8px rgba(124,58,237,0.4)',
     }}>
-      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/>
-        <path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"/>
-        <path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"/>
+      <svg width={size * 0.54} height={size * 0.54} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
       </svg>
     </div>
   )
@@ -651,15 +650,26 @@ export function ChatPanel() {
   const lastAssistantIdx = msgs.reduceRight((found, m, i) => found === -1 && m.role === 'assistant' ? i : found, -1)
 
   return (
+    <>
+      {/* Backdrop — fixed so it covers sidebar too */}
+      <div
+        onClick={toggleChat}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 40,
+          background: 'rgba(0,0,0,0.50)',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+        }}
+      />
     <div
       className="fox-slide"
       style={{
-        flexShrink: 0,
-        width: 'min(440px, 40vw)',
+        position: 'fixed', right: 0, top: 0, bottom: 0, zIndex: 50,
+        width: 'min(460px, 42vw)',
         display: 'flex', flexDirection: 'column',
         background: C.panelBg,
         borderLeft: `1px solid ${C.border}`,
-        boxShadow: '-8px 0 48px rgba(0,0,0,0.55)',
+        boxShadow: '-12px 0 60px rgba(0,0,0,0.65)',
         overflow: 'hidden',
       }}
     >
@@ -703,11 +713,6 @@ export function ChatPanel() {
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: loading ? C.amber : C.green,
-                boxShadow: loading ? `0 0 6px ${C.amber}` : `0 0 6px ${C.greenGlow}`,
-              }} />
               <span style={{ fontSize: 10.5, color: C.textMute }}>
                 {loading ? 'Thinking…' : 'Operations assistant · live context'}
               </span>
@@ -927,5 +932,6 @@ export function ChatPanel() {
         </div>
       </div>
     </div>
+    </>
   )
 }

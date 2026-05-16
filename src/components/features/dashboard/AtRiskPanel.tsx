@@ -1,110 +1,136 @@
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, UserCheck, Bell, RotateCcw, Navigation } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { Collapsible } from '../../ui/Collapsible'
-import { EmptyState } from '../../ui/EmptyState'
-import { PriorityBadge } from '../../ui/Badge'
-import { fetchAtRiskStops } from '../../../api/sla'
-import { QUERY_KEYS } from '../../../lib/utils/constants'
+import { useQuery }            from '@tanstack/react-query'
+import toast                   from 'react-hot-toast'
+import { fetchAtRiskStops }    from '../../../api/sla'
+import { fetchSuggestions }    from '../../../api/agentSuggestions'
+import { useMockData }         from '../../../mock/config'
+import { MOCK_AT_RISK }        from '../../../mock/data'
+import type { MockAtRiskItem } from '../../../mock/data'
 
-type Props = { planDate: string }
-
-type Action = { label: string; icon: React.ReactNode; onClick: () => void }
-
-function ActionChip({ label, icon, onClick }: Action) {
+function SpinIcon() {
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all"
-      style={{
-        background: 'var(--c-surface)',
-        border:     '1px solid var(--c-border)',
-        color:      'var(--c-muted)',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background  = 'var(--c-accent-dim)'
-        e.currentTarget.style.borderColor = 'var(--c-accent)'
-        e.currentTarget.style.color       = 'var(--c-accent)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background  = 'var(--c-surface)'
-        e.currentTarget.style.borderColor = 'var(--c-border)'
-        e.currentTarget.style.color       = 'var(--c-muted)'
-      }}
-    >
-      {icon}
-      {label}
-    </button>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
+    </svg>
   )
 }
 
-export const AtRiskPanel = ({ planDate }: Props) => {
-  const { data: stops = [] } = useQuery({
-    queryKey:        QUERY_KEYS.slaAtRisk(planDate),
-    queryFn:         () => fetchAtRiskStops(planDate),
-    refetchInterval: 60_000,
+export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
+  const isMock = useMockData()
+  const date = planDate ?? new Date().toISOString().slice(0, 10)
+
+  const { data: atRiskStops } = useQuery({
+    queryKey: ['at-risk-stops', date],
+    queryFn:  () => fetchAtRiskStops(date),
+    enabled:  !isMock,
+    refetchInterval: 30_000,
   })
 
-  return (
-    <Collapsible
-      title="At-Risk Deliveries"
-      icon={<AlertTriangle size={16} />}
-      badge={stops.length}
-      badgeVariant={stops.length > 0 ? 'danger' : undefined}
-      refreshLabel="refreshes every 60s"
-    >
-      {stops.length === 0 ? (
-        <EmptyState
-          title="All deliveries on track"
-          subtitle="No at-risk stops detected — system running smoothly."
-        />
-      ) : (
-        <div className="p-4 flex flex-col gap-2">
-          {stops.map((s) => {
-            const actions: Action[] = [
-              { label: 'Reassign',       icon: <UserCheck size={10} />,  onClick: () => toast('AI: Reassigning to nearest driver…',            { icon: '🤖' }) },
-              { label: 'Notify Driver',  icon: <Bell size={10} />,       onClick: () => toast(`Notified ${s.driver_name}`,                     { icon: '🔔' }) },
-              { label: 'Reschedule',     icon: <RotateCcw size={10} />,  onClick: () => toast('AI: Finding next available window…',             { icon: '📅' }) },
-              { label: 'Navigate',       icon: <Navigation size={10} />, onClick: () => toast('Opening fastest route in dispatch system…',      { icon: '🗺️' }) },
-            ]
-            return (
-              <div
-                key={s.stop_id}
-                className="flex flex-col gap-2.5 p-3 rounded-xl"
-                style={{
-                  background: 'var(--c-red-dim)',
-                  border:     '1px solid rgba(248,113,113,0.2)',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-[var(--c-text)] truncate">
-                        {s.delivery_address}
-                      </span>
-                      <PriorityBadge priority={s.priority as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'} />
-                    </div>
-                    <p className="text-xs text-[var(--c-muted)] mt-0.5">
-                      Driver: <span className="font-medium">{s.driver_name}</span>
-                      {' · '}
-                      Window ends: <span className="font-medium font-mono">{s.time_window_end}</span>
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-[var(--c-red)]">+{s.overdue_by_minutes} min</p>
-                    <p className="text-xs text-[var(--c-muted)]">ETA ~{s.eta_minutes % 60}min</p>
-                  </div>
-                </div>
+  const { data: suggestions } = useQuery({
+    queryKey: ['suggestions', date, 'PENDING'],
+    queryFn:  () => fetchSuggestions(date, 'PENDING'),
+    enabled:  !isMock,
+    refetchInterval: 30_000,
+  })
 
-                {/* AI action chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  {actions.map((a) => <ActionChip key={a.label} {...a} />)}
-                </div>
-              </div>
-            )
-          })}
+  // Map API data → UI shape, or fall back to mock
+  const items: MockAtRiskItem[] = isMock
+    ? MOCK_AT_RISK
+    : (atRiskStops ?? []).map(stop => {
+        const match = (suggestions ?? []).find(
+          s => (s.context as Record<string, unknown>)?.order_id === stop.order_id
+        )
+        return {
+          id:         stop.order_id,
+          address:    stop.delivery_address,
+          minsLate:   stop.overdue_by_minutes,
+          reason:     stop.reason
+            ?? `${stop.driver_name} running ${stop.overdue_by_minutes} min late`,
+          suggestion: match?.title ?? 'AI is analyzing this stop…',
+        }
+      })
+
+  return (
+    <div
+      className="rounded-2xl"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-5 py-4"
+        style={{ borderBottom: '1px solid var(--c-border)' }}
+      >
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(245,158,11,0.12)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
         </div>
-      )}
-    </Collapsible>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold text-[var(--c-text)]">At-Risk Inbox</p>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-muted)' }}>
+            {items.length} SLAs need attention
+          </p>
+        </div>
+        <span
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[13px] font-bold"
+          style={{ background: 'var(--c-red-dim)', color: 'var(--c-red)' }}
+        >
+          {items.length}
+        </span>
+      </div>
+
+      {/* Items */}
+      <div className="p-4 flex flex-col gap-0">
+        {items.map((item, idx) => (
+          <div
+            key={item.id}
+            className="flex flex-col gap-2"
+            style={{
+              paddingTop:    idx === 0 ? 4 : 16,
+              paddingBottom: 16,
+              borderBottom:  idx < items.length - 1 ? '1px solid var(--c-border)' : 'none',
+            }}
+          >
+            {/* Order ID + delay badge */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12px] font-mono font-semibold" style={{ color: 'var(--c-accent)' }}>
+                {item.id}
+              </span>
+              <span
+                className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap"
+                style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
+              >
+                {item.minsLate} min late
+              </span>
+            </div>
+
+            {/* Address */}
+            <p className="text-[16px] font-bold leading-snug text-[var(--c-text)]">
+              {item.address}
+            </p>
+
+            {/* Reason */}
+            <p className="text-[12px] leading-relaxed" style={{ color: 'var(--c-muted)' }}>
+              {item.reason}
+            </p>
+
+            {/* AI suggestion action */}
+            <button
+              onClick={() => toast(`AI: ${item.suggestion}`, { icon: '🤖' })}
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-[12.5px] font-medium text-left transition-all"
+              style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+            >
+              <SpinIcon />
+              <span>{item.suggestion}</span>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

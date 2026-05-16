@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Icon } from './icons'
 import { cn } from '../../lib/utils/cn'
 
 type CollapsibleProps = {
@@ -67,7 +67,7 @@ export const Collapsible = ({
           </span>
         )}
 
-        <ChevronDown
+        <Icon.ChevD
           size={15}
           className={cn('text-[var(--c-muted)] transition-transform duration-200 shrink-0', open && 'rotate-180')}
         />

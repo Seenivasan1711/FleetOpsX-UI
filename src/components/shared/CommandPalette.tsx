@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Search, LayoutDashboard, ClipboardList, Users, Map, BarChart2, Settings, Truck, X } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { NAV_ITEMS } from '../../lib/utils/constants'
 import type { Order, Driver } from '../../types'
 
@@ -15,13 +15,13 @@ type Result = {
 }
 
 const PAGE_ICONS: Record<string, React.ReactNode> = {
-  '/':              <LayoutDashboard size={14} />,
-  '/orders':        <ClipboardList  size={14} />,
-  '/drivers':       <Users          size={14} />,
-  '/map':           <Map            size={14} />,
-  '/analytics':     <BarChart2      size={14} />,
-  '/settings':      <Settings       size={14} />,
-  '/vehicles':      <Truck          size={14} />,
+  '/':              <Icon.Dashboard size={14} />,
+  '/orders':        <Icon.Orders   size={14} />,
+  '/drivers':       <Icon.Users    size={14} />,
+  '/map':           <Icon.Map      size={14} />,
+  '/analytics':     <Icon.Chart    size={14} />,
+  '/settings':      <Icon.Settings size={14} />,
+  '/vehicles':      <Icon.Truck    size={14} />,
 }
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
@@ -49,7 +49,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       id:    i.id,
       label: i.label,
       path:  i.path,
-      icon:  PAGE_ICONS[i.path] ?? <LayoutDashboard size={14} />,
+      icon:  PAGE_ICONS[i.path] ?? <Icon.Dashboard size={14} />,
       type:  'page' as const,
     }))
 
@@ -65,7 +65,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       label: o.external_ref ?? o.id.slice(0, 8),
       sub:   o.delivery_address,
       path:  '/orders',
-      icon:  <ClipboardList size={14} />,
+      icon:  <Icon.Orders size={14} />,
       type:  'order' as const,
     }))
 
@@ -81,7 +81,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       label: d.full_name,
       sub:   d.phone,
       path:  '/drivers',
-      icon:  <Users size={14} />,
+      icon:  <Icon.Users size={14} />,
       type:  'driver' as const,
     }))
 
@@ -119,7 +119,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       >
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--c-border)]">
-          <Search size={16} className="text-[var(--c-muted)] shrink-0" />
+          <Icon.Search size={16} className="text-[var(--c-muted)] shrink-0" />
           <input
             ref={inputRef}
             value={query}
@@ -129,7 +129,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             className="flex-1 bg-transparent text-[var(--c-text)] text-sm outline-none placeholder:text-[var(--c-muted)]"
           />
           <button onClick={onClose} className="text-[var(--c-muted)] hover:text-[var(--c-text)] transition-colors">
-            <X size={14} />
+            <Icon.X size={14} />
           </button>
         </div>
 

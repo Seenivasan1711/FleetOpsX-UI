@@ -14,7 +14,9 @@ client.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
-  if (effectiveTenantId) {
+  // Admin routes are platform-scoped — never send a tenant override header
+  const isAdminRoute = (config.url ?? '').startsWith('/api/v1/admin/')
+  if (effectiveTenantId && !isAdminRoute) {
     config.headers['X-Acting-Tenant-Id'] = effectiveTenantId
   }
   if (isReadOnly && READ_ONLY_METHODS.has((config.method ?? '').toLowerCase())) {

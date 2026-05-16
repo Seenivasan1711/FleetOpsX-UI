@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Bot, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react'
+import { Bot } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { fetchSuggestions, respondToSuggestion } from '../../api/agentSuggestions'
 import type { AgentSuggestion } from '../../types'
 
@@ -77,7 +78,7 @@ export default function SuggestedActions({ planDate }: Props) {
         </span>
         <span className="text-xs text-gray-400 flex items-center gap-1">
           polls every 60s
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {expanded ? <Icon.ChevU size={14} /> : <Icon.ChevD size={14} />}
         </span>
       </button>
 
@@ -151,7 +152,7 @@ function SuggestionCard({
           disabled={isPending}
           className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
         >
-          <CheckCircle size={12} />
+          <Icon.Check size={12} />
           {actionLabel}
         </button>
         <button
@@ -159,7 +160,7 @@ function SuggestionCard({
           disabled={isPending}
           className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
         >
-          <XCircle size={12} />
+          <Icon.X size={12} />
           Dismiss
         </button>
       </div>

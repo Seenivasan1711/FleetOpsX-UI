@@ -1,175 +1,240 @@
 import { useQuery } from '@tanstack/react-query'
-import { Clock } from 'lucide-react'
 import { fetchRouteTimeline } from '../../../api/analytics'
-import { QUERY_KEYS } from '../../../lib/utils/constants'
+import { useMockData }        from '../../../mock/config'
+import { MOCK_ROUTES }        from '../../../mock/data'
+import type { MockRoute }     from '../../../mock/data'
 
-type Props = { planDate: string }
+// 07:00–18:00 operating window
+const DAY_START = 7  * 60   // 420 min
+const DAY_END   = 18 * 60   // 1080 min
+const DAY_SPAN  = DAY_END - DAY_START  // 660 min
 
-const STATUS_COLORS: Record<string, string> = {
-  DELIVERED:  'var(--c-green)',
-  IN_TRANSIT: 'var(--c-accent)',
-  PENDING:    'var(--c-orange)',
-  ASSIGNED:   'var(--c-purple)',
-  FAILED:     'var(--c-red)',
+const HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+
+const NAME_COL_W = 148
+
+// Colors assigned to live drivers by index when not mocked
+const DRIVER_COLORS = [
+  '#8b5cf6', '#34d399', '#60a5fa', '#f472b6',
+  '#f59e0b', '#22d3ee', '#818cf8', '#fb923c',
+]
+
+function pctOf(mins: number) {
+  return `${(((mins - DAY_START) / DAY_SPAN) * 100).toFixed(4)}%`
 }
 
-function timeToMinutes(t: string | null): number | null {
-  if (!t) return null
-  const parts = t.slice(11, 16).split(':').map(Number)
-  const h = parts[0] ?? 0
-  const m = parts[1] ?? 0
-  return h * 60 + m
+function wPctOf(start: number, end: number) {
+  return `${(((end - start) / DAY_SPAN) * 100).toFixed(4)}%`
 }
 
-export function RouteTimeline({ planDate }: Props) {
-  const { data: timelines = [], isLoading } = useQuery({
-    queryKey:     QUERY_KEYS.routeTimeline(planDate),
-    queryFn:      () => fetchRouteTimeline(planDate),
-    staleTime:    60_000,
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+/** Convert an ISO timestamp string to minutes-from-midnight (local time). */
+function isoToMins(iso: string): number {
+  const d = new Date(iso)
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+export function RouteTimeline({ planDate }: { planDate?: string }) {
+  const isMock  = useMockData()
+  const now     = new Date()
+  const nowMins = now.getHours() * 60 + now.getMinutes()
+  // Only show the "now" marker when it falls within the visible window
+  const showNow = nowMins >= DAY_START && nowMins <= DAY_END
+
+  const { data: timelineData } = useQuery({
+    queryKey: ['route-timeline', planDate],
+    queryFn:  () => fetchRouteTimeline(planDate ?? new Date().toISOString().slice(0, 10)),
+    enabled:  !isMock,
+    refetchInterval: 30_000,
   })
 
-  if (isLoading) {
-    return (
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--c-accent-dim)' }}>
-            <Clock size={14} style={{ color: 'var(--c-accent)' }} />
-          </div>
-          <p className="text-sm font-semibold text-[var(--c-text)]">Today's Route Timeline</p>
-        </div>
-        <div className="p-5 flex flex-col gap-3">
-          {[1,2,3].map((i) => (
-            <div key={i} className="skeleton h-8 rounded-xl" style={{ animationDelay: `${i * 0.1}s` }} />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  // Map API DriverTimeline[] → MockRoute shape for unified rendering
+  const routes: MockRoute[] = isMock
+    ? MOCK_ROUTES
+    : (timelineData ?? []).map((tl, idx) => {
+        const stopMins = tl.stops
+          .flatMap(s => [
+            s.start_time ? isoToMins(s.start_time) : null,
+            s.end_time   ? isoToMins(s.end_time)   : null,
+          ])
+          .filter((m): m is number => m !== null)
 
-  if (timelines.length === 0) {
-    return (
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--c-accent-dim)' }}>
-            <Clock size={14} style={{ color: 'var(--c-accent)' }} />
-          </div>
-          <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Today's Route Timeline</p>
-          <span className="text-[10px] font-mono px-2 py-1 rounded-full" style={{ background: 'var(--c-elevated)', color: 'var(--c-muted)' }}>
-            No data
-          </span>
-        </div>
-        <p className="p-5 text-sm text-[var(--c-muted)] text-center py-8">
-          No route plans generated for today.
-        </p>
-      </div>
-    )
-  }
+        const rStart = stopMins.length ? Math.min(...stopMins) : DAY_START
+        const rEnd   = stopMins.length ? Math.max(...stopMins) : DAY_START + 60
 
-  // Determine time bounds across all stops
-  const allMins: number[] = []
-  timelines.forEach((tl) => tl.stops.forEach((s) => {
-    const start = timeToMinutes(s.start_time)
-    const end   = timeToMinutes(s.end_time)
-    if (start !== null) allMins.push(start)
-    if (end   !== null) allMins.push(end)
-  }))
-  const dayStart = allMins.length ? Math.min(...allMins) - 30 : 480
-  const dayEnd   = allMins.length ? Math.max(...allMins) + 30 : 1080
-  const daySpan  = dayEnd - dayStart || 60
+        const bStart = tl.break_start ? isoToMins(tl.break_start) : rEnd
+        const bEnd   = tl.break_end   ? isoToMins(tl.break_end)   : rEnd  // zero-width → no bar shown
 
-  const fmt = (mins: number) => {
-    const h = Math.floor(mins / 60) % 24
-    const m = mins % 60
-    return `${h}:${String(m).padStart(2, '0')}`
-  }
-
-  // Hour tick marks
-  const firstHour = Math.ceil(dayStart / 60)
-  const lastHour  = Math.floor(dayEnd / 60)
-  const hours     = Array.from({ length: lastHour - firstHour + 1 }, (_, i) => firstHour + i)
+        return {
+          id:     tl.driver_id,
+          name:   tl.driver_name,
+          color:  DRIVER_COLORS[idx % DRIVER_COLORS.length] ?? '#8b5cf6',
+          stops:  tl.stops.length,
+          rStart,
+          rEnd,
+          bStart,
+          bEnd,
+        }
+      })
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}>
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--c-accent-dim)' }}>
-          <Clock size={14} style={{ color: 'var(--c-accent)' }} />
+      <div
+        className="flex items-center gap-3 px-5 py-4"
+        style={{ borderBottom: '1px solid var(--c-border)' }}
+      >
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
+          </svg>
         </div>
-        <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Today's Route Timeline</p>
-        <span className="text-[10px] font-mono px-2 py-1 rounded-full" style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}>
-          {timelines.length} drivers
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold text-[var(--c-text)]">Today's Route Timeline</p>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-muted)' }}>
+            {routes.length} active routes · auto-refreshes every 30s
+          </p>
+        </div>
+        <span
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[1px] uppercase px-3 py-1.5 rounded-full"
+          style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
+        >
+          <span
+            className="w-[6px] h-[6px] rounded-full shrink-0"
+            style={{ background: 'var(--c-accent)', animation: 'pulse-dot 2s ease-in-out infinite' }}
+          />
+          LIVE
         </span>
       </div>
 
-      <div className="p-4 overflow-x-auto">
-        {/* Time axis */}
-        <div className="flex mb-2" style={{ paddingLeft: 110 }}>
-          <div className="relative flex-1" style={{ minWidth: 400 }}>
-            {hours.map((h) => (
-              <span
-                key={h}
-                className="absolute text-[9px] text-[var(--c-subtle)] font-mono"
-                style={{ left: `${((h * 60 - dayStart) / daySpan) * 100}%`, transform: 'translateX(-50%)' }}
-              >
-                {fmt(h * 60)}
-              </span>
-            ))}
-          </div>
-        </div>
+      {/* Timeline body */}
+      <div className="px-5 pt-5 pb-4 overflow-x-auto">
+        <div style={{ minWidth: 560 }}>
 
-        {/* Driver rows */}
-        <div className="flex flex-col gap-2">
-          {timelines.slice(0, 8).map((tl) => (
-            <div key={tl.driver_id} className="flex items-center gap-3">
-              {/* Driver name */}
-              <div className="shrink-0 flex items-center gap-2" style={{ width: 100 }}>
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                  style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
+          {/* Hour axis */}
+          <div className="flex" style={{ paddingLeft: NAME_COL_W, marginBottom: 10 }}>
+            <div className="relative flex-1">
+              {HOURS.map((h) => (
+                <span
+                  key={h}
+                  className="absolute text-[10px] font-mono select-none"
+                  style={{
+                    left:      `${(((h * 60) - DAY_START) / DAY_SPAN) * 100}%`,
+                    transform: 'translateX(-50%)',
+                    color:     'var(--c-subtle)',
+                  }}
                 >
-                  {tl.driver_name.split(' ').slice(0, 2).map((w: string) => w[0]).join('')}
-                </div>
-                <span className="text-[11px] text-[var(--c-muted)] truncate">{tl.driver_name.split(' ')[0]}</span>
+                  {`${String(h).padStart(2, '0')}:00`}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Driver rows */}
+          {routes.map((route, idx) => {
+            // Past/future coloring — "touched" = current time has reached or passed bar start
+            const routeTouched = !showNow || nowMins >= route.rStart
+            const breakTouched = !showNow || nowMins >= route.bStart
+            const routeAlpha   = routeTouched ? 1    : 0.28
+            const breakAlpha   = breakTouched ? 0.38 : 0.12
+            const dotColor     = routeTouched ? '#34d399' : 'var(--c-subtle)'
+
+            return (
+            <div
+              key={route.id}
+              className="flex items-center"
+              style={{
+                paddingTop:    10,
+                paddingBottom: 10,
+                borderBottom:  idx < routes.length - 1 ? '1px dashed var(--c-border)' : 'none',
+              }}
+            >
+              {/* Driver name */}
+              <div
+                className="flex items-center gap-2.5 shrink-0"
+                style={{ width: NAME_COL_W }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: dotColor, transition: 'background 0.3s' }}
+                />
+                <span className="text-[13px] font-medium text-[var(--c-text)] truncate">
+                  {route.name}
+                </span>
               </div>
 
               {/* Gantt track */}
-              <div className="relative flex-1 h-7 rounded-lg overflow-visible" style={{ background: 'var(--c-elevated)', minWidth: 400 }}>
-                {tl.stops.map((stop) => {
-                  const start = timeToMinutes(stop.start_time)
-                  const end   = timeToMinutes(stop.end_time)
-                  if (start === null) return null
-                  const left    = ((start - dayStart) / daySpan) * 100
-                  const width   = end !== null ? ((end - start) / daySpan) * 100 : 2
-                  const color   = STATUS_COLORS[stop.status] ?? 'var(--c-muted)'
+              <div
+                className="relative flex-1 overflow-hidden"
+                style={{ height: 34, borderRadius: 8, background: 'var(--c-elevated)' }}
+              >
+                {/* Route bar */}
+                <div
+                  className="absolute top-[5px] bottom-[5px] rounded-md flex items-center px-2.5"
+                  style={{
+                    left:       pctOf(route.rStart),
+                    width:      wPctOf(route.rStart, route.rEnd),
+                    background: hexToRgba(route.color, routeAlpha),
+                    transition: 'background 0.4s',
+                  }}
+                >
+                  <span
+                    className="text-[11px] font-semibold whitespace-nowrap truncate select-none"
+                    style={{ color: routeTouched ? '#fff' : route.color }}
+                  >
+                    {route.stops} stops
+                  </span>
+                </div>
 
-                  return (
-                    <div
-                      key={stop.order_id}
-                      title={`${stop.address} · ${stop.status}${stop.start_time ? ` · ${stop.start_time.slice(11,16)}` : ''}`}
-                      className="absolute top-[4px] h-[19px] rounded-md cursor-default transition-opacity hover:opacity-80"
-                      style={{
-                        left:       `${Math.max(0, left)}%`,
-                        width:      `${Math.max(width, 1.5)}%`,
-                        background: color,
-                        opacity:    0.85,
-                        minWidth:   6,
-                      }}
-                    />
-                  )
-                })}
+                {/* Depot break bar — only shown when bEnd > bStart */}
+                {route.bEnd > route.bStart && (
+                  <div
+                    className="absolute top-[5px] bottom-[5px] rounded-md flex items-center justify-center"
+                    style={{
+                      left:       pctOf(route.bStart),
+                      width:      wPctOf(route.bStart, route.bEnd),
+                      background: hexToRgba(route.color, breakAlpha),
+                      transition: 'background 0.4s',
+                    }}
+                  >
+                    <span
+                      className="text-[9px] font-semibold text-center leading-[1.2] select-none"
+                      style={{ color: route.color, opacity: breakTouched ? 1 : 0.5 }}
+                    >
+                      depot<br />break
+                    </span>
+                  </div>
+                )}
+
+                {/* Current time marker */}
+                {showNow && (
+                  <div
+                    className="absolute top-0 bottom-0 z-10 pointer-events-none"
+                    style={{
+                      left:         pctOf(nowMins),
+                      width:        2,
+                      background:   '#f87171',
+                      borderRadius: 1,
+                      boxShadow:    '0 0 5px rgba(248,113,113,0.55)',
+                    }}
+                  />
+                )}
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="flex gap-4 mt-4 pt-3 flex-wrap" style={{ borderTop: '1px solid var(--c-border)' }}>
-          {Object.entries(STATUS_COLORS).map(([status, color]) => (
-            <div key={status} className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ background: color, opacity: 0.85 }} />
-              <span className="text-[10px] text-[var(--c-muted)]">{status.replace('_', ' ')}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

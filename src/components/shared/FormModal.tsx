@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Icon } from '../ui/icons'
 
 interface FormModalProps {
   title: string
@@ -17,7 +17,7 @@ export default function FormModal({ title, isOpen, onClose, children }: FormModa
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold dark:text-white">{title}</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
-            <X size={20} className="text-gray-500" />
+            <Icon.X size={20} className="text-gray-500" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">

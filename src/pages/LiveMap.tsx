@@ -1,40 +1,76 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient }          from '@tanstack/react-query'
-import { MapPin, Route, Layers, PlayCircle, StopCircle, Wifi, Zap, Users, ChevronRight, ChevronLeft } from 'lucide-react'
+import { MapPin, Route, Layers, Wifi, Zap, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { AppShell }        from '../components/layout/AppShell'
 import FleetMap            from '../components/map/FleetMap'
 import StopMarker          from '../components/map/StopMarker'
 import RoutePolyline       from '../components/map/RoutePolyline'
-import MapLegend           from '../components/map/MapLegend'
 import { fetchLivePositions } from '../api/tracking'
 import type { LivePosition }  from '../api/tracking'
 import { fetchOrders }     from '../api/orders'
 import { QUERY_KEYS }      from '../lib/utils/constants'
 import { usePlanStore }    from '../store/plan.store'
 import { useFleetEvents }  from '../hooks/useFleetEvents'
+import { useMockData }     from '../mock/config'
 import type { Order }      from '../types'
 
-// Demo fleet: Bangalore area coords, each driver drifts slowly on simulate
-const DEMO_SEED: LivePosition[] = [
-  { driver_id: 'demo-1', driver_name: 'Ravi Kumar (demo)',   latitude: 12.9279, longitude: 77.6271, speed_kmh: 28, recorded_at: new Date().toISOString() },
-  { driver_id: 'demo-2', driver_name: 'Arjun Singh (demo)',  latitude: 12.9716, longitude: 77.5946, speed_kmh: 15, recorded_at: new Date().toISOString() },
-  { driver_id: 'demo-3', driver_name: 'Priya Nair (demo)',   latitude: 13.0012, longitude: 77.5930, speed_kmh: 33, recorded_at: new Date().toISOString() },
+// Depot centre (Bangalore MG Road area)
+const DEPOT: [number, number] = [12.9716, 77.5946]
+
+type DriverStatus = 'onRoute' | 'atRisk' | 'idle' | 'offDuty'
+
+interface DriverFeedItem {
+  driver_id:   string
+  driver_name: string
+  display_id:  string
+  area:        string
+  status:      DriverStatus
+  stops:       number
+  eta:         string
+  util:        number
+  color:       string
+}
+
+const MOCK_DRIVER_FEED: DriverFeedItem[] = [
+  { driver_id: 'mock-arjun',  driver_name: 'Arjun Mehta',  display_id: 'D-001', area: 'Koramangala',    status: 'onRoute',  stops: 9,  eta: '15:30', util: 72, color: '#3b82f6' },
+  { driver_id: 'mock-priya',  driver_name: 'Priya Sharma', display_id: 'D-002', area: 'Indiranagar',     status: 'onRoute',  stops: 7,  eta: '16:15', util: 58, color: '#34d399' },
+  { driver_id: 'mock-sneha',  driver_name: 'Sneha Reddy',  display_id: 'D-003', area: 'Whitefield',      status: 'onRoute',  stops: 11, eta: '17:00', util: 84, color: '#a78bfa' },
+  { driver_id: 'mock-vikram', driver_name: 'Vikram Singh', display_id: 'D-004', area: 'Hebbal',          status: 'onRoute',  stops: 6,  eta: '14:45', util: 61, color: '#f59e0b' },
+  { driver_id: 'mock-rohan',  driver_name: 'Rohan Das',    display_id: 'D-005', area: 'Yelahanka',       status: 'atRisk',   stops: 8,  eta: '17:45', util: 45, color: '#f87171' },
+  { driver_id: 'mock-ananya', driver_name: 'Ananya Iyer',  display_id: 'D-006', area: 'Electronic City', status: 'idle',     stops: 0,  eta: '—',     util: 0,  color: '#06b6d4' },
+  { driver_id: 'mock-rahul',  driver_name: 'Rahul Iyer',   display_id: 'D-007', area: 'HSR Layout',      status: 'offDuty',  stops: 0,  eta: '—',     util: 0,  color: '#64748b' },
+]
+
+const STATUS_COLOR: Record<DriverStatus, string> = {
+  onRoute:  '#34d399',
+  atRisk:   '#f59e0b',
+  idle:     '#94a3b8',
+  offDuty:  '#475569',
+}
+
+// Mock GPS seed — Bangalore positions for the 7 Figma drivers
+const MOCK_GPS_SEED: LivePosition[] = [
+  { driver_id: 'mock-arjun',  driver_name: 'Arjun Mehta',  latitude: 12.9352, longitude: 77.6245, speed_kmh: 32, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-priya',  driver_name: 'Priya Sharma', latitude: 12.9716, longitude: 77.5946, speed_kmh: 18, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-sneha',  driver_name: 'Sneha Reddy',  latitude: 12.9141, longitude: 77.6369, speed_kmh: 25, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-vikram', driver_name: 'Vikram Singh', latitude: 12.9770, longitude: 77.6360, speed_kmh: 41, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-rohan',  driver_name: 'Rohan Das',    latitude: 12.9010, longitude: 77.5846, speed_kmh: 15, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-ananya', driver_name: 'Ananya Iyer',  latitude: 12.8392, longitude: 77.6774, speed_kmh: 28, recorded_at: new Date().toISOString() },
+  { driver_id: 'mock-rahul',  driver_name: 'Rahul Iyer',   latitude: 13.0012, longitude: 77.5550, speed_kmh:  0, recorded_at: new Date().toISOString() },
 ]
 
 const ROUTE_COLORS = [
   '#3b82f6', '#34d399', '#f59e0b', '#f87171',
   '#a78bfa', '#06b6d4', '#fb923c', '#4ade80',
-  '#e879f9', '#fbbf24', '#38bdf8', '#f472b6',
 ]
 
 type ViewMode = 'live' | 'plan'
 
-// Auto-pan map to fit all plan stop coordinates
 function AutoFitPlan({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
@@ -46,20 +82,20 @@ function AutoFitPlan({ points }: { points: [number, number][] }) {
 }
 
 export default function LiveMap() {
-  const [view, setView]          = useState<ViewMode>('live')
-  const [demoMode, setDemoMode]  = useState(false)
-  const [demoPos, setDemoPos]    = useState<LivePosition[]>(DEMO_SEED)
+  const isMock = useMockData()
+  const [view, setView]               = useState<ViewMode>('live')
+  const [demoPos, setDemoPos]         = useState<LivePosition[]>(MOCK_GPS_SEED)
   const [wsConnected, setWsConnected] = useState(false)
-  const demoRef                  = useRef<ReturnType<typeof setInterval> | null>(null)
-  const { lastPlan, lastPlanDate } = usePlanStore()
-  const qc = useQueryClient()
+  const [showFeed, setShowFeed]       = useState(true)
+  const demoRef                       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { lastPlan, lastPlanDate }    = usePlanStore()
+  const qc                            = useQueryClient()
+  const navigate                      = useNavigate()
 
-  // Real-time WebSocket events
   const handleFleetEvent = useCallback((event: { type: string; payload: Record<string, unknown> }) => {
     if (event.type === 'location_update') {
       setWsConnected(true)
       const p = event.payload as { driver_id: string; driver_name: string; lat: number; lng: number; speed_kmh?: number }
-      // Optimistically update the position in React Query cache
       qc.setQueryData<LivePosition[]>(QUERY_KEYS.livePositions, (prev = []) => {
         const updated = prev.filter((x) => x.driver_id !== p.driver_id)
         return [...updated, {
@@ -80,30 +116,28 @@ export default function LiveMap() {
   useFleetEvents(handleFleetEvent)
 
   useEffect(() => {
-    if (demoMode) {
-      toast.success('Demo GPS active — 3 simulated drivers moving', { id: 'demo-gps' })
+    if (isMock) {
+      setDemoPos(MOCK_GPS_SEED)
       demoRef.current = setInterval(() => {
         setDemoPos(prev => prev.map(p => ({
           ...p,
-          latitude:    p.latitude  + (Math.random() - 0.5) * 0.003,
-          longitude:   p.longitude + (Math.random() - 0.5) * 0.003,
-          speed_kmh:   Math.round(10 + Math.random() * 40),
+          latitude:    p.latitude  + (Math.random() - 0.5) * 0.004,
+          longitude:   p.longitude + (Math.random() - 0.5) * 0.004,
+          speed_kmh:   Math.round(8 + Math.random() * 45),
           recorded_at: new Date().toISOString(),
         })))
       }, 3000)
     } else {
       if (demoRef.current) { clearInterval(demoRef.current); demoRef.current = null }
-      setDemoPos(DEMO_SEED)
-      toast.dismiss('demo-gps')
     }
     return () => { if (demoRef.current) clearInterval(demoRef.current) }
-  }, [demoMode])
+  }, [isMock])
 
   const { data: positions = [], dataUpdatedAt } = useQuery({
     queryKey:        QUERY_KEYS.livePositions,
     queryFn:         fetchLivePositions,
     refetchInterval: 10_000,
-    enabled:         view === 'live',
+    enabled:         view === 'live' && !isMock,
   })
 
   const { data: planOrders = [] } = useQuery({
@@ -151,22 +185,47 @@ export default function LiveMap() {
     [routes],
   )
 
-  const activePositions = demoMode ? demoPos : (positions as LivePosition[])
+  const activePositions = isMock ? demoPos : (positions as LivePosition[])
 
-  const lastUpdated = demoMode
+  const lastUpdated = isMock
     ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : dataUpdatedAt
       ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       : '—'
 
-  const navigate = useNavigate()
-  const [showFeed, setShowFeed] = useState(true)
+  const fleetStats = useMemo(() => {
+    if (isMock) return {
+      onRoute: MOCK_DRIVER_FEED.filter(d => d.status === 'onRoute' || d.status === 'atRisk').length,
+      idle:    MOCK_DRIVER_FEED.filter(d => d.status === 'idle').length,
+      offDuty: MOCK_DRIVER_FEED.filter(d => d.status === 'offDuty').length,
+    }
+    return {
+      onRoute: activePositions.filter(p => (p.speed_kmh ?? 0) > 0).length,
+      idle:    activePositions.filter(p => (p.speed_kmh ?? 0) === 0).length,
+      offDuty: 0,
+    }
+  }, [isMock, activePositions])
+
+  const driverFeedItems = useMemo((): DriverFeedItem[] => {
+    if (isMock) return MOCK_DRIVER_FEED
+    return activePositions.map((p, i) => ({
+      driver_id:   p.driver_id,
+      driver_name: p.driver_name,
+      display_id:  `D-${String(i + 1).padStart(3, '0')}`,
+      area:        `${p.latitude.toFixed(3)}, ${p.longitude.toFixed(3)}`,
+      status:      (p.speed_kmh ?? 0) > 0 ? 'onRoute' : 'idle',
+      stops:       0,
+      eta:         '—',
+      util:        0,
+      color:       ROUTE_COLORS[i % ROUTE_COLORS.length]!,
+    }))
+  }, [isMock, activePositions])
 
   return (
     <AppShell>
       <div className="flex flex-col h-full p-6 gap-4" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
-        {/* Header row */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 flex-wrap">
 
           {/* Live / Plan toggle */}
@@ -191,88 +250,40 @@ export default function LiveMap() {
             ))}
           </div>
 
-          {/* Status info */}
+          {/* Status badges */}
           {view === 'live' ? (
             <>
-              {/* WebSocket indicator */}
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: wsConnected ? 'var(--c-green)' : 'var(--c-muted)' }}>
-                <Wifi size={12} />
-                <span>{wsConnected ? 'Live' : 'Polling'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    background: activePositions.length > 0 ? 'var(--c-green)'  : 'var(--c-orange)',
-                    boxShadow:  activePositions.length > 0 ? '0 0 6px var(--c-green)' : '0 0 6px var(--c-orange)',
-                  }}
-                />
-                <p className="text-sm font-semibold text-[var(--c-text)]">
-                  {activePositions.length} driver{activePositions.length !== 1 ? 's' : ''} active
-                  {demoMode && <span className="ml-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: 'var(--c-orange)' }}>DEMO</span>}
-                </p>
-              </div>
-              <p className="text-xs text-[var(--c-muted)]">{demoMode ? 'Simulating · updates every 3s ·' : 'Refreshes every 10s ·'} last at {lastUpdated}</p>
-              {activePositions.length === 0 && !demoMode && (
-                <span
-                  className="text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: 'rgba(251,191,36,0.12)', color: 'var(--c-orange)' }}
+              {isMock ? (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                  style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--c-orange)', border: '1px solid rgba(245,158,11,0.25)' }}
                 >
-                  Waiting for GPS pings…
-                </span>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--c-orange)' }} />
+                  DEMO · Simulated GPS
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: wsConnected ? 'var(--c-green)' : 'var(--c-muted)' }}>
+                  <Wifi size={12} />
+                  <span>{wsConnected ? 'Live' : 'Polling'}</span>
+                </div>
               )}
-              <button
-                onClick={() => setDemoMode(v => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{
-                  background: demoMode ? 'rgba(251,191,36,0.15)' : 'var(--c-elevated)',
-                  color:      demoMode ? 'var(--c-orange)'        : 'var(--c-muted)',
-                  border:     '1px solid var(--c-border)',
-                }}
-              >
-                {demoMode ? <StopCircle size={12} /> : <PlayCircle size={12} />}
-                {demoMode ? 'Stop Demo' : 'Simulate GPS'}
-              </button>
+              <p className="text-xs text-[var(--c-muted)]">
+                {isMock ? 'Simulating · updates 3s ·' : 'Refreshes 10s ·'} {lastUpdated}
+              </p>
             </>
           ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Layers size={13} style={{ color: 'var(--c-accent)', flexShrink: 0 }} />
-                <p className="text-sm font-semibold text-[var(--c-text)]">
-                  {lastPlan
-                    ? `${routes.length} route${routes.length !== 1 ? 's' : ''} · ${lastPlan.assigned_orders} stops · ${lastPlanDate}`
-                    : 'No plan loaded'}
-                </p>
-              </div>
-              {!lastPlan && (
-                <span
-                  className="text-xs font-semibold px-3 py-1 rounded-full ml-auto"
-                  style={{ background: 'rgba(251,191,36,0.12)', color: 'var(--c-orange)' }}
-                >
-                  Generate a plan on the Planning page first
-                </span>
-              )}
-            </>
+            <div className="flex items-center gap-2">
+              <Layers size={13} style={{ color: 'var(--c-accent)', flexShrink: 0 }} />
+              <p className="text-sm font-semibold text-[var(--c-text)]">
+                {lastPlan
+                  ? `${routes.length} route${routes.length !== 1 ? 's' : ''} · ${lastPlan.assigned_orders} stops · ${lastPlanDate}`
+                  : 'No plan loaded — generate one on Planning page'}
+              </p>
+            </div>
           )}
 
-          {/* Right-side actions */}
-          <div className="ml-auto flex items-center gap-2">
-            {/* Optimize Live */}
-            <button
-              onClick={() => navigate('/planning')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                background: 'var(--c-accent-dim)',
-                border:     '1px solid var(--c-accent)',
-                color:      'var(--c-accent)',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--c-accent)'; e.currentTarget.style.color = '#fff' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--c-accent-dim)'; e.currentTarget.style.color = 'var(--c-accent)' }}
-            >
-              <Zap size={12} />
-              Optimize Live
-            </button>
-            {/* Driver feed toggle */}
+          {/* Feed toggle */}
+          <div className="ml-auto">
             <button
               onClick={() => setShowFeed((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -284,22 +295,112 @@ export default function LiveMap() {
             >
               <Users size={12} />
               Feed
-              {showFeed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
             </button>
           </div>
         </div>
 
-        {/* Map + Driver Feed row */}
+        {/* ── Map + Driver Feed ───────────────────────────────────────────── */}
         <div className="flex-1 min-h-0 flex gap-3" style={{ minHeight: 0 }}>
 
-          {/* Map */}
+          {/* Map wrapper */}
           <div
             className="flex-1 min-h-0 rounded-2xl overflow-hidden relative"
             style={{ border: '1px solid var(--c-border)' }}
           >
             {view === 'live' ? (
-              <FleetMap positions={activePositions} />
+              <>
+                {/* Fleet map with dashed depot→driver route lines */}
+                <FleetMap positions={activePositions}>
+                  {activePositions.map((p) => {
+                    const feedItem = MOCK_DRIVER_FEED.find(d => d.driver_id === p.driver_id)
+                    const color    = feedItem?.color ?? '#3b82f6'
+                    return (
+                      <Polyline
+                        key={`depot-${p.driver_id}`}
+                        positions={[DEPOT, [p.latitude, p.longitude]]}
+                        pathOptions={{ color, weight: 1.5, dashArray: '6 6', opacity: 0.55 }}
+                      />
+                    )
+                  })}
+                </FleetMap>
+
+                {/* Fleet stats overlay — top left */}
+                <div className="absolute top-4 left-4 pointer-events-none" style={{ zIndex: 900 }}>
+                  <div
+                    className="rounded-2xl p-4 flex flex-col gap-3 pointer-events-auto"
+                    style={{
+                      background: 'var(--c-surface)',
+                      border:     '1px solid var(--c-border)',
+                      boxShadow:  '0 8px 32px rgba(0,0,0,0.28)',
+                      minWidth:   152,
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#34d399' }} />
+                      <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--c-muted)' }}>
+                        Live Fleet
+                      </p>
+                    </div>
+
+                    <div className="flex gap-5">
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.onRoute}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>On Route</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.idle}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>Idle</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-[var(--c-text)]">{fleetStats.offDuty}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--c-muted)' }}>Off Duty</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => navigate('/planning')}
+                      className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+                        color:      '#fff',
+                        boxShadow:  '0 4px 12px rgba(124,58,237,0.35)',
+                      }}
+                    >
+                      <Zap size={11} />
+                      Optimize Live
+                    </button>
+                  </div>
+                </div>
+
+                {/* Map legend — bottom center */}
+                <div
+                  className="absolute bottom-4 pointer-events-none"
+                  style={{ zIndex: 900, left: '50%', transform: 'translateX(-50%)' }}
+                >
+                  <div
+                    className="flex items-center gap-4 px-4 py-2 rounded-xl pointer-events-auto whitespace-nowrap"
+                    style={{
+                      background: 'var(--c-surface)',
+                      border:     '1px solid var(--c-border)',
+                      boxShadow:  '0 4px 16px rgba(0,0,0,0.18)',
+                    }}
+                  >
+                    {[
+                      { color: '#34d399', label: 'On Route' },
+                      { color: '#f59e0b', label: 'At Risk'  },
+                      { color: '#3b82f6', label: 'Depot'    },
+                      { color: '#f87171', label: 'Delayed'  },
+                    ].map(({ color, label }) => (
+                      <div key={label} className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                        <span className="text-[10px] font-medium" style={{ color: 'var(--c-muted)' }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             ) : (
+              /* Plan view */
               <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -326,75 +427,132 @@ export default function LiveMap() {
                     />
                   ))
                 )}
-                <MapLegend
-                  entries={routes.map((r) => ({
-                    driverName: r.driverName,
-                    color:      r.color,
-                    stopCount:  r.stops.length,
-                  }))}
-                />
               </MapContainer>
             )}
           </div>
 
-          {/* Driver feed panel */}
+          {/* ── Driver Feed Panel ──────────────────────────────────────────── */}
           {showFeed && (
             <div
-              className="w-64 shrink-0 rounded-2xl flex flex-col overflow-hidden"
+              className="w-[272px] shrink-0 rounded-2xl flex flex-col overflow-hidden"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
             >
-              {/* Feed header */}
-              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--c-border)' }}>
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'var(--c-accent-dim)' }}>
-                  <Users size={12} style={{ color: 'var(--c-accent)' }} />
+              {/* Header */}
+              <div
+                className="px-4 py-3.5 flex items-center gap-3"
+                style={{ borderBottom: '1px solid var(--c-border)' }}
+              >
+                <p className="text-[13px] font-bold text-[var(--c-text)] flex-1">Driver Feed</p>
+                <div
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg"
+                  style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#34d399' }} />
+                  <span className="text-[9px] font-bold tracking-widest" style={{ color: '#34d399' }}>LIVE</span>
                 </div>
-                <p className="text-xs font-semibold text-[var(--c-text)] flex-1">Driver Feed</p>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}>
-                  {activePositions.length} active
-                </span>
               </div>
 
               {/* Driver list */}
               <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
-                {activePositions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-3 py-8">
-                    <MapPin size={24} style={{ color: 'var(--c-subtle)' }} />
-                    <p className="text-xs text-[var(--c-muted)] text-center">No active drivers.<br />Start demo mode to simulate.</p>
-                  </div>
-                ) : activePositions.map((p) => (
-                  <div
-                    key={p.driver_id}
-                    className="flex items-start gap-2.5 p-3 rounded-xl transition-colors cursor-default"
-                    style={{ background: 'var(--c-elevated)' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-accent-dim)' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-elevated)' }}
-                  >
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{ background: 'linear-gradient(135deg, var(--c-accent), var(--c-purple))', color: '#fff' }}
-                    >
-                      {p.driver_name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}
+                {view === 'live' ? (
+                  driverFeedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 py-8">
+                      <MapPin size={24} style={{ color: 'var(--c-subtle)' }} />
+                      <p className="text-xs text-[var(--c-muted)] text-center">No active drivers.<br />Waiting for GPS pings…</p>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11.5px] font-semibold text-[var(--c-text)] truncate leading-tight">{p.driver_name.replace(' (demo)', '')}</p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--c-green)' }} />
-                        <span className="text-[10px] text-[var(--c-muted)]">
-                          {p.speed_kmh != null ? `${p.speed_kmh} km/h` : 'Stationary'}
+                  ) : driverFeedItems.map((driver) => (
+                    <div
+                      key={driver.driver_id}
+                      className="p-3 rounded-xl cursor-default transition-colors"
+                      style={{ background: 'var(--c-elevated)' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-accent-dim)' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-elevated)' }}
+                    >
+                      {/* Row 1: status dot + name + D-00X chip */}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0${driver.status === 'atRisk' ? ' animate-pulse' : ''}`}
+                          style={{ background: STATUS_COLOR[driver.status] }}
+                        />
+                        <p className="text-[12px] font-semibold text-[var(--c-text)] flex-1 truncate leading-tight">
+                          {driver.driver_name}
+                        </p>
+                        <span
+                          className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0"
+                          style={{
+                            background: `${driver.color}22`,
+                            color:       driver.color,
+                            border:      `1px solid ${driver.color}44`,
+                          }}
+                        >
+                          {driver.display_id}
                         </span>
                       </div>
-                      <p className="text-[9.5px] text-[var(--c-subtle)] font-mono mt-0.5">
-                        {p.latitude.toFixed(3)}, {p.longitude.toFixed(3)}
+
+                      {/* Row 2: area */}
+                      <p className="text-[10px] mt-1 ml-4 truncate" style={{ color: 'var(--c-muted)' }}>
+                        {driver.area}
+                      </p>
+
+                      {/* Row 3: stops / eta / util */}
+                      <div className="flex items-center gap-3 mt-2 ml-4">
+                        <div className="flex flex-col items-center min-w-0">
+                          <span className="text-[11px] font-bold text-[var(--c-text)]">
+                            {driver.stops > 0 ? driver.stops : '—'}
+                          </span>
+                          <span className="text-[8.5px]" style={{ color: 'var(--c-subtle)' }}>Stops</span>
+                        </div>
+                        <div className="w-px h-5 shrink-0" style={{ background: 'var(--c-border)' }} />
+                        <div className="flex flex-col items-center min-w-0">
+                          <span className="text-[11px] font-bold text-[var(--c-text)]">{driver.eta}</span>
+                          <span className="text-[8.5px]" style={{ color: 'var(--c-subtle)' }}>ETA</span>
+                        </div>
+                        <div className="w-px h-5 shrink-0" style={{ background: 'var(--c-border)' }} />
+                        <div className="flex flex-col items-center min-w-0">
+                          <span className="text-[11px] font-bold text-[var(--c-text)]">
+                            {driver.util > 0 ? `${driver.util}%` : '—'}
+                          </span>
+                          <span className="text-[8.5px]" style={{ color: 'var(--c-subtle)' }}>Util</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  /* Plan view: show route summary */
+                  routes.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 py-8">
+                      <Route size={24} style={{ color: 'var(--c-subtle)' }} />
+                      <p className="text-xs text-[var(--c-muted)] text-center">
+                        No plan loaded.<br />Generate one on Planning page.
                       </p>
                     </div>
-                  </div>
-                ))}
+                  ) : routes.map((route, i) => (
+                    <div
+                      key={route.driverName}
+                      className="p-3 rounded-xl cursor-default"
+                      style={{ background: 'var(--c-elevated)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: route.color }} />
+                        <p className="text-[11.5px] font-semibold text-[var(--c-text)] flex-1 truncate">
+                          {route.driverName}
+                        </p>
+                        <span className="text-[9px] font-mono shrink-0" style={{ color: 'var(--c-muted)' }}>
+                          R-{String(i + 1).padStart(3, '0')}
+                        </span>
+                      </div>
+                      <p className="text-[10px] mt-1 ml-4" style={{ color: 'var(--c-muted)' }}>
+                        {route.stops.length} stop{route.stops.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
 
-              {/* Feed footer */}
+              {/* Footer */}
               <div className="px-4 py-2.5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <p className="text-[10px] text-[var(--c-subtle)] text-center">
-                  {demoMode ? 'Simulated · updates 3s' : 'Live · updates 10s'}
+                <p className="text-[10px] text-center" style={{ color: 'var(--c-subtle)' }}>
+                  {isMock ? 'Simulated GPS · updates 3s' : 'Live · updates 10s'}
                 </p>
               </div>
             </div>

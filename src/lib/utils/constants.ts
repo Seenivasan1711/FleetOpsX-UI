@@ -1,22 +1,6 @@
-import {
-  LayoutDashboard,
-  ClipboardList,
-  Route,
-  Map,
-  BarChart2,
-  Users,
-  Truck,
-  Warehouse,
-  GitMerge,
-  ShieldCheck,
-  Layers,
-  Plug,
-  Zap,
-  History,
-  UserCog,
-  Settings,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import type { ReactElement } from 'react'
+import { Icon } from '../../components/ui/icons'
+import type { IconProps } from '../../components/ui/icons'
 
 export type NavSection = 'operations' | 'insights' | 'platform'
 
@@ -24,32 +8,33 @@ export type NavItemDef = {
   id: string
   label: string
   path: string
-  icon: LucideIcon
+  icon: (props: IconProps) => ReactElement
   badge?: number | null
   comingSoon?: boolean
   section: NavSection
+  adminOnly?: boolean
 }
 
 export const NAV_ITEMS: NavItemDef[] = [
   // OPERATIONS
-  { id: 'dashboard',    label: 'Dashboard',          path: '/',                   icon: LayoutDashboard, section: 'operations' },
-  { id: 'orders',       label: 'Orders',             path: '/orders',             icon: ClipboardList,   section: 'operations' },
-  { id: 'planning',     label: 'Planning',           path: '/planning',           icon: Route,           section: 'operations' },
-  { id: 'map',          label: 'Live Map',           path: '/map',                icon: Map,             section: 'operations' },
-  { id: 'plan-history', label: 'Plan History',       path: '/plan-history',       icon: History,         section: 'operations' },
-  { id: 'drivers',      label: 'Drivers',            path: '/drivers',            icon: Users,           section: 'operations' },
+  { id: 'dashboard',    label: 'Dashboard',          path: '/',                   icon: Icon.Home,     section: 'operations' },
+  { id: 'orders',       label: 'Orders',             path: '/orders',             icon: Icon.Orders,   section: 'operations' },
+  { id: 'planning',     label: 'Planning',           path: '/planning',           icon: Icon.Plan,     section: 'operations' },
+  { id: 'map',          label: 'Live Map',           path: '/map',                icon: Icon.Map,      section: 'operations' },
+  { id: 'plan-history', label: 'Plan History',       path: '/plan-history',       icon: Icon.History,  section: 'operations' },
+  { id: 'drivers',      label: 'Drivers',            path: '/drivers',            icon: Icon.Drivers,  section: 'operations' },
   // INSIGHTS
-  { id: 'analytics',    label: 'Analytics',          path: '/analytics',          icon: BarChart2,       section: 'insights' },
-  { id: 'settings',     label: 'Settings',           path: '/settings',           icon: Settings,        section: 'insights' },
+  { id: 'analytics',    label: 'Analytics',          path: '/analytics',          icon: Icon.Chart,    section: 'insights' },
+  { id: 'settings',     label: 'Settings',           path: '/settings',           icon: Icon.Settings, section: 'insights' },
   // FLEET & PLATFORM (collapsible)
-  { id: 'vehicles',     label: 'Vehicles',           path: '/vehicles',           icon: Truck,           section: 'platform' },
-  { id: 'depots',       label: 'Depots',             path: '/depots',             icon: Warehouse,       section: 'platform' },
-  { id: 'integrations', label: 'Integrations',       path: '/integrations',       icon: Plug,            section: 'platform' },
-  { id: 'marketplace',  label: 'Marketplace',        path: '/marketplace',        icon: GitMerge,        section: 'platform' },
-  { id: 'governance',   label: 'Governance',         path: '/governance',         icon: ShieldCheck,     section: 'platform' },
-  { id: 'scenarios',    label: 'Scenarios',          path: '/scenarios',          icon: Layers,          section: 'platform' },
-  { id: 'ai-providers', label: 'AI Providers',       path: '/admin/ai-providers', icon: Zap,             section: 'platform' },
-  { id: 'team',         label: 'Team',               path: '/team',               icon: UserCog,         section: 'platform' },
+  { id: 'vehicles',     label: 'Vehicles',           path: '/vehicles',           icon: Icon.Truck,    section: 'platform' },
+  { id: 'depots',       label: 'Depots',             path: '/depots',             icon: Icon.Depot,    section: 'platform' },
+  { id: 'integrations', label: 'Integrations',       path: '/integrations',       icon: Icon.Plug,     section: 'platform' },
+  { id: 'marketplace',  label: 'Marketplace',        path: '/marketplace',        icon: Icon.Shop,     section: 'platform' },
+  { id: 'governance',   label: 'Governance',         path: '/governance',         icon: Icon.Shield,   section: 'platform' },
+  { id: 'scenarios',    label: 'Scenarios',          path: '/scenarios',          icon: Icon.Layers,   section: 'platform' },
+  { id: 'ai-providers', label: 'AI Providers',       path: '/admin/ai-providers', icon: Icon.Bolt,     section: 'platform', adminOnly: true },
+  { id: 'team',         label: 'Team',               path: '/team',               icon: Icon.Users,    section: 'platform' },
 ]
 
 export const KEYBOARD_SHORTCUTS = [

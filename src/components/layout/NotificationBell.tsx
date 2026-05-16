@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { useOutsideClick } from '../../hooks/useOutsideClick'
 
 type Notification = {
@@ -29,7 +29,7 @@ export const NotificationBell = () => {
         className="relative w-[38px] h-[38px] flex items-center justify-center rounded-[10px] text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] border border-transparent hover:border-[var(--c-border)] transition-all duration-150"
         style={open ? { background: 'var(--c-elevated)', borderColor: 'var(--c-border)' } : undefined}
       >
-        <Bell size={18} />
+        <Icon.Bell size={18} />
         {unread > 0 && (
           <span
             className="absolute top-[7px] right-[7px] w-2 h-2 rounded-full border-2"

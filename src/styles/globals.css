@@ -64,14 +64,14 @@
 
 /* ─── Theme: Dark ────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --c-bg:         #0d0d0f;
-  --c-surface:    #18181b;
-  --c-elevated:   #1a1a1f;
-  --c-border:     rgba(255, 255, 255, 0.06);
+  --c-bg:         #000000;   /* pure black page background */
+  --c-surface:    #07070a;   /* cards, panels, sidebar, ticker */
+  --c-elevated:   #0f0f12;   /* dropdowns, tooltips, hover states */
+  --c-border:     rgba(255, 255, 255, 0.08);
   --c-text:       #f0f0f5;
   --c-muted:      #808098;
   --c-subtle:     #505065;
-  --c-sidebar-bg: #0d0d0f;
+  --c-sidebar-bg: #07070a;
 
   --c-accent:      #8b5cf6;
   --c-accent-dim:  rgba(139, 92, 246, 0.15);
@@ -82,14 +82,14 @@
   --c-orange: #f59e0b; --c-orange-dim: rgba(245, 158,  11, 0.12);
   --c-purple: #a78bfa; --c-purple-dim: rgba(167, 139, 250, 0.12);
 
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.30);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.55);
-  --shadow-lg: 0 16px 48px rgba(0,0,0,0.70);
-  --shadow-xl: 0 24px 64px rgba(0,0,0,0.80);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.60), 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.70);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.85);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.95);
 
-  --shimmer-from: #1a1a1f;
-  --shimmer-via:  #222228;
-  --shimmer-to:   #1a1a1f;
+  --shimmer-from: #07070a;
+  --shimmer-via:  #111116;
+  --shimmer-to:   #07070a;
 }
 
 /* ─── Theme: Light ───────────────────────────────────────────────────────────── */
@@ -197,7 +197,17 @@
 
 @keyframes ticker-scroll {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(var(--ticker-end, -50%)); }
+}
+
+@keyframes menu-up {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
 }
 
 @keyframes slide-in-right {

@@ -4,7 +4,7 @@ import { useAuthStore } from '../store'
 
 type Props = {
   children: ReactNode
-  role?:    'dispatcher' | 'driver'
+  role?:    'dispatcher' | 'driver' | 'superadmin'
 }
 
 export default function ProtectedRoute({ children, role }: Props) {

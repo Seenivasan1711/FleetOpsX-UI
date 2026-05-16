@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
-import { X } from 'lucide-react'
+import { Icon } from './icons'
 import { cn } from '../../lib/utils/cn'
 
 type ModalProps = {
@@ -38,7 +38,7 @@ export const Modal = ({ open, onClose, title, children, size = 'md' }: ModalProp
             onClick={onClose}
             className="p-1.5 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] transition-colors"
           >
-            <X size={16} />
+            <Icon.X size={16} />
           </button>
         </div>
 

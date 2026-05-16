@@ -143,13 +143,13 @@ export default function Analytics() {
 
         {/* KPI cards */}
         {kpisLoading ? (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
               label="Total Deliveries"
               value={kpis?.total_deliveries ?? 0}
@@ -197,8 +197,8 @@ export default function Analytics() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={kpis.deliveries_by_day} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--c-border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--c-muted)' }} tickFormatter={(d) => d.slice(5)} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--c-muted)' }} />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'var(--c-muted)' }} tickFormatter={(d) => d.slice(5)} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--c-muted)' }} />
                 <Tooltip {...tooltipStyle} />
                 <Legend
                   wrapperStyle={{ fontSize: 12 }}
@@ -229,8 +229,8 @@ export default function Analytics() {
                 margin={{ top: 4, right: 16, left: -10, bottom: 40 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--c-border)" />
-                <XAxis dataKey="zone" tick={{ fontSize: 10, fill: 'var(--c-muted)' }} angle={-35} textAnchor="end" interval={0} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--c-muted)' }} />
+                <XAxis dataKey="zone" tick={{ fontSize: 11, fill: 'var(--c-muted)' }} angle={-35} textAnchor="end" interval={0} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--c-muted)' }} />
                 <Tooltip {...tooltipStyle} />
                 <Bar dataKey="total"   fill="var(--c-accent)" name="Total"   radius={[4, 4, 0, 0]} />
                 <Bar dataKey="on_time" fill="var(--c-green)"  name="On-Time" radius={[4, 4, 0, 0]} />
@@ -259,19 +259,19 @@ export default function Analytics() {
                   return (
                     <div key={d.driver_id} className="flex items-center gap-3">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                         style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
                       >
                         {i + 1}
                       </div>
-                      <span className="text-[12px] font-medium text-[var(--c-text)] w-36 shrink-0 truncate">{d.driver_name}</span>
+                      <span className="text-[13px] font-medium text-[var(--c-text)] w-36 shrink-0 truncate">{d.driver_name}</span>
                       <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
                         <div
                           className="h-2 rounded-full transition-all duration-700"
                           style={{ width: `${pct ?? 0}%`, background: color, boxShadow: `0 0 6px ${color}60` }}
                         />
                       </div>
-                      <span className="text-[11px] font-bold font-mono w-10 text-right shrink-0" style={{ color }}>
+                      <span className="text-[12px] font-bold font-mono w-10 text-right shrink-0" style={{ color }}>
                         {pct != null ? `${pct.toFixed(0)}%` : '—'}
                       </span>
                     </div>
@@ -298,14 +298,15 @@ export default function Analytics() {
           ) : driverPerf.length === 0 ? (
             <p className="p-5 text-sm text-[var(--c-muted)]">No performance data yet — run ETL first.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)] w-10">#</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Driver</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Deliveries</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">On-Time</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Avg Delay</th>
+                  <th className="px-5 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)] w-10">#</th>
+                  <th className="px-5 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Driver</th>
+                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Deliveries</th>
+                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">On-Time</th>
+                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Avg Delay</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,6 +339,7 @@ export default function Analytics() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

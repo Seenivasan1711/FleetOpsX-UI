@@ -73,9 +73,11 @@ export interface RouteStop {
 }
 
 export interface DriverTimeline {
-  driver_id: string
-  driver_name: string
-  stops: RouteStop[]
+  driver_id:    string
+  driver_name:  string
+  stops:        RouteStop[]
+  break_start?: string | null   // NEW: ISO timestamp of break start
+  break_end?:   string | null   // NEW: ISO timestamp of break end
 }
 
 export const fetchRouteTimeline = (date: string): Promise<DriverTimeline[]> =>

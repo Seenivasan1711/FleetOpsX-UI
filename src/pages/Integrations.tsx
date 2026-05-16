@@ -164,6 +164,7 @@ export default function Integrations() {
                 subtitle="Ingest orders via POST /api/v1/integrations/ingest to see logs here."
               />
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--c-border)]" style={{ background: 'var(--c-elevated)' }}>
@@ -178,6 +179,7 @@ export default function Integrations() {
                   {logs.map((log, i) => <LogRow key={log.id} log={log} i={i} />)}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </section>

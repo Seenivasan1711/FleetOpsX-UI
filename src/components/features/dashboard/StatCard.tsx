@@ -1,7 +1,7 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useCounterAnimation } from '../../../hooks/useCounterAnimation'
 
-type Color = 'accent' | 'danger' | 'success' | 'info' | 'white'
+type Color = 'accent' | 'danger' | 'success' | 'info' | 'white' | 'blue'
 
 type StatCardProps = {
   label:     string
@@ -16,39 +16,46 @@ type StatCardProps = {
 }
 
 const colorTokens: Record<Color, { text: string; bg: string }> = {
-  accent:  { text: '#8b5cf6',  bg: 'rgba(139,92,246,0.12)'  },
-  danger:  { text: '#f87171',  bg: 'rgba(248,113,113,0.12)' },
-  success: { text: '#34d399',  bg: 'rgba(52,211,153,0.12)'  },
-  info:    { text: '#f59e0b',  bg: 'rgba(245,158,11,0.12)'  },
+  accent:  { text: '#8b5cf6',  bg: 'rgba(139,92,246,0.15)'  },
+  danger:  { text: '#f87171',  bg: 'rgba(248,113,113,0.15)' },
+  success: { text: '#34d399',  bg: 'rgba(52,211,153,0.15)'  },
+  info:    { text: '#f59e0b',  bg: 'rgba(245,158,11,0.15)'  },
   white:   { text: '#f0f0f0',  bg: 'rgba(240,240,240,0.08)' },
+  blue:    { text: '#60a5fa',  bg: 'rgba(96,165,250,0.12)'  },
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null
-  const w = 200, h = 40
+  const w = 200, h = 56
   const min = Math.min(...data)
   const max = Math.max(...data)
   const range = max - min || 1
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w
-    const y = h - ((v - min) / range) * (h - 6) - 3
+    const y = h - ((v - min) / range) * (h - 8) - 4
     return `${x},${y}`
   })
   const lastVal = data[data.length - 1] ?? 0
-  const lastX = ((data.length - 1) / (data.length - 1)) * w
-  const lastY = h - ((lastVal - min) / range) * (h - 6) - 3
-
+  const lastX   = w
+  const lastY   = h - ((lastVal - min) / range) * (h - 8) - 4
+  const gradId  = `sg-${color.replace(/[^a-z0-9]/gi, '')}`
   const areaPoints = `0,${h} ${pts.join(' ')} ${w},${h}`
 
   return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+    <svg
+      width="100%"
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ display: 'block' }}
+    >
       <defs>
-        <linearGradient id={`sg-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity="0.30" />
+          <stop offset="100%" stopColor={color} stopOpacity="0"    />
         </linearGradient>
       </defs>
-      <polygon points={areaPoints} fill={`url(#sg-${color.replace(/[^a-z0-9]/gi, '')})`} />
+      <polygon points={areaPoints} fill={`url(#${gradId})`} />
       <polyline
         points={pts.join(' ')}
         fill="none"
@@ -63,21 +70,35 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 }
 
 export const StatCard = ({ label, value, color, icon, trend, delay = 0, sparkline, unit, suffix }: StatCardProps) => {
+  const [hovered, setHovered] = useState(false)
   const animated = useCounterAnimation(value, 900, delay)
   const c        = colorTokens[color]
 
   return (
     <div
-      className="relative min-w-0 rounded-2xl overflow-hidden cursor-default transition-all duration-200 hover:-translate-y-[2px] flex flex-col"
+      className="relative min-w-0 rounded-2xl overflow-hidden cursor-default flex flex-col"
       style={{
-        background: 'var(--c-surface)',
-        border: '1px solid var(--c-border)',
-        boxShadow: 'var(--shadow-sm)',
+        background:  'var(--c-surface)',
+        border:      '1px solid var(--c-border)',
+        boxShadow:   hovered ? `0 16px 40px rgba(0,0,0,0.3), 0 0 0 1px ${c.text}30` : 'var(--shadow-sm)',
+        transform:   hovered ? 'scale(1.025)' : 'scale(1)',
+        transition:  'transform 0.2s cubic-bezier(0.22,1,0.36,1), box-shadow 0.2s ease',
+        zIndex:      hovered ? 1 : 0,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = `0 12px 32px rgba(0,0,0,0.25), 0 0 0 1px ${c.text}30`)}
-      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-sm)')}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <div className="p-5 flex-1">
+      {/* Top accent — always bright, glows on hover */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: c.text,
+          transition: 'box-shadow 0.2s ease',
+          boxShadow:  hovered ? `0 0 12px 1px ${c.text}` : 'none',
+        }}
+      />
+
+      <div className="p-5 flex flex-col flex-1">
         {/* Label + Icon */}
         <div className="flex justify-between items-start mb-4">
           <span className="text-[10px] font-bold uppercase tracking-[1.2px] text-[var(--c-muted)]">
@@ -93,31 +114,40 @@ export const StatCard = ({ label, value, color, icon, trend, delay = 0, sparklin
 
         {/* Large value */}
         <div
-          className="text-[42px] font-extrabold leading-none tracking-[-2px] font-mono mb-1"
+          className="text-[42px] font-extrabold leading-none tracking-[-2px] font-mono"
           style={{ color: c.text }}
         >
           {animated}
-          {unit && <span className="text-[20px] ml-0.5 opacity-70">{unit}</span>}
+          {unit   && <span className="text-[20px] ml-0.5 opacity-70">{unit}</span>}
           {suffix && <span className="text-[22px] opacity-50 font-bold">{suffix}</span>}
         </div>
 
-        {/* Trend */}
+        {/* Sparkline — inside padding, not touching card edges */}
+        {sparkline && sparkline.length >= 2 && (
+          <div className="mt-4 -mx-1" style={{ height: 56 }}>
+            <Sparkline data={sparkline} color={c.text} />
+          </div>
+        )}
+
+        {/* Trend — chevron icon colored, value + label both muted */}
         {trend && (
-          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[var(--c-muted)]">
-            <span className="font-bold" style={{ color: trend.up ? '#34d399' : '#f87171' }}>
-              {trend.up ? '↑' : '↓'} {trend.val}
+          <div className="flex items-center gap-1 mt-3 text-[11px]" style={{ color: 'var(--c-muted)' }}>
+            <span style={{ color: trend.up ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center' }}>
+              {trend.up ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              )}
             </span>
+            <span>{trend.val}</span>
             <span>{trend.label}</span>
           </div>
         )}
       </div>
-
-      {/* Full-width sparkline at bottom */}
-      {sparkline && sparkline.length >= 2 && (
-        <div style={{ height: 44, marginTop: 'auto' }}>
-          <Sparkline data={sparkline} color={c.text} />
-        </div>
-      )}
     </div>
   )
 }

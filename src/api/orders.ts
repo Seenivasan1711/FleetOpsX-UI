@@ -3,6 +3,8 @@ import type { Order } from '../types'
 
 export const fetchOrders = (params?: {
   plan_date?: string
+  date_from?: string
+  date_to?: string
   status?: string
   unassigned_only?: boolean
 }): Promise<Order[]> =>

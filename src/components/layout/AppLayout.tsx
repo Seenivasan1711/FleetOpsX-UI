@@ -1,16 +1,17 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
-import { LayoutDashboard, Package, Route, Truck, Car, MapPin, Map, BarChart2, LogOut } from 'lucide-react'
+import { Car } from 'lucide-react'
+import { Icon } from '../ui/icons'
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/orders', label: 'Orders', icon: Package },
-  { path: '/planning', label: 'Planning', icon: Route },
-  { path: '/map', label: 'Live Map', icon: Map },
-  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { path: '/drivers', label: 'Drivers', icon: Truck },
+  { path: '/', label: 'Dashboard', icon: Icon.Dashboard },
+  { path: '/orders', label: 'Orders', icon: Icon.Orders },
+  { path: '/planning', label: 'Planning', icon: Icon.Plan },
+  { path: '/map', label: 'Live Map', icon: Icon.Map },
+  { path: '/analytics', label: 'Analytics', icon: Icon.Chart },
+  { path: '/drivers', label: 'Drivers', icon: Icon.Truck },
   { path: '/vehicles', label: 'Vehicles', icon: Car },
-  { path: '/depots', label: 'Depots', icon: MapPin },
+  { path: '/depots', label: 'Depots', icon: Icon.Pin },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -47,7 +48,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onClick={handleLogout}
           className="flex items-center gap-3 px-5 py-4 text-sm text-gray-500 hover:text-red-500 border-t border-gray-200 dark:border-gray-700"
         >
-          <LogOut size={16} /> Logout
+          <Icon.Logout size={16} /> Logout
         </button>
       </aside>
       <main className="flex-1 overflow-auto p-6">{children}</main>

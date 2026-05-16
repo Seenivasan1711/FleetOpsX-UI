@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -30,15 +30,17 @@ function AutoFit({ positions }: { positions: LivePosition[] }) {
 }
 
 interface Props {
-  positions: LivePosition[]
-  center?: [number, number]
-  zoom?: number
+  positions:  LivePosition[]
+  center?:    [number, number]
+  zoom?:      number
+  children?:  ReactNode
 }
 
 export default function FleetMap({
   positions,
   center = [12.9716, 77.5946],
   zoom = 12,
+  children,
 }: Props) {
   return (
     <MapContainer center={center} zoom={zoom} className="w-full h-full rounded-lg">
@@ -47,6 +49,7 @@ export default function FleetMap({
       {positions.map(p => (
         <DriverMarker key={p.driver_id} position={p} />
       ))}
+      {children}
     </MapContainer>
   )
 }

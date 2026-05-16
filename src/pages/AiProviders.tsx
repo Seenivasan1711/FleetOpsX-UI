@@ -2,22 +2,28 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Edit2, Plus, Shield, Trash2, XCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { AppShell }  from '../components/layout/AppShell'
-import { Button }    from '../components/ui/Button'
-import { Input }     from '../components/ui/Input'
-import { Modal }     from '../components/ui/Modal'
+import { AppShell }    from '../components/layout/AppShell'
+import { Button }      from '../components/ui/Button'
+import { Input }       from '../components/ui/Input'
+import { Modal }       from '../components/ui/Modal'
+import { useAuthStore } from '../store/auth.store'
 import {
   listAiProviders, createAiProvider, updateAiProvider, deleteAiProvider,
   type AiProviderOut, type AiProviderIn,
 } from '../api/aiProviders'
 
-const PROVIDERS  = ['claude', 'openai', 'gemini']
+// Preset suggestions — admin can still type any custom provider name
+const PROVIDER_PRESETS = ['claude', 'openai', 'gemini', 'mistral', 'cohere', 'groq', 'together']
 const TASK_TYPES = ['planning', 'chat', 'analysis', 'all']
 
 const MODEL_SUGGESTIONS: Record<string, string[]> = {
-  claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-  gemini: ['gemini-2.0-flash', 'gemini-1.5-pro'],
+  claude:   ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
+  openai:   ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+  gemini:   ['gemini-2.0-flash', 'gemini-1.5-pro'],
+  mistral:  ['mistral-large-latest', 'mistral-small-latest'],
+  cohere:   ['command-r-plus', 'command-r'],
+  groq:     ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
+  together: ['meta-llama/Llama-3-70b-chat-hf', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -53,6 +59,7 @@ const defaultForm = (): FormState => ({
 
 export default function AiProviders() {
   const qc = useQueryClient()
+  const { effectiveTenantId } = useAuthStore()
   const [modalOpen,   setModalOpen]   = useState(false)
   const [editingId,   setEditingId]   = useState<string | null>(null)
   const [form,        setForm]        = useState<FormState>(defaultForm())
@@ -122,6 +129,18 @@ export default function AiProviders() {
   return (
     <AppShell>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
+        {/* Platform-scope notice when acting as tenant */}
+        {effectiveTenantId && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm"
+            style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.25)' }}>
+            <Zap className="w-4 h-4 text-[var(--c-accent)] shrink-0 mt-0.5" />
+            <span style={{ color: 'var(--c-muted)' }}>
+              You are managing <strong style={{ color: 'var(--c-accent)' }}>platform-level</strong> AI providers.
+              These are defaults for all tenants that have not configured their own. Changes here do not affect the currently impersonated tenant directly.
+            </span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -130,7 +149,7 @@ export default function AiProviders() {
               AI Provider Management
             </h1>
             <p className="text-sm text-[var(--c-muted)] mt-1">
-              Configure AI models for planning, chat, and analysis tasks
+              Platform defaults — applies to all tenants without their own configuration
             </p>
           </div>
           <Button onClick={() => handleOpen()} className="flex items-center gap-2">
@@ -140,7 +159,7 @@ export default function AiProviders() {
         </div>
 
         {/* Provider table */}
-        <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl overflow-hidden">
+        <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl overflow-hidden overflow-x-auto">
           {isLoading ? (
             <div className="p-8 text-center text-[var(--c-muted)] text-sm">Loading providers…</div>
           ) : providers.length === 0 ? (
@@ -238,13 +257,16 @@ export default function AiProviders() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">Provider</label>
-              <select
+              <input
+                list="provider-presets"
                 value={form.provider_name}
-                onChange={(e) => setForm(f => ({ ...f, provider_name: e.target.value, model_id: '' }))}
+                onChange={(e) => setForm(f => ({ ...f, provider_name: e.target.value.toLowerCase(), model_id: '' }))}
+                placeholder="claude, openai, gemini…"
                 className="w-full h-9 px-3 rounded-[10px] text-sm bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] focus:border-[var(--c-accent)] outline-none"
-              >
-                {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+              />
+              <datalist id="provider-presets">
+                {PROVIDER_PRESETS.map(p => <option key={p} value={p} />)}
+              </datalist>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--c-muted)]">Task Type</label>

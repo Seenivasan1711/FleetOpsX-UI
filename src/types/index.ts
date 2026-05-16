@@ -80,6 +80,7 @@ export interface Order {
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
   status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'CANCELLED'
   assigned_driver_id?: string
+  assigned_driver_name?: string   // returned by API when driver is assigned
   weight_kg?: number
   quantity_units?: number
   value?: number
