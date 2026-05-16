@@ -4,6 +4,20 @@
 
 ---
 
+## 🟣 Feature Backlog — 2026-05-17 (After QA bugs are done)
+
+| # | Feature | Details | Ref |
+|---|---------|---------|-----|
+| F-01 | **Live Feed — match Figma** | Dark CartoDB tiles; update MOCK_DRIVER_FEED (Indiranagar/HSR Layout/Koramangala/etc areas, correct ETAs + util); "Idle / available" label; On break status; fleet counts 4 on route / 3 idle+break / 0 off duty | Image #25 |
+| F-02 | **Plan History — redesign** | Flat row list (no accordion); each row: purple icon + "Balanced · 11 routes" + date/time + Orders/Drivers/OTD%/Saved cols + View button. Mock: 4 entries (Balanced 94.6%, Fastest 92.1%, Economical 96.3%, Balanced 91.7%). OTD color green ≥94%, amber <94% | Image #26 |
+| F-03 | **Drivers page — redesign table** | New columns: DRIVER (avatar+name+D-00X+phone) / VEHICLE (plate) / STATUS pill (On Route green, Idle gray, On Break amber, Available green) / STOPS TODAY / UTILIZATION bar+% / SCORE number+bar / ETA NEXT. Mock overlay for demo: MOCK_DRIVER_TABLE keyed by name | Image #27 |
+| F-04 | **Analytics page — redesign** | 4 KPI cards top row: ON-TIME DELIVERY 94.6% (green), COST PER STOP ₹38.20 (cyan), AVG DETOUR 8.2% (amber), CO₂ PER ROUTE 3.1 kg (purple) — each with 12-week sparkline + "last 12 weeks" label. Lower left: Driver utilization horizontal bars sorted by usage (Sneha 91% amber, Arjun 78% green, Rohan 72%, Priya 65%, Vikram 45% purple). Lower right: Hourly throughput bar chart 8h-19h | Image #28 |
+| F-05 | **Export / Import on Drivers, Vehicles, Depots** | Add Export (CSV download) + Import (CSV upload) buttons to each page toolbar alongside Add button. Demo mode: export generates CSV from mock data, import shows toast. Live mode: POST to `/api/v1/{resource}/import`, GET `/api/v1/{resource}/export` | — |
+| F-06 | **Fleet & Platform sidebar items** | Deprioritised — revisit after F-01–F-05 | — |
+| F-07 | **End-to-end QA** | Full manual + automated regression pass after ALL bugs + features complete. Block release on this. | — |
+
+---
+
 ## 🔴 QA Round — 2026-05-17 (Fix These First)
 
 All items below were logged during a manual QA pass. Start a new session by working through this list.
