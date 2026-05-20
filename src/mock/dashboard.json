@@ -1,0 +1,15 @@
+{
+  "stats": {
+    "totalDeliveries": 118,
+    "onTimeRate": 95,
+    "atRiskSlas": 3,
+    "driversAvail": 13,
+    "driversTotal": 20
+  },
+  "sparklines": {
+    "orders":  [78, 82, 85, 90, 88, 92, 97, 100, 105, 118],
+    "onTime":  [88, 89, 89, 90, 91, 92, 91, 93,  94,  95],
+    "atRisk":  [8,  6,  7,  5,  4,  6,  4,  3,   3,   3],
+    "drivers": [10, 11, 12, 11, 13, 12, 14, 13,  13,  13]
+  }
+}

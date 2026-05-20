@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bot, Wrench, Brain, ChevronDown, ChevronUp } from 'lucide-react'
+import { Bot, Wrench, Brain } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import type { AgentLogEntry } from '../../types'
 
 const ROLE_CONFIG = {
@@ -48,7 +49,7 @@ export default function AgentFeed({ logs, explanation, planner, isLoading }: Pro
             </span>
           )}
         </span>
-        {expanded ? <ChevronUp size={15} className="text-purple-500" /> : <ChevronDown size={15} className="text-purple-500" />}
+        {expanded ? <Icon.ChevU size={15} className="text-purple-500" /> : <Icon.ChevD size={15} className="text-purple-500" />}
       </button>
 
       {expanded && (

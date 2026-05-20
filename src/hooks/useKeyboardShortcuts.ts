@@ -4,25 +4,31 @@ import { useUiStore } from '../store'
 import { PAGE_KEY_MAP } from '../lib/utils/constants'
 
 type Options = {
-  onShowShortcuts: () => void
+  onShowShortcuts:      () => void
+  onOpenCommandPalette?: () => void
 }
 
-export function useKeyboardShortcuts({ onShowShortcuts }: Options) {
-  const navigate     = useNavigate()
-  const { setSidebar, sidebarExpanded } = useUiStore()
+export function useKeyboardShortcuts({ onShowShortcuts, onOpenCommandPalette }: Options) {
+  const { setSidebar } = useUiStore()
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // ⌘K / Ctrl+K — command palette
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        onOpenCommandPalette?.()
+        return
+      }
+
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
       const key = e.key.toLowerCase()
-
       if (key === '?') { onShowShortcuts(); return }
       if (key === '[') { setSidebar(false); return }
       if (key === ']') { setSidebar(true);  return }
     },
-    [onShowShortcuts, setSidebar, sidebarExpanded]
+    [onShowShortcuts, onOpenCommandPalette, setSidebar]
   )
 
   useEffect(() => {
@@ -31,7 +37,6 @@ export function useKeyboardShortcuts({ onShowShortcuts }: Options) {
   }, [handleKeyDown])
 }
 
-// Separate hook for G+key chord navigation — managed by AppShell
 export function useGNavigation() {
   const navigate = useNavigate()
 

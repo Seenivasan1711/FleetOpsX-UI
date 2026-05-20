@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cpu, Check, X } from 'lucide-react'
+import { Cpu } from 'lucide-react'
+import { Icon } from '../../ui/icons'
 import toast from 'react-hot-toast'
 import { Collapsible } from '../../ui/Collapsible'
 import { EmptyState } from '../../ui/EmptyState'
@@ -59,14 +60,14 @@ export const AiSuggestionsPanel = ({ planDate }: Props) => {
                   onClick={() => respondMutation.mutate({ id: s.id, action: 'ACCEPTED' })}
                   loading={respondMutation.isPending}
                 >
-                  <Check size={13} /> Accept
+                  <Icon.Check size={13} /> Accept
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => respondMutation.mutate({ id: s.id, action: 'DISMISSED' })}
                 >
-                  <X size={13} />
+                  <Icon.X size={13} />
                 </Button>
               </div>
             </div>

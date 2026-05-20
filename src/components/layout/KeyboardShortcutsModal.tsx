@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { KEYBOARD_SHORTCUTS } from '../../lib/utils/constants'
 
 type Props = {
@@ -30,7 +30,7 @@ export const KeyboardShortcutsModal = ({ onClose }: Props) => (
           onClick={onClose}
           className="p-1.5 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] border border-[var(--c-border)] transition-colors"
         >
-          <X size={16} />
+          <Icon.X size={16} />
         </button>
       </div>
 

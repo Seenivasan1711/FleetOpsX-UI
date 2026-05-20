@@ -1,19 +1,10 @@
 import { useRef, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { useOutsideClick } from '../../hooks/useOutsideClick'
+import { MOCK_NOTIFICATIONS } from '../../mock/data'
+import type { MockNotification } from '../../mock/data'
 
-type Notification = {
-  title: string
-  time:  string
-  read:  boolean
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { title: 'Orders pending dispatch for today',          time: 'Just now',   read: false },
-  { title: 'Route plan generation available',            time: '2 min ago',  read: false },
-  { title: 'Koramangala Depot: drivers checked in',      time: '18 min ago', read: true  },
-  { title: 'ETL last ran — analytics data refreshed',    time: '1 hr ago',   read: true  },
-]
+type Notification = MockNotification
 
 export const NotificationBell = () => {
   const [open, setOpen]       = useState(false)
@@ -29,7 +20,7 @@ export const NotificationBell = () => {
         className="relative w-[38px] h-[38px] flex items-center justify-center rounded-[10px] text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-elevated)] border border-transparent hover:border-[var(--c-border)] transition-all duration-150"
         style={open ? { background: 'var(--c-elevated)', borderColor: 'var(--c-border)' } : undefined}
       >
-        <Bell size={18} />
+        <Icon.Bell size={18} />
         {unread > 0 && (
           <span
             className="absolute top-[7px] right-[7px] w-2 h-2 rounded-full border-2"

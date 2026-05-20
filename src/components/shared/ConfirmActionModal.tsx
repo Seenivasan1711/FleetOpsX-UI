@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react'
+import { Icon } from '../ui/icons'
 
 interface Props {
   open: boolean
@@ -18,12 +18,12 @@ export function ConfirmActionModal({ open, title, description, confirmLabel = 'Y
         <div className="flex items-start justify-between p-5 border-b border-[#2a2a2a]">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <Icon.Alert size={16} className="text-red-400" />
             </div>
             <h2 className="text-sm font-semibold text-[#f0f0f0]">{title}</h2>
           </div>
           <button onClick={onCancel} className="text-[#6b7280] hover:text-[#f0f0f0] transition-colors">
-            <X className="w-4 h-4" />
+            <Icon.X size={16} />
           </button>
         </div>
 

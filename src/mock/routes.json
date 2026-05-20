@@ -1,0 +1,52 @@
+[
+  {
+    "id": "d1", "name": "Arjun Mehta",  "color": "#8b5cf6",
+    "segments": [
+      { "type": "route", "start": 510, "end": 690, "stops": 8 },
+      { "type": "break", "start": 690, "end": 780 }
+    ]
+  },
+  {
+    "id": "d2", "name": "Priya Sharma", "color": "#34d399",
+    "segments": [
+      { "type": "route", "start": 510, "end": 695, "stops": 6 },
+      { "type": "break", "start": 695, "end": 765 }
+    ]
+  },
+  {
+    "id": "d3", "name": "Rahul Iyer",   "color": "#60a5fa",
+    "segments": [
+      { "type": "route", "start": 510, "end": 690, "stops": 1 },
+      { "type": "break", "start": 690, "end": 795 }
+    ]
+  },
+  {
+    "id": "d4", "name": "Sneha Reddy",  "color": "#f472b6",
+    "segments": [
+      { "type": "route", "start": 510, "end": 705, "stops": 11 },
+      { "type": "break", "start": 705, "end": 765 }
+    ]
+  },
+  {
+    "id": "d5", "name": "Vikram Singh", "color": "#f59e0b",
+    "segments": [
+      { "type": "route", "start": 510, "end": 660, "stops": 4 },
+      { "type": "break", "start": 660, "end": 750 },
+      { "type": "route", "start": 750, "end": 870, "stops": 5 }
+    ]
+  },
+  {
+    "id": "d6", "name": "Ananya Iyer",  "color": "#22d3ee",
+    "segments": [
+      { "type": "route", "start": 510, "end": 690, "stops": 1 },
+      { "type": "break", "start": 690, "end": 755 }
+    ]
+  },
+  {
+    "id": "d7", "name": "Rohan Das",    "color": "#818cf8",
+    "segments": [
+      { "type": "route", "start": 540, "end": 690, "stops": 7 },
+      { "type": "break", "start": 690, "end": 748 }
+    ]
+  }
+]

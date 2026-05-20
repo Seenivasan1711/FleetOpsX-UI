@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react'
-import { Search } from 'lucide-react'
+import { Icon } from './icons'
 import { cn } from '../../lib/utils/cn'
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -42,7 +42,7 @@ export const SearchInput = ({ containerClass, className, ...props }: SearchInput
       containerClass
     )}
   >
-    <Search size={14} className="text-[var(--c-muted)] shrink-0" />
+    <Icon.Search size={14} className="text-[var(--c-muted)] shrink-0" />
     <input
       className={cn(
         'flex-1 bg-transparent outline-none text-sm',

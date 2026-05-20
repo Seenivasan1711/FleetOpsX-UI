@@ -1,206 +1,198 @@
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Package, AlertTriangle, CheckCircle, Users, Truck } from 'lucide-react'
 import { AppShell }           from '../components/layout/AppShell'
-import { StatCard }           from '../components/features/dashboard/StatCard'
+import { LiveOpsTicker }      from '../components/features/dashboard/LiveOpsTicker'
 import { OnboardingBanner }   from '../components/features/dashboard/OnboardingBanner'
-import { QuickActions }       from '../components/features/dashboard/QuickActions'
+import { StatCard }           from '../components/features/dashboard/StatCard'
+import { RouteTimeline }      from '../components/features/dashboard/RouteTimeline'
 import { AtRiskPanel }        from '../components/features/dashboard/AtRiskPanel'
-import { AiSuggestionsPanel } from '../components/features/dashboard/AiSuggestionsPanel'
-import { Button }             from '../components/ui/Button'
-import { fetchOrders }        from '../api/orders'
-import { fetchDrivers }       from '../api/drivers'
-import { fetchVehicles }      from '../api/vehicles'
-import { QUERY_KEYS }         from '../lib/utils/constants'
-import { today }              from '../lib/utils/format'
+import { FleetStatusCards }   from '../components/features/dashboard/FleetStatusCards'
+import { QuickActions }       from '../components/features/dashboard/QuickActions'
+import { Icon }               from '../components/ui/icons'
+import { fetchKpis, fetchKpiTrend } from '../api/analytics'
+import { fetchFleetAvailability }   from '../api/fleet'
+import { fetchOrders }              from '../api/orders'
+import { fetchDrivers }             from '../api/drivers'
+import { QUERY_KEYS }               from '../lib/utils/constants'
+import { useMockData }                        from '../mock/config'
+import { MOCK_DASHBOARD }                     from '../mock/data'
 
-const ONBOARDING_KEY = 'fleetopsx_ob_dismissed'
-
-function FleetBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const pct = total > 0 ? (value / total) * 100 : 0
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] text-[var(--c-muted)]">{label}</span>
-        <span className="text-[12px] font-bold font-mono text-[var(--c-text)]">{value}</span>
-      </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
-        <div
-          className="h-2 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: color, boxShadow: pct > 0 ? `0 0 6px ${color}60` : 'none' }}
-        />
-      </div>
-    </div>
-  )
-}
+const todayStr = new Date().toISOString().slice(0, 10)
+const MOCK_STATS = MOCK_DASHBOARD.stats
 
 export default function Dashboard() {
-  const navigate  = useNavigate()
-  const planDate  = today()
+  const isMock = useMockData()
+  const [bannerDismissed, setBannerDismissed] = useState(false)
 
-  const [showBanner, setShowBanner] = useState(
-    () => !localStorage.getItem(ONBOARDING_KEY)
-  )
-
-  const dismissBanner = () => {
-    localStorage.setItem(ONBOARDING_KEY, '1')
-    setShowBanner(false)
-  }
-
-  const { data: orders  = [] } = useQuery({
-    queryKey: QUERY_KEYS.orders(planDate),
-    queryFn:  () => fetchOrders({ plan_date: planDate }),
+  const { data: kpis } = useQuery({
+    queryKey: QUERY_KEYS.analyticsKpis,
+    queryFn:  () => fetchKpis(),
+    staleTime:       120_000,
+    refetchInterval: 120_000,
+    enabled:  !isMock,
   })
 
-  const { data: drivers = [] } = useQuery({
+  const { data: fleet } = useQuery({
+    queryKey: ['fleet-availability'],
+    queryFn:  fetchFleetAvailability,
+    staleTime:       60_000,
+    refetchInterval: 60_000,
+    enabled:  !isMock,
+  })
+
+  const { data: todayOrders = [] } = useQuery({
+    queryKey: QUERY_KEYS.orders(todayStr),
+    queryFn:  () => fetchOrders({ plan_date: todayStr }),
+    staleTime:       60_000,
+    refetchInterval: 60_000,
+    enabled:  !isMock,
+  })
+
+  const { data: allDrivers = [] } = useQuery({
     queryKey: QUERY_KEYS.drivers,
     queryFn:  () => fetchDrivers(),
+    staleTime:       60_000,
+    refetchInterval: 60_000,
+    enabled:  !isMock,
   })
 
-  const { data: vehicles = [] } = useQuery({
-    queryKey: QUERY_KEYS.vehicles,
-    queryFn:  () => fetchVehicles({ active_only: false }),
+  // 10-day KPI trend — powers on-time rate and active driver sparklines
+  const { data: kpiTrend = [] } = useQuery({
+    queryKey: ['kpi-trend', 10],
+    queryFn:  () => fetchKpiTrend(10),
+    staleTime:       300_000,
+    refetchInterval: 300_000,
+    enabled:  !isMock,
   })
 
-  const unassigned    = orders.filter((o) => o.status === 'PENDING').length
-  const assigned      = orders.filter((o) => o.status === 'ASSIGNED').length
-  const activeDrivers = drivers.filter((d) => d.is_active).length
+  const unassignedCount = isMock ? 0 : todayOrders.filter((o) => o.status === 'PENDING').length
+  const showBanner      = unassignedCount > 0 && !bannerDismissed
 
-  const driverStats = useMemo(() => ({
-    available: drivers.filter((d) => d.is_active && d.availability_status !== 'ON_BREAK' && d.availability_status !== 'OFF_DUTY').length,
-    on_break:  drivers.filter((d) => d.availability_status === 'ON_BREAK').length,
-    off_duty:  drivers.filter((d) => !d.is_active || d.availability_status === 'OFF_DUTY').length,
-    total:     drivers.length,
-  }), [drivers])
+  const onTimeRate      = isMock ? MOCK_STATS.onTimeRate      : (kpis?.on_time_rate != null ? Math.round(kpis.on_time_rate * 100) : 0)
+  const totalDeliveries = isMock ? MOCK_STATS.totalDeliveries : (kpis?.total_deliveries ?? 0)
+  const driversAvail    = isMock ? MOCK_STATS.driversAvail    : (fleet?.drivers.available ?? 0)
+  const driversTotal    = isMock ? MOCK_STATS.driversTotal    : (fleet?.drivers.total ?? 0)
+  const atRiskSlas      = isMock ? MOCK_STATS.atRiskSlas      : todayOrders.filter((o) => (o.priority === 'CRITICAL' || o.priority === 'HIGH') && o.status === 'PENDING').length
 
-  const vehicleStats = useMemo(() => ({
-    available:   vehicles.filter((v) => v.is_active && (!v.vehicle_status || v.vehicle_status === 'AVAILABLE')).length,
-    in_use:      vehicles.filter((v) => v.vehicle_status === 'IN_USE').length,
-    maintenance: vehicles.filter((v) => v.vehicle_status === 'MAINTENANCE').length,
-    low_fuel:    vehicles.filter((v) => v.vehicle_status === 'LOW_FUEL').length,
-    total:       vehicles.length,
-  }), [vehicles])
+  const { sparklines } = MOCK_DASHBOARD
+  const rawSparkOrders = kpis?.deliveries_by_day?.slice(-10).map(d => d.total) ?? []
+  const sparkOrders  = isMock
+    ? sparklines.orders
+    : rawSparkOrders.length >= 2
+      ? rawSparkOrders
+      : Array(9).fill(totalDeliveries).concat([totalDeliveries])
+  const sparkOnTime  = isMock
+    ? sparklines.onTime
+    : kpiTrend.length >= 2
+      ? kpiTrend.map(p => Math.round((p.on_time_pct ?? 0) * 100))
+      : [...sparklines.onTime.slice(0, 9), onTimeRate || 95]
+  const sparkAtRisk  = isMock ? sparklines.atRisk : Array(10).fill(atRiskSlas)
+  const sparkDrivers = isMock
+    ? sparklines.drivers
+    : kpiTrend.length >= 2
+      ? kpiTrend.map(p => p.active_drivers)
+      : [...sparklines.drivers.slice(0, 9), driversAvail || 13]
+
+  // Trend labels — demo: static strings; live: derived from API data if available
+  const deliveriesByDay = kpis?.deliveries_by_day
+  const ordersDelta = deliveriesByDay && deliveriesByDay.length >= 2
+    ? totalDeliveries - deliveriesByDay[deliveriesByDay.length - 2]!.total
+    : null
+  const ordersTrend = isMock
+    ? { up: true, val: '+21', label: 'vs yesterday' }
+    : (ordersDelta != null && ordersDelta !== 0)
+      ? { up: ordersDelta > 0, val: `${ordersDelta > 0 ? '+' : ''}${ordersDelta}`, label: 'vs yesterday' }
+      : undefined
+
+  const onTimePrev  = kpiTrend.length >= 2 ? Math.round((kpiTrend[kpiTrend.length - 2]!.on_time_pct ?? 0) * 100) : null
+  const onTimeDelta = onTimePrev != null ? onTimeRate - onTimePrev : null
+  const onTimeTrend = isMock
+    ? { up: true, val: '+2.5pp', label: 'this week' }
+    : (onTimeDelta != null && onTimeDelta !== 0)
+      ? { up: onTimeDelta > 0, val: `${onTimeDelta > 0 ? '+' : ''}${onTimeDelta}pp`, label: 'vs yesterday' }
+      : undefined
+
+  const driversPrev  = kpiTrend.length >= 2 ? kpiTrend[kpiTrend.length - 2]!.active_drivers : null
+  const driversDelta = driversPrev != null ? driversAvail - driversPrev : null
+  const driversTrend = isMock
+    ? { up: true, val: '2 newly', label: 'clocked-in' }
+    : (driversDelta != null && driversDelta !== 0)
+      ? { up: driversDelta > 0, val: `${Math.abs(driversDelta)} ${driversDelta > 0 ? 'more' : 'fewer'}`, label: 'vs yesterday' }
+      : undefined
 
   return (
-    <AppShell pendingOrders={unassigned}>
-      <div className="p-7 flex flex-col gap-6" style={{ animation: 'page-slide-in 0.22s ease' }}>
+    <AppShell>
+      {/* Live ticker — padded and contained, not edge-to-edge */}
+      {/* Real-time polling (refetchInterval) is handled inside LiveOpsTicker */}
+      <div className="px-6 pt-4 pb-1">
+        <LiveOpsTicker orders={todayOrders} drivers={allDrivers} planDate={todayStr} />
+      </div>
 
+      <div className="p-6 flex flex-col gap-6">
+
+        {/* Onboarding banner */}
         {showBanner && (
           <OnboardingBanner
-            unassignedCount={unassigned}
-            onDismiss={dismissBanner}
-            onGenerate={() => { dismissBanner(); navigate('/planning') }}
+            unassignedCount={unassignedCount}
+            onDismiss={() => setBannerDismissed(true)}
+            onGenerate={() => {}}
           />
         )}
 
-        {/* KPI stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI stat cards */}
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard
-            label="Total Orders" value={orders.length} color="accent" delay={0}
-            icon={<Package size={14} />}
-            trend={{ up: true, val: '+4', label: 'vs yesterday' }}
+            label="Today's Orders"
+            value={totalDeliveries}
+            color="accent"
+            icon={<Icon.Package size={16} />}
+            trend={ordersTrend}
+            sparkline={sparkOrders}
+            delay={0}
           />
           <StatCard
-            label="Unassigned" value={unassigned} color="danger" delay={80}
-            icon={<AlertTriangle size={14} />}
-            trend={{ up: false, val: `${unassigned > 0 ? Math.round((unassigned / Math.max(orders.length, 1)) * 100) : 0}%`, label: 'need dispatch' }}
+            label="On-Time Rate"
+            value={onTimeRate}
+            color="success"
+            suffix="%"
+            icon={<Icon.Check size={16} />}
+            trend={onTimeTrend}
+            sparkline={sparkOnTime}
+            delay={80}
           />
           <StatCard
-            label="Assigned" value={assigned} color="success" delay={160}
-            icon={<CheckCircle size={14} />}
+            label="At-Risk SLAs"
+            value={atRiskSlas}
+            color="info"
+            icon={<Icon.Alert size={16} />}
+            trend={isMock ? { up: true, val: '4 fewer', label: 'than yesterday' } : undefined}
+            sparkline={sparkAtRisk}
+            delay={160}
           />
           <StatCard
-            label="Active Drivers" value={activeDrivers} color="info" delay={240}
-            icon={<Users size={14} />}
-            trend={{ up: true, val: '100%', label: 'available' }}
+            label="Active Drivers"
+            value={driversAvail}
+            color="blue"
+            suffix={`/${driversTotal}`}
+            icon={<Icon.Drivers size={16} />}
+            trend={driversTrend}
+            sparkline={sparkDrivers}
+            delay={240}
           />
         </div>
 
-        {/* Fleet Availability */}
-        {(drivers.length > 0 || vehicles.length > 0) && (
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}
-          >
-            {/* Card header */}
-            <div
-              className="flex items-center gap-3 px-5 py-4"
-              style={{ borderBottom: '1px solid var(--c-border)' }}
-            >
-              <span
-                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'var(--c-accent-dim)' }}
-              >
-                <Truck size={14} style={{ color: 'var(--c-accent)' }} />
-              </span>
-              <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Fleet Availability</p>
-              <span
-                className="text-[10px] font-mono px-2 py-1 rounded-full"
-                style={{ background: 'var(--c-green-dim)', color: 'var(--c-green)' }}
-              >
-                Live
-              </span>
-              <span className="text-[11px] text-[var(--c-subtle)] hidden sm:inline">
-                Click status pills on Drivers / Vehicles to update
-              </span>
-            </div>
+        {/* Fleet status breakdown */}
+        <FleetStatusCards />
 
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 divide-x" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
-              {/* Drivers */}
-              <div className="p-6">
-                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
-                  <Users size={10} /> Drivers · {driverStats.total} total
-                </p>
-                <FleetBar label="Available" value={driverStats.available} total={driverStats.total} color="var(--c-green)"  />
-                <FleetBar label="On Break"  value={driverStats.on_break}  total={driverStats.total} color="var(--c-orange)" />
-                <FleetBar label="Off Duty"  value={driverStats.off_duty}  total={driverStats.total} color="var(--c-muted)"  />
-              </div>
-
-              {/* Vehicles */}
-              <div className="p-6" style={{ borderLeft: '1px solid var(--c-border)' }}>
-                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-[0.8px] mb-5 flex items-center gap-1.5">
-                  <Truck size={10} /> Vehicles · {vehicleStats.total} total
-                </p>
-                <FleetBar label="Available"   value={vehicleStats.available}  total={vehicleStats.total} color="var(--c-green)"  />
-                <FleetBar label="In Use"      value={vehicleStats.in_use}     total={vehicleStats.total} color="var(--c-accent)" />
-                <FleetBar label="Maintenance" value={vehicleStats.maintenance} total={vehicleStats.total} color="var(--c-red)"    />
-                <FleetBar label="Low Fuel"    value={vehicleStats.low_fuel}   total={vehicleStats.total} color="var(--c-orange)" />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Main content — Timeline hero + side panels */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
+          <RouteTimeline planDate={todayStr} />
+          <AtRiskPanel   planDate={todayStr} />
+        </div>
 
         {/* Quick actions */}
         <QuickActions />
 
-        {/* At-risk + AI panels */}
-        <AtRiskPanel planDate={planDate} />
-        <AiSuggestionsPanel planDate={planDate} />
-
-        {/* Dispatch CTA */}
-        {unassigned > 0 && (
-          <div
-            className="flex items-center justify-between gap-4 px-6 py-5 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, var(--c-accent-dim), var(--c-purple-dim))',
-              border: '1px solid var(--c-accent)',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            <div>
-              <p className="text-sm font-bold text-[var(--c-text)] mb-1">Ready to dispatch?</p>
-              <p className="text-xs text-[var(--c-muted)]">
-                <span className="font-semibold" style={{ color: 'var(--c-red)' }}>{unassigned} unassigned orders</span>{' '}
-                awaiting route optimisation for today.
-              </p>
-            </div>
-            <Button onClick={() => navigate('/planning')}>
-              Generate Plan →
-            </Button>
-          </div>
-        )}
       </div>
     </AppShell>
   )

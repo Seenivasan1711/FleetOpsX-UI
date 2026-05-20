@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Icon } from '../../ui/icons'
 import { Button } from '../../ui/Button'
 
 type Props = {
@@ -33,7 +33,7 @@ export const OnboardingBanner = ({ unassignedCount, onDismiss, onGenerate }: Pro
         onClick={onDismiss}
         className="p-1.5 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] transition-colors"
       >
-        <X size={16} />
+        <Icon.X size={16} />
       </button>
     </div>
   </div>

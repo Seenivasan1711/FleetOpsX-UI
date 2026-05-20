@@ -11,6 +11,7 @@ export interface AtRiskStop {
   overdue_by_minutes: number
   stop_status: string
   priority: string
+  reason?: string   // NEW: human-readable reason for risk
 }
 
 export const fetchAtRiskStops = (planDate: string): Promise<AtRiskStop[]> =>

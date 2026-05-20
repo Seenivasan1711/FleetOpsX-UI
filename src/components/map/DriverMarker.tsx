@@ -1,23 +1,7 @@
+import { useMemo } from 'react'
 import L from 'leaflet'
 import { Marker, Popup } from 'react-leaflet'
 import type { LivePosition } from '../../api/tracking'
-
-// Blue circle div-icon — no external image dependency
-const driverIcon = L.divIcon({
-  className: '',
-  html: `<div style="
-    width:32px;height:32px;
-    background:#2563eb;
-    border:3px solid #fff;
-    border-radius:50%;
-    box-shadow:0 2px 6px rgba(0,0,0,.4);
-    display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:13px;font-weight:700;
-  ">D</div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -18],
-})
 
 function formatTime(iso: string) {
   try {
@@ -27,9 +11,25 @@ function formatTime(iso: string) {
   }
 }
 
-export default function DriverMarker({ position }: { position: LivePosition }) {
+export default function DriverMarker({ position, color = '#2563eb' }: { position: LivePosition; color?: string }) {
+  const icon = useMemo(() => L.divIcon({
+    className: '',
+    html: `<div style="
+      width:32px;height:32px;
+      background:${color};
+      border:3px solid #fff;
+      border-radius:50%;
+      box-shadow:0 2px 6px rgba(0,0,0,.4);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:13px;font-weight:700;
+    ">D</div>`,
+    iconSize:    [32, 32],
+    iconAnchor:  [16, 16],
+    popupAnchor: [0, -18],
+  }), [color])
+
   return (
-    <Marker position={[position.latitude, position.longitude]} icon={driverIcon}>
+    <Marker position={[position.latitude, position.longitude]} icon={icon}>
       <Popup>
         <div className="text-sm min-w-[140px]">
           <p className="font-semibold text-gray-900">{position.driver_name}</p>

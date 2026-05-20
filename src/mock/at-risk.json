@@ -1,0 +1,23 @@
+[
+  {
+    "id":         "ORD-2026-115",
+    "address":    "42, HSR Sector 2",
+    "minsLate":   18,
+    "reason":     "Driver running 18 min late · Traffic on ORR",
+    "suggestion": "Reassign to Ananya Iyer (Electronic City depot)"
+  },
+  {
+    "id":         "ORD-2026-119",
+    "address":    "Banaswadi Main Rd",
+    "minsLate":   12,
+    "reason":     "Stop window closes 12 min after current ETA",
+    "suggestion": "Skip ORD-118 stop, return after delivery"
+  },
+  {
+    "id":         "ORD-2026-103",
+    "address":    "JP Nagar Phase 7",
+    "minsLate":   7,
+    "reason":     "Customer rescheduled — earlier time window",
+    "suggestion": "Swap with ORD-2026-122 in same area"
+  }
+]

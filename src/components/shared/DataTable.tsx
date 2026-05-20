@@ -37,7 +37,7 @@ export default function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]"
+                className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]"
                 style={col.width ? { width: col.width } : {}}
               >
                 {col.header}

@@ -1,0 +1,6 @@
+[
+  { "title": "Orders pending dispatch for today",       "time": "Just now",   "read": false },
+  { "title": "Route plan generation available",         "time": "2 min ago",  "read": false },
+  { "title": "Koramangala Depot: drivers checked in",   "time": "18 min ago", "read": true  },
+  { "title": "ETL last ran — analytics data refreshed", "time": "1 hr ago",   "read": true  }
+]

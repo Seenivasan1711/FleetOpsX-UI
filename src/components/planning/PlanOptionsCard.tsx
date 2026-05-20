@@ -1,11 +1,12 @@
-import { Zap, Leaf, Scale, CheckCircle2 } from 'lucide-react'
+import { Leaf, Scale } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import type { PlanOption, PlanOptionMode } from '../../types'
 
 const MODE_META: Record<PlanOptionMode, {
-  icon: typeof Zap; label: string; color: string; bg: string
+  icon: React.FC<{ size?: number; style?: React.CSSProperties }>; label: string; color: string; bg: string
 }> = {
   fastest: {
-    icon: Zap,
+    icon: Icon.Bolt,
     label: 'Fastest',
     color: 'var(--c-accent)',
     bg: 'var(--c-accent-dim)',
@@ -41,7 +42,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 export function PlanOptionsCard({ option, selected, onSelect }: PlanOptionsCardProps) {
   const meta = MODE_META[option.mode]
-  const Icon = meta.icon
+  const ModeIcon = meta.icon
   const coverage = Math.round((option.assigned_orders / Math.max(option.total_orders, 1)) * 100)
 
   return (
@@ -60,13 +61,13 @@ export function PlanOptionsCard({ option, selected, onSelect }: PlanOptionsCardP
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: `${meta.color}22` }}
         >
-          <Icon size={16} style={{ color: meta.color }} />
+          <ModeIcon size={16} style={{ color: meta.color }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold" style={{ color: meta.color }}>{meta.label}</p>
           <p className="text-xs text-[var(--c-muted)]">{option.description}</p>
         </div>
-        {selected && <CheckCircle2 size={18} style={{ color: meta.color, flexShrink: 0 }} />}
+        {selected && <Icon.Check size={18} style={{ color: meta.color, flexShrink: 0 }} />}
       </div>
 
       {/* Metrics */}

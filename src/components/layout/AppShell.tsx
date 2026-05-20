@@ -1,25 +1,45 @@
 import { useState, type ReactNode } from 'react'
-import { Bot }                      from 'lucide-react'
+import { useQuery }                  from '@tanstack/react-query'
 import { Sidebar }                  from './Sidebar'
 import { Topbar }                   from './Topbar'
 import { SuperadminBanner }         from './SuperadminBanner'
 import { KeyboardShortcutsModal }   from './KeyboardShortcutsModal'
 import { ChatPanel }                from '../chat/ChatPanel'
+import { CommandPalette }           from '../shared/CommandPalette'
 import { useUiStore }               from '../../store'
 import { useAuthStore }             from '../../store/auth.store'
 import { useKeyboardShortcuts, useGNavigation } from '../../hooks/useKeyboardShortcuts'
+import { fetchOrders }              from '../../api/orders'
+import { MOCK_ORDERS }              from '../../mock/data'
+import { useMockData }              from '../../mock/config'
+import { QUERY_KEYS }               from '../../lib/utils/constants'
 
 type AppShellProps = {
-  children:      ReactNode
-  pendingOrders?: number
+  children: ReactNode
 }
 
-export const AppShell = ({ children, pendingOrders }: AppShellProps) => {
+export const AppShell = ({ children }: AppShellProps) => {
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const { sidebarExpanded, toggleSidebar, chatOpen, toggleChat } = useUiStore()
+  const [showPalette,   setShowPalette]   = useState(false)
+  const { sidebarExpanded, toggleSidebar } = useUiStore()
   const { isSuperadmin, effectiveTenantId } = useAuthStore()
+  const isMock = useMockData()
 
-  useKeyboardShortcuts({ onShowShortcuts: () => setShowShortcuts(true) })
+  // Always-on unassigned order count for the sidebar badge
+  const { data: liveOrders } = useQuery({
+    queryKey:        [...QUERY_KEYS.orders(), 'unassigned'] as const,
+    queryFn:         () => fetchOrders({ status: 'PENDING' }),
+    refetchInterval: 60_000,
+    enabled:         !isMock,
+  })
+  const unassignedCount = isMock
+    ? MOCK_ORDERS.filter(o => o.status === 'PENDING').length
+    : (liveOrders?.length ?? 0)
+
+  useKeyboardShortcuts({
+    onShowShortcuts:     () => setShowShortcuts(true),
+    onOpenCommandPalette: () => setShowPalette(true),
+  })
   useGNavigation()
 
   return (
@@ -27,42 +47,29 @@ export const AppShell = ({ children, pendingOrders }: AppShellProps) => {
       <Sidebar
         expanded={sidebarExpanded}
         onToggle={toggleSidebar}
-        pendingOrders={pendingOrders}
+        pendingOrders={unassignedCount}
+        onShowShortcuts={() => setShowShortcuts(true)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Topbar onShowShortcuts={() => setShowShortcuts(true)} />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
+        <Topbar
+          onShowShortcuts={() => setShowShortcuts(true)}
+          onOpenCommandPalette={() => setShowPalette(true)}
+        />
         {isSuperadmin && effectiveTenantId && <SuperadminBanner />}
 
-        <div className="flex-1 flex overflow-hidden min-w-0">
-          <main
-            className="flex-1 overflow-y-auto overflow-x-hidden"
-            style={{ background: 'var(--c-bg)' }}
-          >
-            {children}
-          </main>
-          <ChatPanel />
-        </div>
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{ background: 'var(--c-bg)' }}
+        >
+          {children}
+        </main>
       </div>
 
-      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      <ChatPanel />
 
-      {/* Floating AI chat button (hidden when panel is open) */}
-      {!chatOpen && (
-        <button
-          onClick={toggleChat}
-          className="fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full flex items-center justify-center shadow-xl transition-transform hover:scale-105 active:scale-95"
-          style={{
-            width:      52,
-            height:     52,
-            background: 'linear-gradient(135deg, var(--c-accent), var(--c-purple))',
-            boxShadow:  '0 4px 24px rgba(124,58,237,0.4)',
-          }}
-          title="Fleet AI (⌘K)"
-        >
-          <Bot size={22} className="text-white" />
-        </button>
-      )}
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showPalette   && <CommandPalette onClose={() => setShowPalette(false)} />}
     </div>
   )
 }

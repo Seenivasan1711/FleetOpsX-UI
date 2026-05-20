@@ -195,6 +195,7 @@ export default function UserManagement() {
           ) : users.length === 0 ? (
             <EmptyState title="No users yet" subtitle="Invite your first team member." />
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
@@ -207,6 +208,7 @@ export default function UserManagement() {
                 {users.map((u) => <UserRow key={u.id} user={u} />)}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

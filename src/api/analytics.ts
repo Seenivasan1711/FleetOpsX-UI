@@ -50,3 +50,35 @@ export const fetchDriverPerformance = (since?: string): Promise<DriverPerf[]> =>
 
 export const triggerEtl = (planDate: string): Promise<{ plan_date: string; upserted: number; driver_scores_upserted: number }> =>
   client.post('/api/v1/analytics/run-etl', null, { params: { plan_date: planDate } }).then(r => r.data)
+
+export interface KpiTrendPoint {
+  date: string
+  orders_count: number
+  on_time_pct: number | null
+  active_drivers: number
+  fleet_efficiency: number | null
+}
+
+export const fetchKpiTrend = (days = 7): Promise<KpiTrendPoint[]> =>
+  client.get('/api/v1/analytics/kpi-trend', { params: { days } }).then(r => r.data)
+
+export interface RouteStop {
+  order_id: string
+  address: string
+  sequence: number
+  start_time: string | null
+  end_time: string | null
+  status: string
+  priority: string
+}
+
+export interface DriverTimeline {
+  driver_id:    string
+  driver_name:  string
+  stops:        RouteStop[]
+  break_start?: string | null   // NEW: ISO timestamp of break start
+  break_end?:   string | null   // NEW: ISO timestamp of break end
+}
+
+export const fetchRouteTimeline = (date: string): Promise<DriverTimeline[]> =>
+  client.get('/api/v1/plan/timeline', { params: { plan_date: date } }).then(r => r.data)

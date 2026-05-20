@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, User, Settings, Keyboard, LogOut } from 'lucide-react'
+import { User, Keyboard } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import { useAuthStore } from '../../store'
 import { useOutsideClick } from '../../hooks/useOutsideClick'
 import { initials } from '../../lib/utils/format'
@@ -26,10 +27,10 @@ export const UserMenu = ({ onShowShortcuts }: UserMenuProps) => {
   }
 
   const items = [
-    { label: 'Profile',            icon: User,     action: () => {} },
-    { label: 'Settings',           icon: Settings, action: () => navigate('/settings') },
-    { label: 'Keyboard Shortcuts', icon: Keyboard, action: onShowShortcuts },
-    { label: 'Sign out',           icon: LogOut,   action: handleLogout, danger: true },
+    { label: 'Profile',            icon: User,     action: () => navigate('/profile') },
+    { label: 'Settings',           icon: Icon.Settings, action: () => navigate('/settings') },
+    { label: 'Keyboard Shortcuts', icon: Keyboard,      action: onShowShortcuts },
+    { label: 'Sign out',           icon: Icon.Logout,   action: handleLogout, danger: true },
   ]
 
   return (
@@ -46,7 +47,7 @@ export const UserMenu = ({ onShowShortcuts }: UserMenuProps) => {
           {avatar}
         </div>
         <span className="text-[13px] font-medium whitespace-nowrap">{displayName}</span>
-        <ChevronDown size={14} className="text-[var(--c-muted)]" />
+        <Icon.ChevD size={14} className="text-[var(--c-muted)]" />
       </button>
 
       {open && (
@@ -59,14 +60,14 @@ export const UserMenu = ({ onShowShortcuts }: UserMenuProps) => {
             animation:  'dropdown-in 0.15s ease',
           }}
         >
-          {items.map(({ label, icon: Icon, action, danger }) => (
+          {items.map(({ label, icon: ItemIcon, action, danger }) => (
             <button
               key={label}
               onClick={() => { action(); setOpen(false) }}
               className="flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-lg text-[13px] font-medium transition-colors duration-100 hover:bg-[var(--c-elevated)]"
               style={{ color: danger ? 'var(--c-red)' : 'var(--c-text)' }}
             >
-              <Icon size={15} />
+              <ItemIcon size={15} />
               {label}
             </button>
           ))}
