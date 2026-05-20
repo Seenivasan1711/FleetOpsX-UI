@@ -7,7 +7,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: Icon.Dashboard },
   { path: '/orders', label: 'Orders', icon: Icon.Orders },
   { path: '/planning', label: 'Planning', icon: Icon.Plan },
-  { path: '/map', label: 'Live Map', icon: Icon.Map },
+  { path: '/map', label: 'Live Feed', icon: Icon.Map },
   { path: '/analytics', label: 'Analytics', icon: Icon.Chart },
   { path: '/drivers', label: 'Drivers', icon: Icon.Truck },
   { path: '/vehicles', label: 'Vehicles', icon: Car },

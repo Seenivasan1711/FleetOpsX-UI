@@ -202,7 +202,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders, onShowShortcuts }: 
           <div
             className="w-10 h-10 rounded-[11px] flex items-center justify-center shrink-0 text-white"
             style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
               boxShadow:  '0 3px 12px rgba(124,58,237,0.45)',
             }}
           >
@@ -312,7 +312,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders, onShowShortcuts }: 
                 <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: '1px solid var(--c-border)' }}>
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, var(--c-accent), #4f46e5)' }}
+                    style={{ background: 'linear-gradient(135deg, var(--c-accent), #06b6d4)' }}
                   >
                     {initials}
                   </div>
@@ -396,7 +396,7 @@ export const Sidebar = ({ expanded, onToggle, pendingOrders, onShowShortcuts }: 
           >
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white text-[12px] font-bold"
-              style={{ background: 'linear-gradient(135deg, var(--c-accent), #4f46e5)', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, var(--c-accent), #06b6d4)', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
             >
               {initials}
             </div>

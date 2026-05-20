@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from 'react'
 import { useUiStore } from '../../store/ui.store'
 import { useAuthStore } from '../../store/auth.store'
 import client from '../../api/client'
@@ -13,7 +13,7 @@ import {
 } from '../../api/conversations'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const C = {
+const DARK_C = {
   panelBg:   '#0d0d0f',
   bg:        '#0d0d12',
   card:      '#18181b',
@@ -33,6 +33,31 @@ const C = {
   mono:      "'JetBrains Mono', monospace",
   sans:      "'DM Sans', system-ui, sans-serif",
 }
+
+const LIGHT_C = {
+  panelBg:   '#f8f9fc',
+  bg:        '#f0f1f6',
+  card:      '#ffffff',
+  border:    'rgba(0,0,0,0.07)',
+  border2:   'rgba(0,0,0,0.10)',
+  accent:    '#7c3aed',
+  accentDim: 'rgba(124,58,237,0.10)',
+  text:      '#0c0c18',
+  textMid:   '#1e1e35',
+  textDim:   '#424266',
+  textMute:  '#6060a0',
+  textGhost: '#9090c0',
+  green:     '#059669',
+  greenGlow: 'rgba(5,150,105,0.10)',
+  amber:     '#d97706',
+  red:       '#dc2626',
+  mono:      "'JetBrains Mono', monospace",
+  sans:      "'DM Sans', system-ui, sans-serif",
+}
+
+type ColorPalette = typeof DARK_C
+const ThemeCtx = createContext<ColorPalette>(DARK_C)
+const useC = () => useContext(ThemeCtx)
 
 // ── CSS injection ─────────────────────────────────────────────────────────────
 const STYLE_ID = 'fox-chat-styles'
@@ -117,7 +142,7 @@ function inferFollowUps(text: string): string[] {
   return ['Tell me more', 'What should I do next?']
 }
 
-function renderText(text: string) {
+function renderText(text: string, C: ColorPalette) {
   const parts = text.split(/(\*\*.*?\*\*|`[^`]+`)/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**'))
@@ -165,6 +190,7 @@ function AIAvatar({ size = 26 }: { size?: number }) {
 }
 
 function TypingDots() {
+  const C = useC()
   return (
     <div className="fox-msg" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
       <AIAvatar size={26} />
@@ -185,6 +211,7 @@ function TypingDots() {
 }
 
 function CardBlock({ card }: { card: StructuredCard }) {
+  const C = useC()
   return (
     <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.border2}` }}>
       <div style={{
@@ -215,6 +242,7 @@ function CardBlock({ card }: { card: StructuredCard }) {
 }
 
 function FollowUps({ chips, onSend }: { chips: string[]; onSend: (t: string) => void }) {
+  const C = useC()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, marginLeft: 36 }}>
       {chips.map((c) => (
@@ -249,6 +277,7 @@ function FollowUps({ chips, onSend }: { chips: string[]; onSend: (t: string) => 
 }
 
 function MessageBubble({ msg, onFollowUp, isLast }: { msg: Msg; onFollowUp: (t: string) => void; isLast: boolean }) {
+  const C = useC()
   const isUser = msg.role === 'user'
 
   if (isUser) {
@@ -282,7 +311,7 @@ function MessageBubble({ msg, onFollowUp, isLast }: { msg: Msg; onFollowUp: (t: 
             <div style={{ color: C.textMid, fontSize: 13, lineHeight: 1.65, fontFamily: C.sans }}>
               {msg.text.split('\n').map((line, i) => (
                 <p key={i} style={{ margin: i > 0 ? '6px 0 0' : 0 }}>
-                  {renderText(line)}
+                  {renderText(line, C)}
                 </p>
               ))}
             </div>
@@ -303,6 +332,7 @@ function SlashLauncher({
 }: {
   query: string; activeIndex: number; onSelect: (cmd: string) => void; onIndexChange: (i: number) => void
 }) {
+  const C = useC()
   const filtered = SLASH_COMMANDS.filter((c) => c.cmd.slice(1).startsWith(query.toLowerCase()))
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -387,6 +417,7 @@ function HistoryDropdown({
   onNew: () => void
   onClose: () => void
 }) {
+  const C = useC()
   return (
     <div
       className="fox-hist"
@@ -438,7 +469,7 @@ function HistoryDropdown({
               cursor: 'pointer', transition: 'background .12s',
             }}
             onClick={() => { onSelect(conv); onClose() }}
-            onMouseEnter={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)' }}
+            onMouseEnter={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(128,128,128,0.06)' }}
             onMouseLeave={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={conv.id === activeId ? C.accent : C.textGhost} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -475,8 +506,10 @@ function HistoryDropdown({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function ChatPanel() {
-  const { chatOpen, toggleChat } = useUiStore()
+  const { chatOpen, toggleChat, theme } = useUiStore()
   const user = useAuthStore((s) => s.user)
+  const C = theme === 'dark' ? DARK_C : LIGHT_C
+
   const firstName = user?.full_name?.split(' ')[0] ?? 'there'
   const [msgs,         setMsgs]        = useState<Msg[]>([])
   const [input,        setInput]       = useState('')
@@ -650,288 +683,290 @@ export function ChatPanel() {
   const lastAssistantIdx = msgs.reduceRight((found, m, i) => found === -1 && m.role === 'assistant' ? i : found, -1)
 
   return (
-    <>
-      {/* Backdrop — fixed so it covers sidebar too */}
+    <ThemeCtx.Provider value={C}>
+      <>
+        {/* Backdrop — z-index 1000 so it sits above Leaflet controls and map overlays */}
+        <div
+          onClick={toggleChat}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+          }}
+        />
       <div
-        onClick={toggleChat}
+        className="fox-slide"
         style={{
-          position: 'fixed', inset: 0, zIndex: 40,
-          background: 'rgba(0,0,0,0.50)',
-          backdropFilter: 'blur(5px)',
-          WebkitBackdropFilter: 'blur(5px)',
-        }}
-      />
-    <div
-      className="fox-slide"
-      style={{
-        position: 'fixed', right: 0, top: 0, bottom: 0, zIndex: 50,
-        width: 'min(460px, 42vw)',
-        display: 'flex', flexDirection: 'column',
-        background: C.panelBg,
-        borderLeft: `1px solid ${C.border}`,
-        boxShadow: '-12px 0 60px rgba(0,0,0,0.65)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* ── Header ── */}
-      <div
-        ref={headerRef}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px', flexShrink: 0,
-          borderBottom: `1px solid ${C.border}`, background: C.bg,
-          position: 'relative',
+          position: 'fixed', right: 0, top: 0, bottom: 0, zIndex: 1001,
+          width: 'min(460px, 42vw)',
+          display: 'flex', flexDirection: 'column',
+          background: C.panelBg,
+          borderLeft: `1px solid ${C.border}`,
+          boxShadow: '-12px 0 60px rgba(0,0,0,0.65)',
+          overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <AIAvatar size={36} />
+        {/* ── Header ── */}
+        <div
+          ref={headerRef}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 18px', flexShrink: 0,
+            borderBottom: `1px solid ${C.border}`, background: C.bg,
+            position: 'relative',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <AIAvatar size={36} />
 
-          {/* Title — clickable to open history when MongoDB active */}
-          <div
-            onClick={() => mongoActive && setHistOpen((o) => !o)}
-            style={{
-              cursor: mongoActive ? 'pointer' : 'default',
-              display: 'flex', flexDirection: 'column', minWidth: 0,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <p style={{
-                fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                maxWidth: mongoActive ? 140 : 180,
-              }}>
-                FleetOpsX AI
-              </p>
-              {mongoActive && (
-                <svg
-                  width="10" height="10" viewBox="0 0 24 24" fill="none"
-                  stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ flexShrink: 0, transform: histOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
-                >
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-              <span style={{ fontSize: 10.5, color: C.textMute }}>
-                {loading ? 'Thinking…' : 'Operations assistant · live context'}
-              </span>
+            {/* Title — clickable to open history when MongoDB active */}
+            <div
+              onClick={() => mongoActive && setHistOpen((o) => !o)}
+              style={{
+                cursor: mongoActive ? 'pointer' : 'default',
+                display: 'flex', flexDirection: 'column', minWidth: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <p style={{
+                  fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  maxWidth: mongoActive ? 140 : 180,
+                }}>
+                  FleetOpsX AI
+                </p>
+                {mongoActive && (
+                  <svg
+                    width="10" height="10" viewBox="0 0 24 24" fill="none"
+                    stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ flexShrink: 0, transform: histOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                <span style={{ fontSize: 10.5, color: C.textMute }}>
+                  {loading ? 'Thinking…' : 'Operations assistant · live context'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* New Chat (always visible) */}
-          <button
-            onClick={startNewChat}
-            title="New chat"
-            style={{
-              padding: '5px 7px', background: 'transparent', border: 'none',
-              borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.accent }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
-          {/* Clear messages */}
-          {msgs.length > 0 && !loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* New Chat (always visible) */}
             <button
-              onClick={() => setMsgs([])}
-              title="Clear messages"
+              onClick={startNewChat}
+              title="New chat"
               style={{
                 padding: '5px 7px', background: 'transparent', border: 'none',
                 borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.textDim }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.accent }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-          )}
-          {/* Close */}
-          <button
-            onClick={toggleChat}
-            style={{
-              padding: '5px 7px', background: 'transparent', border: 'none',
-              borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.text }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* History dropdown */}
-        {histOpen && mongoActive && (
-          <HistoryDropdown
-            conversations={conversations}
-            activeId={convId}
-            onSelect={loadConversation}
-            onDelete={handleDeleteConv}
-            onNew={startNewChat}
-            onClose={() => setHistOpen(false)}
-          />
-        )}
-      </div>
-
-      {/* ── Messages ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {histLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: C.textGhost, fontSize: 12 }}>
-            <span className="fox-spin" style={{ marginRight: 8 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-              </svg>
-            </span>
-            Loading conversation…
-          </div>
-        ) : msgs.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
-            <div style={{ paddingBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-                <AIAvatar size={32} />
-                <div style={{
-                  background: C.card, border: `1px solid ${C.border}`,
-                  borderRadius: '12px 12px 12px 4px', padding: '12px 14px',
-                  flex: 1,
-                }}>
-                  <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
-                    Hi {firstName} — ready to help with today's ops. I can answer questions on orders, drivers, routes, and SLA risks. What's on your mind?
-                  </p>
-                </div>
-              </div>
-            </div>
-            {STARTERS.map((s) => (
+            {/* Clear messages */}
+            {msgs.length > 0 && !loading && (
               <button
-                key={s}
-                onClick={() => send(s)}
+                onClick={() => setMsgs([])}
+                title="Clear messages"
                 style={{
-                  width: '100%', padding: '11px 14px', borderRadius: 11, textAlign: 'left',
-                  fontSize: 13, background: C.card, border: `1px solid ${C.border}`,
-                  color: C.textMid, cursor: 'pointer', transition: 'all .15s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  padding: '5px 7px', background: 'transparent', border: 'none',
+                  borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = C.accent
-                  e.currentTarget.style.color = C.text
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = C.border
-                  e.currentTarget.style.color = C.textMid
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.textDim }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
               >
-                <span>{s}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"/>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                 </svg>
               </button>
-            ))}
+            )}
+            {/* Close */}
+            <button
+              onClick={toggleChat}
+              style={{
+                padding: '5px 7px', background: 'transparent', border: 'none',
+                borderRadius: 7, color: C.textGhost, cursor: 'pointer', transition: 'all .15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.text }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textGhost }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
-        ) : (
-          msgs.map((msg, idx) => (
-            <MessageBubble
-              key={msg.id}
-              msg={msg}
-              onFollowUp={send}
-              isLast={idx === lastAssistantIdx && !loading}
-            />
-          ))
-        )}
 
-        {loading && <TypingDots />}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* ── Composer ── */}
-      <div style={{ flexShrink: 0, padding: '10px 14px 14px', borderTop: `1px solid ${C.border}` }}>
-        <div ref={inputWrap} style={{ position: 'relative' }}>
-          {slashOpen && (
-            <SlashLauncher
-              query={slashQuery}
-              activeIndex={slashIdx}
-              onSelect={selectSlash}
-              onIndexChange={setSlashIdx}
+          {/* History dropdown */}
+          {histOpen && mongoActive && (
+            <HistoryDropdown
+              conversations={conversations}
+              activeId={convId}
+              onSelect={loadConversation}
+              onDelete={handleDeleteConv}
+              onNew={startNewChat}
+              onClose={() => setHistOpen(false)}
             />
           )}
-          <div style={{
-            display: 'flex', alignItems: 'flex-end', gap: 8,
-            padding: '10px 12px 10px 14px', borderRadius: 14,
-            background: C.card,
-            border: `1.5px solid ${C.accent}`,
-            transition: 'border-color .15s',
-          }}>
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={(e) => handleInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              placeholder={loading ? 'Thinking…' : 'Ask anything about your fleet…'}
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                color: loading ? C.textGhost : C.text, fontSize: 13, lineHeight: 1.5,
-                resize: 'none', maxHeight: 100, fontFamily: C.sans,
-              } as React.CSSProperties}
-            />
-            {/* Mic icon */}
+        </div>
+
+        {/* ── Messages ── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {histLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: C.textGhost, fontSize: 12 }}>
+              <span className="fox-spin" style={{ marginRight: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+              </span>
+              Loading conversation…
+            </div>
+          ) : msgs.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+              <div style={{ paddingBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                  <AIAvatar size={32} />
+                  <div style={{
+                    background: C.card, border: `1px solid ${C.border}`,
+                    borderRadius: '12px 12px 12px 4px', padding: '12px 14px',
+                    flex: 1,
+                  }}>
+                    <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
+                      Hi {firstName} — ready to help with today's ops. I can answer questions on orders, drivers, routes, and SLA risks. What's on your mind?
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {STARTERS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  style={{
+                    width: '100%', padding: '11px 14px', borderRadius: 11, textAlign: 'left',
+                    fontSize: 13, background: C.card, border: `1px solid ${C.border}`,
+                    color: C.textMid, cursor: 'pointer', transition: 'all .15s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = C.accent
+                    e.currentTarget.style.color = C.text
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = C.border
+                    e.currentTarget.style.color = C.textMid
+                  }}
+                >
+                  <span>{s}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </button>
+              ))}
+            </div>
+          ) : (
+            msgs.map((msg, idx) => (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                onFollowUp={send}
+                isLast={idx === lastAssistantIdx && !loading}
+              />
+            ))
+          )}
+
+          {loading && <TypingDots />}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* ── Composer ── */}
+        <div style={{ flexShrink: 0, padding: '10px 14px 14px', borderTop: `1px solid ${C.border}` }}>
+          <div ref={inputWrap} style={{ position: 'relative' }}>
+            {slashOpen && (
+              <SlashLauncher
+                query={slashQuery}
+                activeIndex={slashIdx}
+                onSelect={selectSlash}
+                onIndexChange={setSlashIdx}
+              />
+            )}
+            <div style={{
+              display: 'flex', alignItems: 'flex-end', gap: 8,
+              padding: '10px 12px 10px 14px', borderRadius: 14,
+              background: C.card,
+              border: `1.5px solid ${C.accent}`,
+              transition: 'border-color .15s',
+            }}>
+              <textarea
+                ref={inputRef}
+                rows={1}
+                value={input}
+                onChange={(e) => handleInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+                placeholder={loading ? 'Thinking…' : 'Ask anything about your fleet…'}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  color: loading ? C.textGhost : C.text, fontSize: 13, lineHeight: 1.5,
+                  resize: 'none', maxHeight: 100, fontFamily: C.sans,
+                } as React.CSSProperties}
+              />
+              {/* Mic icon */}
+              <button
+                style={{
+                  padding: '4px', background: 'transparent', border: 'none',
+                  color: C.textGhost, cursor: 'pointer', borderRadius: 6,
+                  display: 'flex', alignItems: 'center', flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = C.textDim }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = C.textGhost }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Send button + footer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 }}>
+            <p style={{ fontSize: 10, color: C.textGhost, flex: 1, lineHeight: 1.4 }}>
+              FleetOpsX AI uses live ops data. Always cites its source. Press{' '}
+              <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>⌘K</kbd>
+              {' '}for command palette.
+            </p>
             <button
+              onClick={() => send(input)}
+              disabled={!input.trim() || loading}
               style={{
-                padding: '4px', background: 'transparent', border: 'none',
-                color: C.textGhost, cursor: 'pointer', borderRadius: 6,
-                display: 'flex', alignItems: 'center', flexShrink: 0,
+                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: !input.trim() || loading ? C.card : C.accent,
+                border: `1px solid ${!input.trim() || loading ? C.border : C.accent}`,
+                cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
+                transition: 'background .15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = C.textDim }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = C.textGhost }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                style={{ opacity: !input.trim() || loading ? 0.3 : 1, transform: 'rotate(90deg)' }}
+              >
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
               </svg>
             </button>
           </div>
         </div>
-
-        {/* Send button + footer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 }}>
-          <p style={{ fontSize: 10, color: C.textGhost, flex: 1, lineHeight: 1.4 }}>
-            FleetOpsX AI uses live ops data. Always cites its source. Press{' '}
-            <kbd style={{ padding: '1px 4px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 3, fontSize: 9, fontFamily: C.mono }}>⌘K</kbd>
-            {' '}for command palette.
-          </p>
-          <button
-            onClick={() => send(input)}
-            disabled={!input.trim() || loading}
-            style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: !input.trim() || loading ? C.card : C.accent,
-              border: `1px solid ${!input.trim() || loading ? C.border : C.accent}`,
-              cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
-              transition: 'background .15s',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
-              style={{ opacity: !input.trim() || loading ? 0.3 : 1, transform: 'rotate(90deg)' }}
-            >
-              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
-            </svg>
-          </button>
-        </div>
       </div>
-    </div>
-    </>
+      </>
+    </ThemeCtx.Provider>
   )
 }

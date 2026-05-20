@@ -329,12 +329,12 @@ export default function Orders() {
           {/* Import */}
           <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()} loading={importing} className="shrink-0">
-            <Download size={14} /> Import
+            <Upload size={14} /> Import
           </Button>
 
           {/* Export */}
           <Button variant="secondary" onClick={handleExport} loading={exporting} className="shrink-0">
-            <Upload size={14} /> Export
+            <Download size={14} /> Export
           </Button>
 
           <Button onClick={() => handleOpen()} className="shrink-0">

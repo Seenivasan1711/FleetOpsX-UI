@@ -15,7 +15,12 @@ function SpinIcon() {
   )
 }
 
-type AtRiskDisplayItem = MockAtRiskItem & { suggestionId?: string }
+type AtRiskDisplayItem = MockAtRiskItem & {
+  suggestionId?:   string
+  suggestionType?: string
+  etaDelta?:       number   // minutes saved (from suggestion context)
+  driverName?:     string
+}
 
 function demoToast(item: AtRiskDisplayItem) {
   const s = item.suggestion
@@ -37,7 +42,8 @@ function demoToast(item: AtRiskDisplayItem) {
 export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
   const isMock = useMockData()
   const date = planDate ?? new Date().toISOString().slice(0, 10)
-  const [actingOn, setActingOn] = useState<string | null>(null)
+  const [actingOn,    setActingOn]    = useState<string | null>(null)
+  const [actingLabel, setActingLabel] = useState<string>('Acting…')
 
   const { data: atRiskStops } = useQuery({
     queryKey: ['at-risk-stops', date],
@@ -60,14 +66,17 @@ export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
         const match = (suggestions ?? []).find(
           s => (s.context as Record<string, unknown>)?.order_id === stop.order_id
         )
+        const ctx = match?.context ?? {}
         return {
-          id:           stop.order_id,
-          address:      stop.delivery_address,
-          minsLate:     stop.overdue_by_minutes,
-          reason:       stop.reason
-            ?? `${stop.driver_name} running ${stop.overdue_by_minutes} min late`,
-          suggestion:   match?.title ?? 'AI is analyzing this stop…',
-          suggestionId: match?.id,
+          id:             stop.order_id,
+          address:        stop.delivery_address,
+          minsLate:       stop.overdue_by_minutes,
+          reason:         stop.reason ?? `${stop.driver_name} running ${stop.overdue_by_minutes} min late`,
+          suggestion:     match?.title ?? 'AI is analyzing this stop…',
+          suggestionId:   match?.id,
+          suggestionType: match?.suggestion_type,
+          etaDelta:       typeof ctx.eta_delta === 'number' ? ctx.eta_delta : undefined,
+          driverName:     typeof ctx.driver_name === 'string' ? ctx.driver_name : stop.driver_name,
         }
       })
 
@@ -80,14 +89,29 @@ export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
       toast('No actionable suggestion for this stop yet', { icon: '⚠️' })
       return
     }
+
+    const isReplan = item.suggestionType === 'REPLAN_DRIVER'
     setActingOn(item.id)
+    setActingLabel(isReplan ? 'Re-planning route…' : 'Notifying team…')
+
     try {
-      await respondToSuggestion(item.suggestionId, 'ACCEPTED')
-      toast.success(`Action accepted — dispatching update for ${item.id}`)
+      const result = await respondToSuggestion(item.suggestionId, 'ACCEPTED')
+      const ctx = result.context ?? {}
+
+      if (isReplan) {
+        const driver = typeof ctx.driver_name === 'string' ? ctx.driver_name : item.driverName ?? 'Driver'
+        const delta  = typeof ctx.eta_delta === 'number'
+          ? ` · ETA improved by ${Math.abs(ctx.eta_delta)} min`
+          : ''
+        toast.success(`${driver} re-routed${delta}`)
+      } else {
+        toast.success(`SLA alert acknowledged — dispatch team notified for ${item.id}`)
+      }
     } catch {
       toast.error(`Failed to act on suggestion for ${item.id}`)
     } finally {
       setActingOn(null)
+      setActingLabel('Acting…')
     }
   }
 
@@ -169,7 +193,7 @@ export const AtRiskPanel = ({ planDate }: { planDate?: string }) => {
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
             >
               <SpinIcon />
-              <span>{actingOn === item.id ? 'Acting…' : item.suggestion}</span>
+              <span>{actingOn === item.id ? actingLabel : item.suggestion}</span>
             </button>
           </div>
         ))}

@@ -245,10 +245,11 @@ export default function Planning() {
 
   const [planDate,         setPlanDate]         = useState(today)
   const [planOptions,      setPlanOptions]      = useState<PlanOption[] | null>(null)
-  const [activeScenario,   setActiveScenario]   = useState<ScenarioType>(isMock ? 'balanced' : 'balanced')
+  const [activeScenario,   setActiveScenario]   = useState<ScenarioType>('balanced')
   const [showWarnings,     setShowWarnings]     = useState(false)
   const [showAiModal,      setShowAiModal]      = useState(false)
   const [nlConstraints,    setNlConstraints]    = useState('')
+  const [userHints,        setUserHints]        = useState('')
   const [currentTaskId,    setCurrentTaskId]    = useState<string | null>(null)
   const [confirming,       setConfirming]       = useState(false)
   const [regenerating,     setRegenerating]     = useState(false)
@@ -310,7 +311,7 @@ export default function Planning() {
   const optionsMutation = useMutation({
     mutationFn: async (): Promise<PlanOption[]> => {
       try {
-        return await generatePlanOptions(planDate)
+        return await generatePlanOptions(planDate, userHints || undefined)
       } catch {
         const { generatePlan } = await import('../api/planning')
         const base = await generatePlan(planDate)
@@ -510,6 +511,28 @@ export default function Planning() {
             </Button>
           </div>
         </div>
+
+        {/* Manual hints — live mode only */}
+        {!isMock && (
+          <div
+            className="rounded-2xl px-5 py-4 flex flex-col gap-2"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--c-muted)' }}>
+              Manual hints <span className="normal-case font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={userHints}
+              onChange={(e) => setUserHints(e.target.value)}
+              placeholder="e.g. Avoid Outer Ring Road, prioritise Zone A, no overtime shifts"
+              rows={2}
+              className="w-full rounded-xl px-3 py-2.5 text-sm resize-none"
+              style={{ background: 'var(--c-elevated)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--c-purple)')}
+              onBlur={(e)  => (e.currentTarget.style.borderColor = 'var(--c-border)')}
+            />
+          </div>
+        )}
 
         {/* Polling / generating state */}
         {isPolling && (

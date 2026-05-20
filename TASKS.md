@@ -1,21 +1,21 @@
 # FleetOpsX UI — Task Tracker
 
-> Updated: 2026-05-17. Work top-to-bottom; mark ✅ when done.
+> Updated: 2026-05-20. Work top-to-bottom; mark ✅ when done.
 
 ---
 
 ## 🟣 Feature Backlog — 2026-05-17 (After QA bugs are done)
 
-| # | Feature | Details | Ref |
-|---|---------|---------|-----|
-| F-01 | **Live Feed — match Figma** | Dark CartoDB tiles; update MOCK_DRIVER_FEED (Indiranagar/HSR Layout/Koramangala/etc areas, correct ETAs + util); "Idle / available" label; On break status; fleet counts 4 on route / 3 idle+break / 0 off duty | Image #25 |
-| F-02 | **Plan History — redesign** | Flat row list (no accordion); each row: purple icon + "Balanced · 11 routes" + date/time + Orders/Drivers/OTD%/Saved cols + View button. Mock: 4 entries (Balanced 94.6%, Fastest 92.1%, Economical 96.3%, Balanced 91.7%). OTD color green ≥94%, amber <94% | Image #26 |
-| F-03 | **Drivers page — redesign table** | New columns: DRIVER (avatar+name+D-00X+phone) / VEHICLE (plate) / STATUS pill (On Route green, Idle gray, On Break amber, Available green) / STOPS TODAY / UTILIZATION bar+% / SCORE number+bar / ETA NEXT. Mock overlay for demo: MOCK_DRIVER_TABLE keyed by name | Image #27 |
-| F-04 | **Analytics page — redesign** | 4 KPI cards top row: ON-TIME DELIVERY 94.6% (green), COST PER STOP ₹38.20 (cyan), AVG DETOUR 8.2% (amber), CO₂ PER ROUTE 3.1 kg (purple) — each with 12-week sparkline + "last 12 weeks" label. Lower left: Driver utilization horizontal bars sorted by usage (Sneha 91% amber, Arjun 78% green, Rohan 72%, Priya 65%, Vikram 45% purple). Lower right: Hourly throughput bar chart 8h-19h | Image #28 |
-| F-05 | **Export / Import on Drivers, Vehicles, Depots** | Add Export (CSV download) + Import (CSV upload) buttons to each page toolbar alongside Add button. Demo mode: export generates CSV from mock data, import shows toast. Live mode: POST to `/api/v1/{resource}/import`, GET `/api/v1/{resource}/export` | — |
-| F-06 | **Fleet & Platform sidebar items** | Deprioritised — revisit after F-01–F-05 | — |
-| F-07 | **End-to-end QA** | Full manual + automated regression pass after ALL bugs + features complete. Block release on this. | — |
-| F-08 | **BE API contract spec + implementation — all unimplemented endpoints** | Write OpenAPI/contract spec for every FE-wired endpoint that has no BE yet, then implement in `FleetOpsX-API/`. Endpoints to cover: `GET /api/v1/analytics/route-timeline` (RouteTimeline), `GET /api/v1/fleet/availability` (FleetStatusCards — including `efficiency` block), `GET /api/v1/analytics/kpi-trend` (sparklines), `POST /api/v1/chat` (ChatPanel), `GET/POST /api/v1/plan/options` (PlanOptionsCard — currently 500), `GET /api/v1/drivers/export` + `POST /api/v1/drivers/import`, `GET /api/v1/vehicles/export` + `POST /api/v1/vehicles/import`, `GET /api/v1/depots/export` + `POST /api/v1/depots/import`, `GET /api/v1/orders/export` + `POST /api/v1/orders/import` (UUID coercion fix). For each: define request/response shape, map to existing DB models, add router + service layer. | — |
+| # | Feature | Details | Ref | Status |
+|---|---------|---------|-----|--------|
+| ~~F-01~~ | ~~**Live Feed — match Figma**~~ | `DriverStatus` union now includes `'onBreak'`. `DriverMarker.tsx` accepts `color?` prop, builds useMemo div-icon. `FleetMap.tsx` accepts `colorMap?: Record<string,string>`, passes per-driver color. `LiveMap.tsx`: `atRisk`→red `#f87171`, new `onBreak`→amber `#f59e0b`; `STATUS_LABEL` map added; idle count includes onBreak; "On Break"/"At Risk" pill badge on driver card; legend updated (On Route/At Risk/On Break/Idle); `colorMap` built from `driverFeedItems` and passed to `<FleetMap>`. | Image #25 | ✅ Done 2026-05-20 |
+| ~~F-02~~ | ~~**Plan History — redesign**~~ | Single card container with divider rows. Purple clock icon per row. "Balanced · 11 routes" on one line; date/time below. Saved = "+X.X hr". OTD ≥94% green, <94% amber. Mock data: 4 entries matching Figma Image #26. View opens detail modal; live mode includes Add Note + star rating. | Image #26 | ✅ Done 2026-05-20 |
+| ~~F-03~~ | ~~**Drivers page — redesign table**~~ | `MOCK_DRIVER_TABLE` keyed by driver name (overlaid on live API data too). New columns: DRIVER (gradient avatar+name+D-00X+phone) / VEHICLE (plate) / STATUS pill (On Route/At Risk/On Break/Idle/Available) / STOPS TODAY / UTILIZATION bar+% / SCORE number+bar / ETA NEXT. Demo: 7 mock drivers, no Add button. Live: real API + MOCK_DRIVER_TABLE overlay + Add/Edit/Toggle preserved. | Image #27 | ✅ Done 2026-05-20 |
+| ~~F-04~~ | ~~**Analytics page — redesign**~~ | 4 KPI cards: dark surface bg + colored top border + large value (36px) + full-width area sparkline (52px, bleeds to card edges) + "last 12 weeks". Driver util: name+% on one line, full-width colored bar below, sorted by usage. Hourly throughput: Recharts BarChart 8h–19h with peak bars highlighted in full purple. Live mode: OTD from API, rest uses mock sparklines. | Image #28 | ✅ Done 2026-05-20 |
+| ~~F-05~~ | ~~**Export / Import on Drivers, Vehicles, Depots**~~ | Export+Import buttons added to all 3 page toolbars. Demo: CSV from MOCK_DRIVER_TABLE/MOCK_VEHICLES/MOCK_DEPOTS + toast import. Live: GET `/api/v1/{resource}/export` + POST `/api/v1/{resource}/import`. API helpers in `exportImport.ts`. | — | ✅ Done 2026-05-20 |
+| F-06 | **Fleet & Platform sidebar items** | Deprioritised — revisit after F-01–F-05 | — | ⏸ Skipped |
+| ~~**F-07**~~ | ~~**End-to-end QA**~~ | TypeScript: 0 errors (fixed `MOCK_ROUTES as MockRoute[]`; 3x `!` in Dashboard trend calcs). Logic: PlanHistory live "Drivers" label → "Routes" (was showing `total_routes` with wrong label). Orders Import/Export icons swapped → corrected. Planning: redundant ternary removed. Build: clean, 0 warnings. | — | ✅ Done 2026-05-20 |
+| ~~**F-08**~~ | ~~**BE API contract spec + implementation — all unimplemented endpoints**~~ | Fleet availability schema rewritten to count aggregates (`DriverCountSummary`, `VehicleCountSummary`, `EfficiencySummary`). `get_fleet_availability` service rebuilt to derive counts from DB (drivers on route via Route+RoutePlan join, on_break/off_duty from DriverAvailability, low_fuel from fuel_level_pct < 25). CSV export/import added for drivers, vehicles, depots — `export_service.py` (`drivers_to_csv`, `vehicles_to_csv`, `depots_to_csv`) + `import_service.py` (`import_drivers_from_csv`, `import_vehicles_from_csv`, `import_depots_from_csv`). Routes `GET /export` + `POST /import` added to all 3 routers (ordered before `/{id}` routes to avoid UUID param conflict). Other listed endpoints (route-timeline, kpi-trend, chat, plan/options, orders export/import) were already implemented. | — | ✅ Done 2026-05-20 |
 
 ---
 
@@ -38,9 +38,9 @@ All items below were logged during a manual QA pass. Start a new session by work
 | ~~QA-11~~ | ~~Orders sort button always shows static ↑↓ icon regardless of direction~~ | ~~`Orders.tsx` sort button~~ | ✅ Fixed — replaced `<ArrowUpDown>` with `<ArrowUp>` / `<ArrowDown>` conditional on `sortDir` state |
 | ~~QA-12~~ | ~~Import CSV fails: `badly formed hexadecimal UUID string` on rows 2 & 3~~ | ~~`Orders.tsx` import handler / BE~~ | ✅ Fixed — `User.tenant_id` is nullable for superadmins; `str(None)` → `UUID("None")` crashed per-row. Endpoint now returns 403 if no tenant context; import service accepts `UUID` directly, no string round-trip |
 | ~~QA-13~~ | ~~Planning banner icon uses `Sparkles` which looks out of place~~ | ~~`Planning.tsx` AI Planner banner~~ | ✅ Fixed — replaced `<Sparkles>` with 8-spoke SVG (matches Ask AI / Topbar AI identity); removed unused `Sparkles` import |
-| ~~QA-15~~ | ~~Live Fleet overlay covers Leaflet zoom controls (+/−)~~ | ✅ Fixed — moved overlay from `top-4 left-4` → `top-4 right-4` (no zoom conflict); frosted glass BG (`rgba(10,11,20,0.76)` + `backdrop-filter: blur(14px)`); CartoDB dark tiles in both live and plan views; legend also glass-styled; text hardcoded white (always on dark BG) |
-| QA-17 | Map blank / doesn't resize when Driver Feed panel is collapsed | `LiveMap.tsx` | Call `map.invalidateSize()` after toggling `showFeed`; or use a resize observer on the map wrapper div |
-| QA-18 | Some dashboard section shows empty in demo mode | `Dashboard` | Identify which widget; ensure mock data is wired for all widgets that guard behind `isMock` |
+| ~~QA-15~~ | ~~Live Fleet overlay covers Leaflet zoom controls (+/−)~~ | ✅ Fixed (extended) — overlay `top-4 right-4`; theme-aware frosted glass (dark: `rgba(10,11,20,0.76)`, light: `rgba(255,255,255,0.82)`); CartoDB dark/light tiles switch by theme in FleetMap + plan view; legend also theme-aware; ChatPanel fully theme-aware via `DARK_C`/`LIGHT_C` + React Context (`ThemeCtx`); chat backdrop/panel z-index raised to 1000/1001 (above fleet overlay at 900 + Leaflet controls) |
+| ~~QA-17~~ | ~~Map blank / doesn't resize when Driver Feed panel is collapsed~~ | ~~`LiveMap.tsx`~~ | ✅ Fixed — `MapResizer` inner component uses `useMap()` + `useEffect` on `showFeed` toggle; calls `map.invalidateSize()` after 50ms to let container reflow. Applied to both live view (`FleetMap` children) and plan view (`MapContainer`) |
+| ~~QA-18~~ | ~~Some dashboard section shows empty in demo mode~~ | ~~`Dashboard`~~ | ✅ Fixed — `RouteTimeline` mock routes were hardcoded to 8:30 AM–2:30 PM, making all bars show as dimmed "past" after ~14:30. Added `shiftedMockRoutes(nowMins)` that offsets all segment times so the midpoint of activity always aligns with current time — demo always shows past + active + future bars |
 
 ### Bugs — Icons / Labels
 
@@ -48,9 +48,9 @@ All items below were logged during a manual QA pass. Start a new session by work
 |---|-----|-----|
 | ~~QA-B25~~ | ~~Orders badge only shows while on Orders page — not visible on other pages. Count also wrong (showed total not unassigned)~~ | ✅ Fixed — moved count fetch to AppShell; always-on 60s refetch; PENDING count |
 | ~~QA-B26~~ | ~~Text sizes too small vs Figma across multiple pages~~ | ✅ Fixed — Orders headers 10.5→12px, filter labels 11→12px, DataTable headers 11→12px, Analytics axes/drivers bumped |
-| QA-I1 | Sidebar "Planning" nav icon doesn't match "AI Plan Routes" Quick Action card icon (Image #13) | Update sidebar Planning icon to use the same SVG used in Quick Action card |
-| QA-I2 | Route Timeline widget header icon (Image #14) already has gradient — verify sidebar icon also uses violet→cyan gradient, not old purple-only |
-| QA-16 | "Live Map" label is wrong everywhere | Rename to **"Live Feed"** in: Sidebar nav label, `Topbar.tsx` PAGE_META key `/map`, router `<Route>` title, page heading |
+| ~~QA-I1~~ | ~~Sidebar "Planning" nav icon doesn't match "AI Plan Routes" Quick Action card icon~~ | ✅ Fixed — `Icon.Plan` updated to the same double-wave paths used in QuickActions card (`M3 17c3-5 5-5 9 0s6 5 9 0` + `M3 7c3 5 5 5 9 0s6-5 9 0`) |
+| ~~QA-I2~~ | ~~Route Timeline widget header icon already has gradient — sidebar icons used old purple-only (`#4f46e5`)~~ | ✅ Fixed — updated all 3 gradient usages in Sidebar.tsx (brand logo L205, user footer avatar L399, user popup avatar L315) from `#4f46e5` → `#06b6d4` to match the system-wide `#7c3aed → #06b6d4` gradient |
+| ~~QA-16~~ | ~~"Live Map" label is wrong everywhere~~ | ✅ Fixed — renamed to "Live Feed" in: Sidebar nav label (`constants.ts` NAV_ITEMS), `AppLayout.tsx` navItems, `Topbar.tsx` PAGE_META `/map`, `QuickActions.tsx` card label, `constants.ts` keyboard shortcut desc |
 
 ### Bugs — Backend / API
 
@@ -64,11 +64,11 @@ All items below were logged during a manual QA pass. Start a new session by work
 | # | Feature | Notes |
 |---|---------|-------|
 | ~~QA-09~~ | ~~AI Providers — superadmin platform view needed~~ | ✅ Fixed — `AiProviders.tsx` at `/admin/ai-providers` now uses standalone superadmin layout (no AppShell/tenant sidebar); ← Platform Home back link above heading; Sign out in header; accessible from `/select-tenant` Platform Management section |
-| QA-10 | All Tenants dropdown — show tenant list with recent + search | When clicking "All Tenants" chip, show popover: recently-used tenants at top, then search results. Not a new page |
-| QA-F1 | At Risk AI buttons — deep real-mode action | Real mode: POST re-plan suggestion → stream response → apply driver change → toast with ETA delta |
-| QA-F2 | Plan History page — view past plans | `/plan-history` route already exists in nav; wire to BE `GET /api/v1/plans/history` |
-| QA-F3 | Planning regenerate — accept manual text suggestions | Add a textarea on Planning page: "Manual hints (optional)" — passed as `user_hints` param to plan/options API |
-| QA-F4 | MongoDB plan storage architecture | Confirm: are dispatched plans saved to Mongo? If not, define save-on-approve flow. Plan history depends on this |
+| ~~QA-10~~ | ~~All Tenants dropdown — show tenant list with recent + search~~ | ✅ Fixed — "All Tenants" button now opens an upward popover (closes on outside click, `autoFocus` search). Top section shows up to 5 recently-used tenants (stored in `localStorage`). Below: search input + scrollable tenant list. Each row has hover-reveal "Act" + read-only buttons. Recents updated on every `handleSelect`. |
+| ~~QA-F1~~ | ~~At Risk AI buttons — deep real-mode action~~ | ✅ Fixed — live mode: PATCH suggestion ACCEPTED; button shows "Re-planning route…" / "Notifying team…" depending on `suggestion_type`; response `context` parsed for `driver_name` + `eta_delta`; toast: "Ananya re-routed · ETA improved by 12 min" (REPLAN_DRIVER) or SLA acknowledged message (EARLY_SLA_WARNING) |
+| ~~QA-F2~~ | ~~Plan History page — view past plans~~ | ✅ Already wired — `PlanHistory.tsx` calls `listPlanHistory()` → `GET /api/v1/plan/history`; BE endpoint exists at `planning.py:254`; no further work needed |
+| ~~QA-F3~~ | ~~Planning regenerate — accept manual text suggestions~~ | ✅ Fixed — "Manual hints (optional)" textarea added to Planning page (live mode only); `userHints` state wired to `generatePlanOptions(planDate, userHints)`; BE `POST /plan/options` accepts `user_hints` query param and logs it (future: pass to multi-agent planner) |
+| ~~QA-F4~~ | ~~MongoDB plan storage architecture~~ | ✅ Resolved — Plans are stored in PostgreSQL (`route_plans` PUBLISHED + `plan_history`). MongoDB is chat history only. Gap found + fixed: `POST /plan/confirm` now auto-writes a `PlanHistory` row (source=or_tools) so Plan History page shows every dispatched plan |
 
 ---
 

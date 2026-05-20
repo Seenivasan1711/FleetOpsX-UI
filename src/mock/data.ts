@@ -59,7 +59,7 @@ export type MockNotification = {
   read:  boolean
 }
 
-export type DriverStatus = 'onRoute' | 'atRisk' | 'idle' | 'offDuty'
+export type DriverStatus = 'onRoute' | 'atRisk' | 'idle' | 'offDuty' | 'onBreak'
 
 export type DriverFeedItem = {
   driver_id:   string
@@ -102,7 +102,7 @@ export type PlanRoute = {
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
-export const MOCK_ROUTES: MockRoute[] = routesJson
+export const MOCK_ROUTES: MockRoute[] = routesJson as MockRoute[]
 
 export const MOCK_AT_RISK: MockAtRiskItem[] = atRiskJson
 

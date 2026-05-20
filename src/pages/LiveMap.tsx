@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient }          from '@tanstack/react-query'
-import { MapPin, Route, Layers, Wifi, Zap, Users } from 'lucide-react'
+import { MapPin, Route, Layers, Wifi, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, useMap, Polyline } from 'react-leaflet'
@@ -20,15 +20,25 @@ import { useMockData }     from '../mock/config'
 import { MOCK_DRIVER_FEED, MOCK_GPS_SEED } from '../mock/data'
 import type { DriverFeedItem, DriverStatus } from '../mock/data'
 import type { Order }      from '../types'
+import { useUiStore }      from '../store'
 
 // Depot centre (Bangalore MG Road area)
 const DEPOT: [number, number] = [12.9716, 77.5946]
 
 const STATUS_COLOR: Record<DriverStatus, string> = {
   onRoute:  '#34d399',
-  atRisk:   '#f59e0b',
+  atRisk:   '#f87171',
+  onBreak:  '#f59e0b',
   idle:     '#94a3b8',
   offDuty:  '#475569',
+}
+
+const STATUS_LABEL: Record<DriverStatus, string> = {
+  onRoute:  'On Route',
+  atRisk:   'At Risk',
+  onBreak:  'On Break',
+  idle:     'Idle',
+  offDuty:  'Off Duty',
 }
 
 
@@ -49,8 +59,19 @@ function AutoFitPlan({ points }: { points: [number, number][] }) {
   return null
 }
 
+function MapResizer({ trigger }: { trigger: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 50)
+    return () => clearTimeout(t)
+  }, [trigger, map])
+  return null
+}
+
 export default function LiveMap() {
-  const isMock = useMockData()
+  const isMock  = useMockData()
+  const theme   = useUiStore((s) => s.theme)
+  const isDark  = theme === 'dark'
   const [view, setView]               = useState<ViewMode>('live')
   const [demoPos, setDemoPos]         = useState<LivePosition[]>(MOCK_GPS_SEED)
   const [wsConnected, setWsConnected] = useState(false)
@@ -164,7 +185,7 @@ export default function LiveMap() {
   const fleetStats = useMemo(() => {
     if (isMock) return {
       onRoute: MOCK_DRIVER_FEED.filter(d => d.status === 'onRoute' || d.status === 'atRisk').length,
-      idle:    MOCK_DRIVER_FEED.filter(d => d.status === 'idle').length,
+      idle:    MOCK_DRIVER_FEED.filter(d => d.status === 'idle' || d.status === 'onBreak').length,
       offDuty: MOCK_DRIVER_FEED.filter(d => d.status === 'offDuty').length,
     }
     return {
@@ -188,6 +209,11 @@ export default function LiveMap() {
       color:       ROUTE_COLORS[i % ROUTE_COLORS.length]!,
     }))
   }, [isMock, activePositions])
+
+  const colorMap = useMemo(
+    () => Object.fromEntries(driverFeedItems.map(d => [d.driver_id, STATUS_COLOR[d.status]])),
+    [driverFeedItems],
+  )
 
   return (
     <AppShell>
@@ -278,7 +304,8 @@ export default function LiveMap() {
             {view === 'live' ? (
               <>
                 {/* Fleet map with dashed depot→driver route lines */}
-                <FleetMap positions={activePositions}>
+                <FleetMap positions={activePositions} colorMap={colorMap}>
+                  <MapResizer trigger={showFeed} />
                   {activePositions.map((p) => {
                     const feedItem = MOCK_DRIVER_FEED.find(d => d.driver_id === p.driver_id)
                     const color    = feedItem?.color ?? '#3b82f6'
@@ -292,52 +319,59 @@ export default function LiveMap() {
                   })}
                 </FleetMap>
 
-                {/* Fleet stats overlay — top right */}
-                <div className="absolute top-4 right-4 pointer-events-none" style={{ zIndex: 900 }}>
+                {/* Fleet stats overlay — top left, see-through glass */}
+                <div className="absolute top-4 left-4 pointer-events-none" style={{ zIndex: 900 }}>
                   <div
                     className="rounded-2xl p-4 flex flex-col gap-3 pointer-events-auto"
                     style={{
-                      background:     'rgba(10, 11, 20, 0.76)',
-                      border:         '1px solid rgba(255,255,255,0.09)',
-                      backdropFilter: 'blur(14px) saturate(1.3)',
-                      WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
-                      boxShadow:      '0 8px 32px rgba(0,0,0,0.42)',
-                      minWidth:       152,
+                      background:     isDark ? 'rgba(10,11,20,0.50)' : 'rgba(255,255,255,0.55)',
+                      border:         isDark ? '1px solid rgba(255,255,255,0.09)' : '1px solid rgba(0,0,0,0.10)',
+                      backdropFilter: 'blur(16px) saturate(1.4)',
+                      WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
+                      boxShadow:      isDark ? '0 8px 32px rgba(0,0,0,0.30)' : '0 8px 24px rgba(0,0,0,0.10)',
+                      minWidth:       200,
                     }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#34d399' }} />
-                      <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        Live Fleet
-                      </p>
+                    {/* Header */}
+                    <p className="text-[10px] font-bold tracking-widest uppercase"
+                      style={{ color: isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.40)' }}>
+                      Live Fleet
+                    </p>
+
+                    {/* Flat list */}
+                    <div className="flex flex-col gap-2">
+                      {([
+                        { label: 'On route',         value: fleetStats.onRoute },
+                        { label: 'Idle / available', value: fleetStats.idle    },
+                        { label: 'Off duty',         value: fleetStats.offDuty },
+                      ] as const).map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between gap-6">
+                          <span className="text-[13px]"
+                            style={{ color: isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.68)' }}>
+                            {label}
+                          </span>
+                          <span className="text-[13px] font-bold tabular-nums"
+                            style={{ color: isDark ? '#fff' : '#0f0f18' }}>
+                            {value}
+                          </span>
+                        </div>
+                      ))}
                     </div>
 
-                    <div className="flex gap-5">
-                      <div className="text-center">
-                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.onRoute}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>On Route</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.idle}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Idle</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xl font-bold" style={{ color: '#fff' }}>{fleetStats.offDuty}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>Off Duty</p>
-                      </div>
-                    </div>
-
+                    {/* Optimize live — solid purple + 8-spoke AI icon */}
                     <button
                       onClick={() => navigate('/planning')}
-                      className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                      className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-opacity hover:opacity-90"
                       style={{
                         background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
                         color:      '#fff',
-                        boxShadow:  '0 4px 12px rgba(124,58,237,0.35)',
+                        boxShadow:  '0 4px 14px rgba(124,58,237,0.40)',
                       }}
                     >
-                      <Zap size={11} />
-                      Optimize Live
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6 8 8M16 16l2.4 2.4M5.6 18.4 8 16M16 8l2.4-2.4"/>
+                      </svg>
+                      Optimize live
                     </button>
                   </div>
                 </div>
@@ -350,22 +384,23 @@ export default function LiveMap() {
                   <div
                     className="flex items-center gap-4 px-4 py-2 rounded-xl pointer-events-auto whitespace-nowrap"
                     style={{
-                      background:     'rgba(10, 11, 20, 0.76)',
-                      border:         '1px solid rgba(255,255,255,0.09)',
+                      background:     isDark ? 'rgba(10,11,20,0.76)' : 'rgba(255,255,255,0.82)',
+                      border:         isDark ? '1px solid rgba(255,255,255,0.09)' : '1px solid rgba(0,0,0,0.10)',
                       backdropFilter: 'blur(14px) saturate(1.3)',
                       WebkitBackdropFilter: 'blur(14px) saturate(1.3)',
-                      boxShadow:      '0 4px 16px rgba(0,0,0,0.32)',
+                      boxShadow:      isDark ? '0 4px 16px rgba(0,0,0,0.32)' : '0 4px 12px rgba(0,0,0,0.10)',
                     }}
                   >
                     {[
                       { color: '#34d399', label: 'On Route' },
-                      { color: '#f59e0b', label: 'At Risk'  },
-                      { color: '#3b82f6', label: 'Depot'    },
-                      { color: '#f87171', label: 'Delayed'  },
+                      { color: '#f87171', label: 'At Risk'  },
+                      { color: '#f59e0b', label: 'On Break' },
+                      { color: '#94a3b8', label: 'Idle'     },
                     ].map(({ color, label }) => (
                       <div key={label} className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                        <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</span>
+                        <span className="text-[10px] font-medium"
+                          style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)' }}>{label}</span>
                       </div>
                     ))}
                   </div>
@@ -375,9 +410,14 @@ export default function LiveMap() {
               /* Plan view */
               <MapContainer center={[12.9716, 77.5946]} zoom={12} className="w-full h-full">
                 <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  key={isDark ? 'dark' : 'light'}
+                  url={isDark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                  }
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 />
+                <MapResizer trigger={showFeed} />
                 {allPlanPoints.length > 0 && <AutoFitPlan points={allPlanPoints} />}
                 {routes.map((route) => (
                   <RoutePolyline
@@ -461,10 +501,23 @@ export default function LiveMap() {
                         </span>
                       </div>
 
-                      {/* Row 2: area */}
-                      <p className="text-[10px] mt-1 ml-4 truncate" style={{ color: 'var(--c-muted)' }}>
-                        {driver.area}
-                      </p>
+                      {/* Row 2: area + status badge */}
+                      <div className="flex items-center gap-2 mt-1 ml-4">
+                        <p className="text-[10px] truncate flex-1" style={{ color: 'var(--c-muted)' }}>
+                          {driver.area}
+                        </p>
+                        {(driver.status === 'atRisk' || driver.status === 'onBreak') && (
+                          <span
+                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+                            style={{
+                              background: `${STATUS_COLOR[driver.status]}1f`,
+                              color:       STATUS_COLOR[driver.status],
+                            }}
+                          >
+                            {STATUS_LABEL[driver.status]}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Row 3: stops / eta / util */}
                       <div className="flex items-center gap-3 mt-2 ml-4">

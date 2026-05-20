@@ -27,7 +27,7 @@ const ACTIONS = [
     ),
   },
   {
-    label:    'Live Map',
+    label:    'Live Feed',
     subtitle: 'Track every driver',
     path:     '/map',
     icon: (

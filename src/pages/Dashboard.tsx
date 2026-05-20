@@ -96,7 +96,7 @@ export default function Dashboard() {
   // Trend labels — demo: static strings; live: derived from API data if available
   const deliveriesByDay = kpis?.deliveries_by_day
   const ordersDelta = deliveriesByDay && deliveriesByDay.length >= 2
-    ? totalDeliveries - deliveriesByDay[deliveriesByDay.length - 2].total
+    ? totalDeliveries - deliveriesByDay[deliveriesByDay.length - 2]!.total
     : null
   const ordersTrend = isMock
     ? { up: true, val: '+21', label: 'vs yesterday' }
@@ -104,7 +104,7 @@ export default function Dashboard() {
       ? { up: ordersDelta > 0, val: `${ordersDelta > 0 ? '+' : ''}${ordersDelta}`, label: 'vs yesterday' }
       : undefined
 
-  const onTimePrev  = kpiTrend.length >= 2 ? Math.round((kpiTrend[kpiTrend.length - 2].on_time_pct ?? 0) * 100) : null
+  const onTimePrev  = kpiTrend.length >= 2 ? Math.round((kpiTrend[kpiTrend.length - 2]!.on_time_pct ?? 0) * 100) : null
   const onTimeDelta = onTimePrev != null ? onTimeRate - onTimePrev : null
   const onTimeTrend = isMock
     ? { up: true, val: '+2.5pp', label: 'this week' }
@@ -112,7 +112,7 @@ export default function Dashboard() {
       ? { up: onTimeDelta > 0, val: `${onTimeDelta > 0 ? '+' : ''}${onTimeDelta}pp`, label: 'vs yesterday' }
       : undefined
 
-  const driversPrev  = kpiTrend.length >= 2 ? kpiTrend[kpiTrend.length - 2].active_drivers : null
+  const driversPrev  = kpiTrend.length >= 2 ? kpiTrend[kpiTrend.length - 2]!.active_drivers : null
   const driversDelta = driversPrev != null ? driversAvail - driversPrev : null
   const driversTrend = isMock
     ? { up: true, val: '2 newly', label: 'clocked-in' }

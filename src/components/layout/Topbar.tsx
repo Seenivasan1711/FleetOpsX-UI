@@ -7,7 +7,7 @@ const PAGE_META: Record<string, { title: string; section: string }> = {
   '/':              { title: "Today's Operations",     section: 'Overview' },
   '/orders':        { title: 'Orders',                 section: 'Manage delivery orders' },
   '/planning':      { title: 'AI Route Planning',      section: 'AI-powered route optimization' },
-  '/map':           { title: 'Live Fleet Map',         section: 'Real-time driver tracking' },
+  '/map':           { title: 'Live Feed',               section: 'Real-time driver tracking' },
   '/analytics':     { title: 'Analytics',              section: 'Last 30 days' },
   '/drivers':       { title: 'Drivers',                section: 'Driver management' },
   '/vehicles':      { title: 'Vehicles',               section: 'Fleet management' },

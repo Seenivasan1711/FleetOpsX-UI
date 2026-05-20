@@ -9,11 +9,11 @@ type HealthStatus = { status: string; version?: string; db?: string; latency?: n
 export default function TenantSelector() {
   const { user, setEffectiveTenant, clearAuth, demoMode, setDemoMode } = useAuthStore()
   const navigate = useNavigate()
-  const [search,       setSearch]       = useState('')
-  const [view,         setView]         = useState<'tenants' | 'health'>('tenants')
-  const [health,       setHealth]       = useState<HealthStatus>(null)
-  const [healthLoading, setHealthLoading] = useState(false)
-  const [healthError,  setHealthError]  = useState(false)
+  const [search,         setSearch]         = useState('')
+  const [view,           setView]           = useState<'tenants' | 'health'>('tenants')
+  const [health,         setHealth]         = useState<HealthStatus>(null)
+  const [healthLoading,  setHealthLoading]  = useState(false)
+  const [healthError,    setHealthError]    = useState(false)
 
   const tenants: TenantBrief[] = user?.tenants ?? []
 
@@ -57,7 +57,6 @@ export default function TenantSelector() {
           <span className="text-xs text-[#6b7280] bg-[#141414] border border-[#2a2a2a] px-2 py-0.5 rounded-full">Platform Admin</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Demo mode toggle accessible without tenant impersonation */}
           <button
             onClick={() => setDemoMode(!demoMode)}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
@@ -170,18 +169,7 @@ export default function TenantSelector() {
               <Zap className="w-4 h-4 text-[#7c3aed]" />
               AI Providers
             </button>
-            <button
-              onClick={() => setView('tenants')}
-              className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-colors border ${
-                view === 'tenants'
-                  ? 'bg-[#7c3aed]/10 border-[#7c3aed]/40 text-[#a78bfa]'
-                  : 'bg-[#141414] border-[#2a2a2a] hover:border-[#7c3aed]/40 text-[#f0f0f0]'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              All Tenants
-              <span className="text-xs bg-[#2a2a2a] text-[#6b7280] px-2 py-px rounded-full">{tenants.length}</span>
-            </button>
+
             <button
               onClick={() => setView('health')}
               className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-colors border ${

@@ -38,7 +38,7 @@ function svg(inner: React.ReactNode, extra?: SVGProps<SVGSVGElement>) {
 export const Icon = {
   Dashboard: svg(<><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></>),
   Orders:    svg(<><path d="M9 4h6a2 2 0 0 1 2 2v0H7v0a2 2 0 0 1 2-2Z"/><rect x="5" y="6" width="14" height="15" rx="2"/><path d="M9 12h6M9 16h4"/></>),
-  Plan:      svg(<><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M8.2 6h6.6a3 3 0 0 1 0 6H9.2a3 3 0 0 0 0 6h6.6"/></>),
+  Plan:      svg(<><path d="M3 17c3-5 5-5 9 0s6 5 9 0"/><path d="M3 7c3 5 5 5 9 0s6-5 9 0"/></>),
   Map:       svg(<><path d="m3 7 6-3 6 3 6-3v13l-6 3-6-3-6 3z"/><path d="M9 4v13M15 7v13"/></>),
   Chart:     svg(<><path d="M4 20V8M10 20V4M16 20v-8M22 20H2"/></>),
   Drivers:   svg(<><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5M14.4 20c.4-2.4 2.3-4 4.6-4s3 1.5 3 4"/></>),

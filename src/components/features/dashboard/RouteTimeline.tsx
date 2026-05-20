@@ -52,6 +52,25 @@ function stripesBg(color: string) {
   return `repeating-linear-gradient(-45deg, ${hexToRgba(color, 0.45)} 0px, ${hexToRgba(color, 0.45)} 3px, ${hexToRgba(color, 0.15)} 3px, ${hexToRgba(color, 0.15)} 8px)`
 }
 
+// Shift all MOCK_ROUTES segments so the midpoint of activity aligns with nowMins.
+// This ensures the demo always shows past + active + future bars regardless of time of day.
+function shiftedMockRoutes(nowMins: number): MockRoute[] {
+  const allMins   = MOCK_ROUTES.flatMap(r => r.segments.flatMap(s => [s.start, s.end]))
+  const staticMid = (Math.min(...allMins) + Math.max(...allMins)) / 2
+  const targetMid = Math.max(DAY_START + 90, Math.min(DAY_END - 90, nowMins))
+  const shift     = Math.round(targetMid - staticMid)
+  return MOCK_ROUTES.map(r => ({
+    ...r,
+    segments: (r.segments
+      .map(s => ({
+        ...s,
+        start: Math.max(DAY_START, Math.min(DAY_END, s.start + shift)),
+        end:   Math.max(DAY_START, Math.min(DAY_END, s.end   + shift)),
+      }))
+      .filter(s => s.end > s.start)) as MockRoute['segments'],
+  }))
+}
+
 export function RouteTimeline({ planDate }: { planDate?: string }) {
   const isMock  = useMockData()
   const now     = new Date()
@@ -67,7 +86,7 @@ export function RouteTimeline({ planDate }: { planDate?: string }) {
 
   // Map API DriverTimeline[] → MockRoute shape for unified rendering
   const routes: MockRoute[] = isMock
-    ? MOCK_ROUTES
+    ? shiftedMockRoutes(nowMins)
     : (timelineData ?? []).map((tl, idx) => {
         const bStartMins = tl.break_start ? isoToMins(tl.break_start) : null
         const bEndMins   = tl.break_end   ? isoToMins(tl.break_end)   : null

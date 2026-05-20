@@ -2,65 +2,145 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
-import { TrendingUp, Package, Clock, RefreshCw } from 'lucide-react'
+import { BarChart2, RefreshCw, Users } from 'lucide-react'
 import { AppShell }   from '../components/layout/AppShell'
 import { Button }     from '../components/ui/Button'
 import { Input }      from '../components/ui/Input'
 import { Skeleton }   from '../components/ui/Skeleton'
 import { fetchKpis, fetchDriverPerformance, fetchKpiTrend, triggerEtl } from '../api/analytics'
 import { QUERY_KEYS } from '../lib/utils/constants'
+import { useMockData } from '../mock/config'
 
-const refEnd   = new Date().toISOString().split('T')[0] as string
-const refStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] as string
+// ── Mock data (matches Figma Image #28) ──────────────────────────────────────
 
-// ─── KPI card ──────────────────────────────────────────────────────────────────
+// Trending up to 94.6%
+const MOCK_OTD_SPARK    = [91.2, 89.8, 92.4, 93.1, 91.7, 94.3, 93.8, 95.1, 94.2, 95.8, 94.9, 94.6]
+// Trending down to ₹38.20
+const MOCK_COST_SPARK   = [41.5, 40.2, 42.1, 40.5, 39.8, 40.2, 39.4, 38.5, 40.1, 38.6, 39.0, 38.2]
+// Trending down to 8.2%
+const MOCK_DETOUR_SPARK = [10.5, 11.2, 9.8, 10.8, 9.4, 10.1, 8.8, 9.5, 8.4, 9.1, 8.6, 8.2]
+// Trending down to 3.1 kg
+const MOCK_CO2_SPARK    = [3.5, 3.6, 3.4, 3.5, 3.3, 3.4, 3.2, 3.3, 3.1, 3.2, 3.1, 3.1]
 
-type KpiCardProps = {
-  label:     string
-  value:     string | number
-  sub?:      string
-  accent:    string
-  dim:       string
-  sparkline?: number[]
-}
+const MOCK_KPI_CARDS = [
+  { label: 'ON-TIME DELIVERY', value: '94.6%',   color: '#34d399', sparkline: MOCK_OTD_SPARK    },
+  { label: 'COST PER STOP',    value: '₹38.20',  color: '#06b6d4', sparkline: MOCK_COST_SPARK   },
+  { label: 'AVG DETOUR',       value: '8.2%',    color: '#f59e0b', sparkline: MOCK_DETOUR_SPARK  },
+  { label: 'CO₂ PER ROUTE',    value: '3.1 kg',  color: '#7c3aed', sparkline: MOCK_CO2_SPARK    },
+]
 
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+// Sorted by usage descending (matches Figma)
+const MOCK_DRIVER_UTIL = [
+  { name: 'Sneha Reddy',  util: 91, color: '#f59e0b' },
+  { name: 'Arjun Mehta',  util: 78, color: '#34d399' },
+  { name: 'Rohan Das',    util: 72, color: '#34d399' },
+  { name: 'Priya Sharma', util: 65, color: '#22d3ee' },
+  { name: 'Vikram Singh', util: 45, color: '#7c3aed' },
+]
+
+const MOCK_HOURLY = [
+  { hour: '8h',  count: 12 }, { hour: '9h',  count: 28 }, { hour: '10h', count: 45 },
+  { hour: '11h', count: 52 }, { hour: '12h', count: 38 }, { hour: '13h', count: 31 },
+  { hour: '14h', count: 48 }, { hour: '15h', count: 55 }, { hour: '16h', count: 42 },
+  { hour: '17h', count: 29 }, { hour: '18h', count: 18 }, { hour: '19h', count: 8  },
+]
+
+// ── Full-width area sparkline ─────────────────────────────────────────────────
+
+function Sparkline({ data, color, h = 52 }: { data: number[]; color: string; h?: number }) {
   if (data.length < 2) return null
-  const w = 72, h = 24
+  const vw = 300
   const min = Math.min(...data), max = Math.max(...data)
   const range = max - min || 1
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w
-    const y = h - ((v - min) / range) * (h - 4) - 2
-    return `${x},${y}`
-  }).join(' ')
+  const pad = 3
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * vw,
+    y: h - pad - ((v - min) / range) * (h - pad * 2),
+  }))
+  const linePts = pts.map((p) => `${p.x},${p.y}`).join(' ')
+  const fillPts = `0,${h} ${linePts} ${vw},${h}`
+  const id = `sp${color.replace('#', '')}`
+
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+    <svg
+      viewBox={`0 0 ${vw} ${h}`}
+      width="100%"
+      height={h}
+      preserveAspectRatio="none"
+      style={{ display: 'block' }}
+    >
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity="0.30" />
+          <stop offset="100%" stopColor={color} stopOpacity="0"    />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPts} fill={`url(#${id})`} />
+      <polyline
+        points={linePts}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
 
-const KpiCard = ({ label, value, sub, accent, dim, sparkline }: KpiCardProps) => (
-  <div
-    className="rounded-2xl p-5 flex flex-col gap-2 hover:-translate-y-[2px] transition-transform duration-150"
-    style={{ background: dim, border: `1px solid ${accent}33` }}
-  >
-    <div className="flex items-start justify-between">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--c-muted)]">{label}</p>
-      {sparkline && sparkline.length >= 2 && <MiniSparkline data={sparkline} color={accent} />}
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+
+function KpiCard({ label, value, color, sparkline }: {
+  label:     string
+  value:     string
+  color:     string
+  sparkline: number[]
+}) {
+  return (
+    <div
+      className="rounded-2xl flex flex-col overflow-hidden"
+      style={{
+        background:  'var(--c-surface)',
+        border:      '1px solid var(--c-border)',
+        borderTop:   `2px solid ${color}`,
+      }}
+    >
+      <div className="px-5 pt-5 pb-4 flex flex-col gap-3 flex-1">
+        {/* Label */}
+        <p
+          className="text-[9px] font-bold uppercase tracking-[0.13em]"
+          style={{ color: 'var(--c-muted)' }}
+        >
+          {label}
+        </p>
+
+        {/* Value — large, wraps naturally for long strings */}
+        <p
+          className="text-[36px] leading-[1.05] font-black break-words"
+          style={{ color }}
+        >
+          {value}
+        </p>
+
+        {/* Full-width sparkline */}
+        <div className="mt-auto -mx-5">
+          <Sparkline data={sparkline} color={color} h={52} />
+        </div>
+
+        {/* Footer */}
+        <p className="text-[10px] mt-1" style={{ color: 'var(--c-subtle)' }}>
+          last 12 weeks
+        </p>
+      </div>
     </div>
-    <p className="text-3xl font-extrabold" style={{ color: accent }}>{value}</p>
-    {sub && <p className="text-xs text-[var(--c-muted)]">{sub}</p>}
-  </div>
-)
+  )
+}
 
-// ─── Chart tooltip styling ─────────────────────────────────────────────────────
+// ── Tooltip styling ───────────────────────────────────────────────────────────
 
-const tooltipStyle = {
+const ttStyle = {
   contentStyle: {
     background:   'var(--c-surface)',
     border:       '1px solid var(--c-border)',
@@ -70,28 +150,36 @@ const tooltipStyle = {
   },
   itemStyle:  { color: 'var(--c-text)' },
   labelStyle: { color: 'var(--c-muted)', marginBottom: 4 },
+  cursor:     { fill: 'rgba(255,255,255,0.04)' },
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Analytics() {
-  const [etlDate, setEtlDate] = useState(refEnd)
+  const isMock   = useMockData()
+  const [etlDate, setEtlDate] = useState(new Date().toISOString().split('T')[0] as string)
   const qc = useQueryClient()
+
+  const refEnd   = new Date().toISOString().split('T')[0] as string
+  const refStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] as string
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: [...QUERY_KEYS.analyticsKpis, refStart, refEnd],
     queryFn:  () => fetchKpis(refStart, refEnd),
+    enabled:  !isMock,
   })
 
   const { data: driverPerf = [], isLoading: perfLoading } = useQuery({
     queryKey: [...QUERY_KEYS.driverPerformance, refStart],
     queryFn:  () => fetchDriverPerformance(refStart),
+    enabled:  !isMock,
   })
 
   const { data: kpiTrend = [] } = useQuery({
-    queryKey: QUERY_KEYS.kpiTrend(30),
-    queryFn:  () => fetchKpiTrend(30),
+    queryKey: QUERY_KEYS.kpiTrend(84),
+    queryFn:  () => fetchKpiTrend(84),
     staleTime: 5 * 60_000,
+    enabled:  !isMock,
   })
 
   const etlMutation = useMutation({
@@ -104,244 +192,181 @@ export default function Analytics() {
     onError: () => toast.error('ETL failed — check API logs'),
   })
 
-  const onTimeRate   = kpis?.on_time_rate != null ? `${(kpis.on_time_rate * 100).toFixed(1)}%` : '—'
-  const avgDelay     = kpis?.avg_delay_minutes != null ? `${kpis.avg_delay_minutes.toFixed(1)} min` : '—'
-  const isGoodRate   = kpis?.on_time_rate != null && kpis.on_time_rate >= 0.85
+  // ── Live KPI cards ──────────────────────────────────────────────────────────
 
-  const trendDeliveries = kpiTrend.map((p) => p.orders_count)
-  const trendOnTime     = kpiTrend.map((p) => p.on_time_pct ?? 0)
-  const trendDrivers    = kpiTrend.map((p) => p.active_drivers)
+  const liveOtdSpark  = kpiTrend.map((p) => (p.on_time_pct ?? 0) * 100)
+  const liveOtdColor  = kpis?.on_time_rate != null && kpis.on_time_rate >= 0.85 ? '#34d399' : '#f59e0b'
+
+  const liveKpiCards = [
+    {
+      label:     'ON-TIME DELIVERY',
+      value:     kpis?.on_time_rate != null ? `${(kpis.on_time_rate * 100).toFixed(1)}%` : '—',
+      color:     liveOtdColor,
+      sparkline: liveOtdSpark.length ? liveOtdSpark : MOCK_OTD_SPARK,
+    },
+    { label: 'COST PER STOP',  value: '—',       color: '#06b6d4', sparkline: MOCK_COST_SPARK   },
+    {
+      label:     'AVG DETOUR',
+      value:     kpis?.avg_delay_minutes != null ? `${kpis.avg_delay_minutes.toFixed(1)} min` : '—',
+      color:     '#f59e0b',
+      sparkline: MOCK_DETOUR_SPARK,
+    },
+    { label: 'CO₂ PER ROUTE', value: '—',        color: '#7c3aed', sparkline: MOCK_CO2_SPARK    },
+  ]
+
+  const kpiCards = isMock ? MOCK_KPI_CARDS : liveKpiCards
+
+  // ── Live driver utilization ─────────────────────────────────────────────────
+
+  const liveDriverUtil = (
+    driverPerf as { driver_id: string; driver_name: string; on_time_rate?: number | null }[]
+  )
+    .map((d) => ({ name: d.driver_name, util: d.on_time_rate != null ? Math.round(d.on_time_rate * 100) : 0, color: '#06b6d4' }))
+    .sort((a, b) => b.util - a.util)
+    .slice(0, 5)
+
+  const driverUtilRows  = isMock ? MOCK_DRIVER_UTIL : liveDriverUtil
+  const showDriverUtil  = isMock || (!perfLoading && liveDriverUtil.length > 0)
 
   return (
     <AppShell>
-      <div className="p-6 flex flex-col gap-5" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="p-6 flex flex-col gap-4" style={{ animation: 'page-slide-in 0.22s ease' }}>
 
-        {/* ETL toolbar */}
-        <div
-          className="flex items-center gap-3 px-5 py-4 rounded-2xl"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <p className="text-sm font-semibold text-[var(--c-text)] flex-1">
-            Data Sync · Last 30 days
-          </p>
-          <Input
-            type="date"
-            value={etlDate}
-            onChange={(e) => setEtlDate(e.target.value)}
-            containerClass="w-[155px] shrink-0"
-          />
-          <Button
-            onClick={() => etlMutation.mutate()}
-            loading={etlMutation.isPending}
-            variant="secondary"
-            size="sm"
+        {/* ETL toolbar (live only) */}
+        {!isMock && (
+          <div
+            className="flex items-center gap-3 px-5 py-3.5 rounded-2xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
           >
-            <RefreshCw size={13} className={etlMutation.isPending ? 'animate-spin' : ''} />
-            Run ETL
-          </Button>
-        </div>
+            <p className="text-sm font-semibold text-[var(--c-text)] flex-1">Data Sync</p>
+            <Input
+              type="date"
+              value={etlDate}
+              onChange={(e) => setEtlDate(e.target.value)}
+              containerClass="w-[155px] shrink-0"
+            />
+            <Button onClick={() => etlMutation.mutate()} loading={etlMutation.isPending} variant="secondary" size="sm">
+              <RefreshCw size={13} className={etlMutation.isPending ? 'animate-spin' : ''} />
+              Run ETL
+            </Button>
+          </div>
+        )}
 
-        {/* KPI cards */}
-        {kpisLoading ? (
+        {/* ── 4 KPI cards ──────────────────────────────────────────────────── */}
+        {!isMock && kpisLoading ? (
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-2xl" />
-            ))}
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[180px] rounded-2xl" />)}
           </div>
         ) : (
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-            <KpiCard
-              label="Total Deliveries"
-              value={kpis?.total_deliveries ?? 0}
-              accent="var(--c-accent)"
-              dim="var(--c-accent-dim)"
-              sparkline={trendDeliveries}
-            />
-            <KpiCard
-              label="On-Time Rate"
-              value={onTimeRate}
-              sub="target ≥ 85%"
-              accent={isGoodRate ? 'var(--c-green)' : 'var(--c-orange)'}
-              dim={isGoodRate ? 'var(--c-green-dim)' : 'rgba(251,191,36,0.08)'}
-              sparkline={trendOnTime}
-            />
-            <KpiCard
-              label="Avg Delay"
-              value={avgDelay}
-              sub="when delayed"
-              accent="var(--c-orange)"
-              dim="rgba(251,191,36,0.08)"
-            />
-            <KpiCard
-              label="Active Drivers (avg)"
-              value={trendDrivers.length > 0 ? Math.round(trendDrivers.reduce((a, b) => a + b, 0) / trendDrivers.length) : (kpis?.deliveries_by_zone.length ?? 0)}
-              accent="var(--c-purple)"
-              dim="var(--c-purple-dim)"
-              sparkline={trendDrivers}
-            />
+            {kpiCards.map((card) => <KpiCard key={card.label} {...card} />)}
           </div>
         )}
 
-        {/* Daily deliveries chart */}
-        <div
-          className="rounded-2xl p-5"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <p className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-4">
-            <TrendingUp size={15} style={{ color: 'var(--c-accent)' }} />
-            Daily Deliveries
-          </p>
-          {kpisLoading || !kpis?.deliveries_by_day.length ? (
-            <p className="text-sm text-[var(--c-muted)] py-4">No data yet — run ETL to populate.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={kpis.deliveries_by_day} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'var(--c-muted)' }} tickFormatter={(d) => d.slice(5)} />
-                <YAxis tick={{ fontSize: 12, fill: 'var(--c-muted)' }} />
-                <Tooltip {...tooltipStyle} />
-                <Legend
-                  wrapperStyle={{ fontSize: 12 }}
-                  formatter={(v) => <span style={{ color: 'var(--c-text)' }}>{v}</span>}
-                />
-                <Line type="monotone" dataKey="total"   stroke="var(--c-accent)" strokeWidth={2} dot={false} name="Total"   />
-                <Line type="monotone" dataKey="on_time" stroke="var(--c-green)"  strokeWidth={2} dot={false} name="On-Time" />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {/* ── Bottom two panels ────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Zone breakdown chart */}
-        <div
-          className="rounded-2xl p-5"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <p className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-4">
-            <Package size={15} style={{ color: 'var(--c-purple)' }} />
-            Deliveries by Zone · Top 10
-          </p>
-          {kpisLoading || !kpis?.deliveries_by_zone.length ? (
-            <p className="text-sm text-[var(--c-muted)] py-4">No data yet — run ETL to populate.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={kpis.deliveries_by_zone.slice(0, 10)}
-                margin={{ top: 4, right: 16, left: -10, bottom: 40 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--c-border)" />
-                <XAxis dataKey="zone" tick={{ fontSize: 11, fill: 'var(--c-muted)' }} angle={-35} textAnchor="end" interval={0} />
-                <YAxis tick={{ fontSize: 12, fill: 'var(--c-muted)' }} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="total"   fill="var(--c-accent)" name="Total"   radius={[4, 4, 0, 0]} />
-                <Bar dataKey="on_time" fill="var(--c-green)"  name="On-Time" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Driver utilization bars */}
-        {driverPerf.length > 0 && (
+          {/* Driver utilization */}
           <div
-            className="rounded-2xl p-5"
+            className="rounded-2xl p-5 flex flex-col gap-5"
             style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
           >
-            <p className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-5">
-              <Clock size={15} style={{ color: 'var(--c-accent)' }} />
-              Driver On-Time Rate · Utilization
-            </p>
-            <div className="flex flex-col gap-3">
-              {(driverPerf as { driver_id: string; driver_name: string; total_deliveries: number; on_time_rate?: number }[])
-                .slice(0, 8)
-                .sort((a, b) => (b.on_time_rate ?? 0) - (a.on_time_rate ?? 0))
-                .map((d, i) => {
-                  const pct  = d.on_time_rate != null ? d.on_time_rate * 100 : null
-                  const color = pct == null ? 'var(--c-muted)' : pct >= 85 ? 'var(--c-green)' : pct >= 60 ? 'var(--c-orange)' : 'var(--c-red)'
-                  return (
-                    <div key={d.driver_id} className="flex items-center gap-3">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                        style={{ background: 'var(--c-accent-dim)', color: 'var(--c-accent)' }}
-                      >
-                        {i + 1}
-                      </div>
-                      <span className="text-[13px] font-medium text-[var(--c-text)] w-36 shrink-0 truncate">{d.driver_name}</span>
-                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-elevated)' }}>
-                        <div
-                          className="h-2 rounded-full transition-all duration-700"
-                          style={{ width: `${pct ?? 0}%`, background: color, boxShadow: `0 0 6px ${color}60` }}
-                        />
-                      </div>
-                      <span className="text-[12px] font-bold font-mono w-10 text-right shrink-0" style={{ color }}>
-                        {pct != null ? `${pct.toFixed(0)}%` : '—'}
+            {/* Header */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Users size={14} style={{ color: 'var(--c-accent)' }} />
+                <p className="text-[13px] font-bold text-[var(--c-text)]">Driver utilization</p>
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--c-muted)' }}>
+                This week · sorted by usage
+              </p>
+            </div>
+
+            {/* Rows */}
+            {!isMock && perfLoading ? (
+              <div className="flex flex-col gap-4">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 rounded-lg" />)}
+              </div>
+            ) : !showDriverUtil ? (
+              <p className="text-sm text-[var(--c-muted)]">No data — run ETL first.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {driverUtilRows.map((d) => (
+                  <div key={d.name} className="flex flex-col gap-1.5">
+                    {/* Name + % */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-[var(--c-text)]">
+                        {d.name}
+                      </span>
+                      <span className="text-[12px] font-bold tabular-nums" style={{ color: 'var(--c-muted)' }}>
+                        {d.util}%
                       </span>
                     </div>
-                  )
-              })}
-            </div>
-          </div>
-        )}
 
-        {/* Driver leaderboard */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-        >
-          <div className="px-5 py-4 border-b border-[var(--c-border)] flex items-center gap-2">
-            <Clock size={15} style={{ color: 'var(--c-orange)' }} />
-            <p className="text-sm font-bold text-[var(--c-text)]">Driver Performance Leaderboard</p>
-          </div>
-
-          {perfLoading ? (
-            <div className="p-5 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
-            </div>
-          ) : driverPerf.length === 0 ? (
-            <p className="p-5 text-sm text-[var(--c-muted)]">No performance data yet — run ETL first.</p>
-          ) : (
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
-                  <th className="px-5 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)] w-10">#</th>
-                  <th className="px-5 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Driver</th>
-                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Deliveries</th>
-                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">On-Time</th>
-                  <th className="px-5 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Avg Delay</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(driverPerf as { driver_id: string; driver_name: string; total_deliveries: number; on_time_rate?: number; avg_delay_minutes?: number }[]).map((d, i) => {
-                  const good = d.on_time_rate != null && d.on_time_rate >= 0.85
-                  return (
-                    <tr
-                      key={d.driver_id}
-                      className="transition-colors"
-                      style={{ borderBottom: '1px solid var(--c-border)' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                    {/* Full-width bar */}
+                    <div
+                      className="w-full h-[6px] rounded-full overflow-hidden"
+                      style={{ background: 'var(--c-elevated)' }}
                     >
-                      <td className="px-5 py-3 text-xs text-[var(--c-muted)] font-mono">{i + 1}</td>
-                      <td className="px-5 py-3 text-sm font-semibold text-[var(--c-text)]">{d.driver_name}</td>
-                      <td className="px-5 py-3 text-right text-sm font-mono text-[var(--c-text)]">{d.total_deliveries}</td>
-                      <td className="px-5 py-3 text-right">
-                        <span
-                          className="text-sm font-bold font-mono"
-                          style={{ color: good ? 'var(--c-green)' : 'var(--c-orange)' }}
-                        >
-                          {d.on_time_rate != null ? `${(d.on_time_rate * 100).toFixed(1)}%` : '—'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right text-sm font-mono text-[var(--c-muted)]">
-                        {d.avg_delay_minutes != null ? `${d.avg_delay_minutes.toFixed(1)} min` : '—'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${d.util}%`, background: d.color }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Hourly throughput */}
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-4"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <BarChart2 size={14} style={{ color: 'var(--c-purple)' }} />
+                <p className="text-[13px] font-bold text-[var(--c-text)]">Hourly throughput</p>
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--c-muted)' }}>
+                Stops completed per hour today
+              </p>
             </div>
-          )}
+
+            <div className="flex-1 min-h-0" style={{ height: 200 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={MOCK_HOURLY} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barSize={10}>
+                  <XAxis
+                    dataKey="hour"
+                    tick={{ fontSize: 10, fill: 'var(--c-muted)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'var(--c-muted)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    {...ttStyle}
+                    formatter={(v: number) => [`${v} stops`, 'Throughput']}
+                  />
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                    {MOCK_HOURLY.map((entry) => (
+                      <Cell
+                        key={entry.hour}
+                        fill={entry.count >= 48 ? '#7c3aed' : '#7c3aed55'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
+
       </div>
     </AppShell>
   )

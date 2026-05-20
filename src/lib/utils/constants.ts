@@ -20,7 +20,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'dashboard',    label: 'Dashboard',          path: '/',                   icon: Icon.Home,     section: 'operations' },
   { id: 'orders',       label: 'Orders',             path: '/orders',             icon: Icon.Orders,   section: 'operations' },
   { id: 'planning',     label: 'Planning',           path: '/planning',           icon: Icon.Plan,     section: 'operations' },
-  { id: 'map',          label: 'Live Map',           path: '/map',                icon: Icon.Map,      section: 'operations' },
+  { id: 'map',          label: 'Live Feed',          path: '/map',                icon: Icon.Map,      section: 'operations' },
   { id: 'plan-history', label: 'Plan History',       path: '/plan-history',       icon: Icon.History,  section: 'operations' },
   { id: 'drivers',      label: 'Drivers',            path: '/drivers',            icon: Icon.Drivers,  section: 'operations' },
   // INSIGHTS
@@ -42,7 +42,7 @@ export const KEYBOARD_SHORTCUTS = [
   { key: 'G then D', desc: 'Go to Dashboard' },
   { key: 'G then O', desc: 'Go to Orders' },
   { key: 'G then P', desc: 'Go to Planning' },
-  { key: 'G then M', desc: 'Go to Live Map' },
+  { key: 'G then M', desc: 'Go to Live Feed' },
   { key: 'G then A', desc: 'Go to Analytics' },
   { key: 'G then R', desc: 'Go to Drivers' },
   { key: 'G then V', desc: 'Go to Vehicles' },
