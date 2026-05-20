@@ -1,6 +1,6 @@
 # FleetOpsX UI — Task Tracker
 
-> Updated: 2026-05-20. Work top-to-bottom; mark ✅ when done.
+> Updated: 2026-05-20. **Phase 6 fully complete.** Next: push API branch → PR/merge both repos → define Phase 7.
 
 ---
 
@@ -89,12 +89,15 @@ All items below were logged during a manual QA pass. Start a new session by work
 
 ---
 
-## Upcoming
+## 🟢 Next Session — What To Do
 
-| # | Task | Notes |
-|---|------|-------|
-| 17 | Wire real APIs end-to-end when BE is live | All components have `enabled: !isMock` + `refetchInterval`; test with real backend |
-| 18 | BE contract fields implementation | `on_route`, `efficiency`, `reason`, `break_start/end` documented in TypeScript interfaces; BE team to implement |
+| Priority | Task | Notes |
+|----------|------|-------|
+| 1 | **Push FleetOpsX-API** | `git push` from `FleetOpsX-API/` — 1 commit ahead of origin (F-08) |
+| 2 | **Open PRs or merge** | Both `redesign/v2-ux` branches (UI + API) are release-ready; merge to `main` |
+| 3 | **End-to-end smoke test** | Boot BE + FE together; test live mode: fleet availability counts, drivers/vehicles/depots CSV export/import |
+| 4 | **F-06 (optional)** | Fleet & Platform collapsible sidebar — no spec yet; deprioritised; only if needed |
+| 5 | **Define Phase 7** | No backlog items beyond Phase 6 — decide what comes next |
 
 ---
 
