@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
-  Bot, Route, Zap, Download, ChevronDown, ChevronRight,
+  Bot, Route, Zap, Leaf, Download, ChevronDown, ChevronRight,
   AlertTriangle, Info, ListOrdered, CheckCircle2, Brain,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -24,7 +24,7 @@ import type { AiScenario } from '../api/aiPlanning'
 import { usePlanPolling } from '../hooks/usePlanPolling'
 import { QUERY_KEYS }     from '../lib/utils/constants'
 import { usePlanStore }   from '../store/plan.store'
-import type { PlanResult, PlanOption, PlanOptionMode, Order } from '../types'
+import type { PlanResult, PlanOption, PlanOptionMode, PlanOptionsApiResponse, Order } from '../types'
 
 // ─── Confidence badge ─────────────────────────────────────────────────────────
 
@@ -66,8 +66,10 @@ function WarningRow({ type, text }: { type: 'danger' | 'info'; text: string }) {
 export default function Planning() {
   const [planDate,       setPlanDate]      = useState(new Date().toISOString().slice(0, 10))
   const [planResult,     setPlanResult]    = useState<PlanResult | null>(null)
-  const [planOptions,    setPlanOptions]   = useState<PlanOption[] | null>(null)
-  const [selectedOption, setSelectedOption] = useState<PlanOptionMode | null>(null)
+  const [planOptions,       setPlanOptions]      = useState<PlanOption[] | null>(null)
+  const [selectedOption,    setSelectedOption]   = useState<PlanOptionMode | null>(null)
+  const [recommendation,    setRecommendation]   = useState<string | null>(null)
+  const [naiveDistanceKm,   setNaiveDistanceKm]  = useState<number | null>(null)
   const [showWarnings,   setShowWarnings]  = useState(false)
   const [reasoningOpen,  setReasoningOpen] = useState(true)
   const [exporting,      setExporting]     = useState(false)
@@ -164,44 +166,15 @@ export default function Planning() {
   // ── Options mutation ────────────────────────────────────────────────────────
 
   const optionsMutation = useMutation({
-    mutationFn: async (): Promise<PlanOption[]> => {
-      try {
-        return await generatePlanOptions(planDate)
-      } catch {
-        // Demo fallback: generate a real plan, derive 3 variants
-        const base = await generatePlan(planDate)
-        setLastPlan(base, planDate)
-        return [
-          {
-            mode: 'fastest', label: 'Fastest', description: 'Optimised for minimum delivery time',
-            plan_id: base.plan_id, assigned_orders: base.assigned_orders, total_orders: base.total_orders,
-            total_routes: base.total_routes, assignments: base.assignments,
-            estimated_km: base.total_routes * 28, estimated_duration_min: base.total_routes * 90,
-          },
-          {
-            mode: 'balanced', label: 'Balanced', description: 'Best mix of speed and efficiency',
-            plan_id: base.plan_id, assigned_orders: base.assigned_orders, total_orders: base.total_orders,
-            total_routes: base.total_routes, assignments: base.assignments,
-            estimated_km: base.total_routes * 22, estimated_duration_min: base.total_routes * 108,
-          },
-          {
-            mode: 'economical', label: 'Economical', description: 'Minimum fuel & distance',
-            plan_id: base.plan_id,
-            assigned_orders: Math.max(base.assigned_orders - Math.ceil(base.assigned_orders * 0.05), 0),
-            total_orders: base.total_orders,
-            total_routes: Math.max(base.total_routes - 1, 1),
-            assignments: base.assignments,
-            estimated_km: base.total_routes * 17, estimated_duration_min: base.total_routes * 128,
-          },
-        ]
-      }
-    },
+    mutationFn: (): Promise<PlanOptionsApiResponse> => generatePlanOptions(planDate),
     onSuccess: (data) => {
-      setPlanOptions(data)
+      setPlanOptions(data.options)
+      setRecommendation(data.recommendation ?? null)
+      setNaiveDistanceKm(data.naive_distance_km ?? null)
       setPlanResult(null)
-      setSelectedOption(null)
+      setSelectedOption(data.recommendation as PlanOptionMode ?? null)
       refetchOrders()
-      toast.success(`${data.length} plan options ready — select one to confirm`)
+      toast.success(`${data.options.length} plan options ready — select one to confirm`)
     },
     onError: () => toast.error('Failed to generate plan options'),
   })
@@ -212,21 +185,14 @@ export default function Planning() {
     mutationFn: async (): Promise<PlanResult> => {
       const opt = planOptions?.find((o) => o.mode === selectedOption)
       if (!opt) throw new Error('No option selected')
-      try {
-        return await confirmPlan(opt.plan_id)
-      } catch {
-        return {
-          plan_id: opt.plan_id, plan_date: planDate, status: 'DRAFT',
-          total_orders: opt.total_orders, assigned_orders: opt.assigned_orders,
-          total_routes: opt.total_routes, assignments: opt.assignments,
-          planner: `${opt.mode}_plan`,
-        }
-      }
+      return confirmPlan(opt.plan_id, planDate)
     },
     onSuccess: (data) => {
       setPlanResult(data)
       setPlanOptions(null)
       setSelectedOption(null)
+      setRecommendation(null)
+      setNaiveDistanceKm(null)
       setLastPlan(data, planDate)
       refetchOrders()
       toast.success(`Plan confirmed — ${data.assigned_orders} orders assigned`)
@@ -490,20 +456,54 @@ export default function Planning() {
           )}
         </div>
 
-        {/* ── Plan Options (PP-E2) ─────────────────────────────────────────── */}
+        {/* ── Plan Options (PP-E2 / AI-1-T7) ─────────────────────────────── */}
         {planOptions && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <ListOrdered size={15} style={{ color: 'var(--c-accent)' }} />
               <p className="text-sm font-bold text-[var(--c-text)]">Choose a Plan</p>
               <p className="text-xs text-[var(--c-muted)]">Select one of the optimisation strategies below</p>
+              {recommendation && (
+                <span
+                  className="ml-auto text-[11px] font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(167,139,250,0.15)', color: 'var(--c-purple)' }}
+                >
+                  AI recommends: {recommendation}
+                </span>
+              )}
             </div>
+
+            {/* Savings banner (AI-1-T8) */}
+            {naiveDistanceKm != null && planOptions.length > 1 && (() => {
+              const economical = planOptions.find((o) => o.mode === 'economical')
+              const savedKm = economical
+                ? (naiveDistanceKm - economical.total_distance_km).toFixed(1)
+                : null
+              if (!savedKm || parseFloat(savedKm) <= 0) return null
+              const pct = Math.round(parseFloat(savedKm) / naiveDistanceKm * 100)
+              return (
+                <div
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
+                  style={{ background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.25)' }}
+                >
+                  <Leaf size={14} style={{ color: 'var(--c-green)', flexShrink: 0 }} />
+                  <span style={{ color: 'var(--c-text)' }}>
+                    <span className="font-bold" style={{ color: 'var(--c-green)' }}>
+                      AI saved {savedKm} km ({pct}%)
+                    </span>
+                    {' '}vs unoptimised baseline of {naiveDistanceKm.toFixed(1)} km — less fuel, faster deliveries.
+                  </span>
+                </div>
+              )
+            })()}
+
             <div className="grid grid-cols-3 gap-4">
               {planOptions.map((opt) => (
                 <PlanOptionsCard
                   key={opt.mode}
                   option={opt}
                   selected={selectedOption === opt.mode}
+                  recommended={opt.mode === recommendation}
                   onSelect={() => setSelectedOption(opt.mode)}
                 />
               ))}
@@ -515,11 +515,11 @@ export default function Planning() {
                   loading={confirmMutation.isPending}
                 >
                   <CheckCircle2 size={15} />
-                  Confirm {planOptions.find((o) => o.mode === selectedOption)?.label} Plan
+                  Confirm {selectedOption} plan
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => { setPlanOptions(null); setSelectedOption(null) }}
+                  onClick={() => { setPlanOptions(null); setSelectedOption(null); setRecommendation(null); setNaiveDistanceKm(null) }}
                 >
                   Discard
                 </Button>

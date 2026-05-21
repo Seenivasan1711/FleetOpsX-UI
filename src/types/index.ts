@@ -109,15 +109,29 @@ export type PlanOptionMode = 'fastest' | 'economical' | 'balanced'
 
 export interface PlanOption {
   mode: PlanOptionMode
-  label: string
-  description: string
   plan_id: string
-  assigned_orders: number
+  orders_covered: number
   total_orders: number
   total_routes: number
-  estimated_km?: number
-  estimated_duration_min?: number
-  assignments: Assignment[]
+  total_distance_km: number
+  est_duration_min: number
+  est_fuel_cost: number
+  // AI-enriched fields — null when no LLM configured
+  ai_summary?: string | null
+  confidence_score?: number | null
+  reasoning_steps?: string[]
+  warnings?: string[]
+  // Legacy FE-only fields for display
+  label?: string
+  description?: string
+  assignments?: Assignment[]
+}
+
+export interface PlanOptionsApiResponse {
+  plan_date: string
+  options: PlanOption[]
+  recommendation?: string | null
+  naive_distance_km?: number | null
 }
 
 export interface AgentLogEntry {
