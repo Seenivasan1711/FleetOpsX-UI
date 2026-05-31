@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Bot, Route, Zap, Leaf, Download, ChevronDown, ChevronRight,
-  AlertTriangle, Info, ListOrdered, CheckCircle2, Brain,
+  AlertTriangle, Info, ListOrdered, CheckCircle2, Brain, MessageSquare,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }       from '../components/layout/AppShell'
@@ -14,12 +14,17 @@ import { EmptyState }     from '../components/ui/EmptyState'
 import { PlanOptionsCard } from '../components/planning/PlanOptionsCard'
 import AgentFeed          from '../components/shared/AgentFeed'
 import { ScenarioCards }  from '../components/planning/ScenarioCards'
+import { PlanningSessionPanel }  from '../components/planning/PlanningSessionPanel'
+import { PlanningProgressPanel } from '../components/planning/PlanningProgressPanel'
+import { PlanningChatPanel }     from '../components/planning/PlanningChatPanel'
+import { LearningPatternsPanel } from '../components/planning/LearningPatternsPanel'
 import { generatePlan, generatePlanOptions, confirmPlan } from '../api/planning'
 import { fetchOrders }    from '../api/orders'
 import { fetchAgentLogs } from '../api/agentLogs'
 import { fetchSuggestions } from '../api/agentSuggestions'
 import { exportPlan, triggerBlobDownload } from '../api/exportImport'
 import { startAiScenarios, confirmScenario } from '../api/aiPlanning'
+import { getActiveSession } from '../api/planningSessions'
 import type { AiScenario } from '../api/aiPlanning'
 import { usePlanPolling } from '../hooks/usePlanPolling'
 import { QUERY_KEYS }     from '../lib/utils/constants'
@@ -74,6 +79,11 @@ export default function Planning() {
   const [reasoningOpen,  setReasoningOpen] = useState(true)
   const [exporting,      setExporting]     = useState(false)
 
+  // AI-1 — Planning session + progress + chat
+  const [progressRunId,  setProgressRunId]  = useState<string | null>(null)
+  const [showProgress,   setShowProgress]   = useState(false)
+  const [showPlanChat,   setShowPlanChat]   = useState(false)
+
   // P5-E2 — AI Scenario Planning
   const [showAiModal,      setShowAiModal]      = useState(false)
   const [nlConstraints,    setNlConstraints]    = useState('')
@@ -107,6 +117,14 @@ export default function Planning() {
     queryFn:         () => fetchSuggestions(planDate, 'PENDING'),
     refetchInterval: 60_000,
   })
+
+  // AI-1 — active planning session
+  const { data: activeSession } = useQuery({
+    queryKey: QUERY_KEYS.activeSession,
+    queryFn:  getActiveSession,
+    refetchInterval: 30_000,
+  })
+  const sessionForDate = activeSession?.plan_date === planDate ? activeSession : null
 
   // ── Pre-plan warnings ───────────────────────────────────────────────────────
 
@@ -317,6 +335,37 @@ export default function Planning() {
             AI Scenarios
           </Button>
         </div>
+
+        {/* ── AI-1: Planning Session Panel ─────────────────────────────────── */}
+        <PlanningSessionPanel
+          planDate={planDate}
+          onRunStarted={(runId) => {
+            setProgressRunId(runId)
+            setShowProgress(true)
+          }}
+        />
+
+        {/* ── AI-1: Planning Chat toggle button (when session is OPEN) ──────── */}
+        {sessionForDate?.status === 'OPEN' && (
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowPlanChat((v) => !v)}
+            >
+              <MessageSquare size={13} />
+              {showPlanChat ? 'Close Planning Chat' : 'Planning Chat'}
+            </Button>
+          </div>
+        )}
+
+        {/* ── AI-1: Planning Chat Panel ─────────────────────────────────────── */}
+        {showPlanChat && sessionForDate && (
+          <PlanningChatPanel
+            session={sessionForDate}
+            onClose={() => setShowPlanChat(false)}
+          />
+        )}
 
         {/* ── AI Planning: thinking state ──────────────────────────────────── */}
         {isPolling && (
@@ -610,6 +659,29 @@ export default function Planning() {
           </div>
         )}
 
+        {/* ── AI-1: Savings KPI (km_saved / hrs_saved from E2) ─────────────── */}
+        {planResult && ((planResult as PlanResult & { km_saved?: number; hrs_saved?: number }).km_saved ?? 0) > 0 && (() => {
+          const r = planResult as PlanResult & { km_saved?: number; hrs_saved?: number }
+          return (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
+              style={{ background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.25)' }}
+            >
+              <Leaf size={14} style={{ color: 'var(--c-green)', flexShrink: 0 }} />
+              <span style={{ color: 'var(--c-text)' }}>
+                <span className="font-bold" style={{ color: 'var(--c-green)' }}>
+                  AI saved {r.km_saved?.toFixed(1)} km
+                  {r.hrs_saved ? ` · ${r.hrs_saved.toFixed(1)} hrs` : ''}
+                </span>
+                {' '}vs unoptimised naive routing.
+              </span>
+            </div>
+          )
+        })()}
+
+        {/* ── AI-1: Learning Patterns review ───────────────────────────────── */}
+        <LearningPatternsPanel />
+
         {/* ── Agent Reasoning panel (PP-E1-S1) — collapsible ──────────────── */}
         {planResult && isAgentPlanner && (
           <div
@@ -650,6 +722,17 @@ export default function Planning() {
           </div>
         )}
       </div>
+
+      {/* ── AI-1: Planning Progress Panel (WS) ──────────────────────────────── */}
+      <PlanningProgressPanel
+        runId={progressRunId}
+        open={showProgress}
+        onClose={() => setShowProgress(false)}
+        onComplete={() => {
+          // Refresh orders so newly assigned ones disappear from pending list
+          refetchOrders()
+        }}
+      />
 
       {/* ── AI Scenarios Modal — P5-E2 ──────────────────────────────────────── */}
       <Modal open={showAiModal} onClose={() => setShowAiModal(false)} title="AI Scenario Planning">

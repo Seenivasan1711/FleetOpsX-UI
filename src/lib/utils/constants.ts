@@ -15,6 +15,7 @@ import {
   Zap,
   History,
   UserCog,
+  BookOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -46,6 +47,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'governance',    label: 'Governance & Audit',  path: '/governance',        icon: ShieldCheck,  section: 'roadmap' },
   { id: 'scenarios',     label: 'Scenario Simulator',  path: '/scenarios',         icon: Layers,       section: 'roadmap' },
   { id: 'ai-providers',  label: 'AI Providers',         path: '/admin/ai-providers', icon: Zap,          section: 'roadmap' },
+  { id: 'instructions',  label: 'AI Instructions',      path: '/admin/instructions', icon: BookOpen,     section: 'roadmap' },
   { id: 'plan-history',  label: 'Plan History',         path: '/plan-history',       icon: History,      section: 'roadmap' },
   { id: 'team',          label: 'Team',                 path: '/team',               icon: UserCog,      section: 'roadmap' },
 ]
@@ -72,14 +74,21 @@ export const PAGE_KEY_MAP: Record<string, string> = {
 }
 
 export const QUERY_KEYS = {
-  orders:           (date?: string) => ['orders', date] as const,
-  drivers:          ['drivers'] as const,
-  vehicles:         ['vehicles'] as const,
-  depots:           ['depots'] as const,
-  slaAtRisk:        (date: string) => ['sla-at-risk', date] as const,
-  agentLogs:        (planId: string) => ['agent-logs', planId] as const,
-  suggestions:      (date: string) => ['agent-suggestions', date] as const,
-  analyticsKpis:    ['analytics-kpis'] as const,
-  driverPerformance:['driver-performance'] as const,
-  livePositions:    ['live-positions'] as const,
+  orders:              (date?: string) => ['orders', date] as const,
+  drivers:             ['drivers'] as const,
+  vehicles:            ['vehicles'] as const,
+  depots:              ['depots'] as const,
+  slaAtRisk:           (date: string) => ['sla-at-risk', date] as const,
+  agentLogs:           (planId: string) => ['agent-logs', planId] as const,
+  suggestions:         (date: string) => ['agent-suggestions', date] as const,
+  analyticsKpis:       ['analytics-kpis'] as const,
+  driverPerformance:   ['driver-performance'] as const,
+  livePositions:       ['live-positions'] as const,
+  activeSession:       ['planning-active-session'] as const,
+  planningSessions:    (date?: string) => ['planning-sessions', date] as const,
+  planningRun:         (runId: string) => ['planning-run', runId] as const,
+  planningRunAgents:   (runId: string) => ['planning-run-agents', runId] as const,
+  instructions:        ['planning-instructions'] as const,
+  learningPatterns:    (status?: string) => ['planning-learning', status] as const,
+  planningHistory:     (sessionId: string) => ['planning-chat-history', sessionId] as const,
 }
