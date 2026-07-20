@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Pencil, Plus, Truck, Snowflake } from 'lucide-react'
+import { Pencil, Plus, Truck, Snowflake, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }       from '../components/layout/AppShell'
 import { Button }         from '../components/ui/Button'
@@ -14,8 +14,22 @@ import DataTable          from '../components/shared/DataTable'
 import FormField          from '../components/shared/FormField'
 import { fetchVehicles, createVehicle, updateVehicle } from '../api/vehicles'
 import { fetchDepots }    from '../api/depots'
+import { exportVehicles, importVehicles, triggerBlobDownload } from '../api/exportImport'
+import { useMockData }    from '../mock/config'
 import { QUERY_KEYS }     from '../lib/utils/constants'
 import type { Vehicle, Depot, VehicleStatus } from '../types'
+
+// ── Mock data (demo CSV export) ───────────────────────────────────────────────
+
+const MOCK_VEHICLES = [
+  { registration_number: 'KA-01-MG-1234', vehicle_type: 'VAN',         capacity_kg: 800,  capacity_units: 150, is_refrigerated: false, status: 'IN_USE'    },
+  { registration_number: 'KA-03-HG-5678', vehicle_type: 'TRUCK_SMALL', capacity_kg: 1200, capacity_units: 200, is_refrigerated: false, status: 'IN_USE'    },
+  { registration_number: 'KA-05-AB-2345', vehicle_type: 'VAN',         capacity_kg: 800,  capacity_units: 150, is_refrigerated: true,  status: 'IN_USE'    },
+  { registration_number: 'KA-02-CD-9012', vehicle_type: 'TRUCK_LARGE', capacity_kg: 3000, capacity_units: 500, is_refrigerated: false, status: 'IN_USE'    },
+  { registration_number: 'KA-04-EF-3456', vehicle_type: 'AUTO',        capacity_kg: 300,  capacity_units: 60,  is_refrigerated: false, status: 'IN_USE'    },
+  { registration_number: 'KA-06-GH-7890', vehicle_type: 'BIKE',        capacity_kg: 50,   capacity_units: 20,  is_refrigerated: false, status: 'AVAILABLE' },
+  { registration_number: 'KA-07-IJ-1234', vehicle_type: 'VAN',         capacity_kg: 800,  capacity_units: 150, is_refrigerated: false, status: 'AVAILABLE' },
+]
 
 // ─── Schema ────────────────────────────────────────────────────────────────────
 
@@ -70,10 +84,14 @@ const VehicleTypeBadge = ({ type }: { type: string }) => {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Vehicles() {
+  const isMock = useMockData()
   const qc = useQueryClient()
   const [modalOpen,       setModalOpen]       = useState(false)
   const [editingVehicle,  setEditingVehicle]  = useState<Vehicle | null>(null)
   const [search,          setSearch]          = useState('')
+  const [exportLoading,   setExportLoading]   = useState(false)
+  const [importLoading,   setImportLoading]   = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: QUERY_KEYS.vehicles,
@@ -134,6 +152,47 @@ export default function Vehicles() {
   })
 
   const activeCount = (vehicles as Vehicle[]).filter((v) => v.is_active).length
+
+  const handleExport = async () => {
+    if (isMock) {
+      const header = 'registration_number,vehicle_type,capacity_kg,capacity_units,is_refrigerated,status'
+      const rows = MOCK_VEHICLES.map((v) =>
+        `${v.registration_number},${v.vehicle_type},${v.capacity_kg},${v.capacity_units},${v.is_refrigerated},${v.status}`
+      )
+      triggerBlobDownload(new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }), 'vehicles.csv')
+      return
+    }
+    setExportLoading(true)
+    try {
+      const blob = await exportVehicles()
+      triggerBlobDownload(blob, 'vehicles.csv')
+    } catch {
+      toast.error('Export failed')
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  const handleImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    if (isMock) {
+      const lines = (await file.text()).trim().split('\n').slice(1).filter(Boolean)
+      toast.success(`Import complete — ${lines.length} records loaded (demo)`)
+      return
+    }
+    setImportLoading(true)
+    try {
+      const result = await importVehicles(file)
+      toast.success(`Import complete — ${result.created} records loaded`)
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.vehicles })
+    } catch {
+      toast.error('Import failed')
+    } finally {
+      setImportLoading(false)
+    }
+  }
 
   const [statusMap, setStatusMap] = useState<Record<string, VehicleStatus>>({})
 
@@ -243,6 +302,13 @@ export default function Vehicles() {
             onChange={(e) => setSearch(e.target.value)}
             containerClass="flex-1 max-w-xs"
           />
+          <Button variant="secondary" size="sm" onClick={handleExport} loading={exportLoading}>
+            <Download size={14} /> Export
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => importRef.current?.click()} loading={importLoading}>
+            <Upload size={14} /> Import
+          </Button>
+          <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
           <Button onClick={() => handleOpen()}>
             <Plus size={15} /> Add Vehicle
           </Button>

@@ -332,7 +332,8 @@ export default function Settings() {
 
   return (
     <AppShell>
-      <div className="p-6 max-w-2xl" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="p-6 md:p-8" style={{ animation: 'page-slide-in 0.22s ease' }}>
+      <div className="mx-auto max-w-2xl">
 
         {/* Tab navigation */}
         <div
@@ -363,6 +364,7 @@ export default function Settings() {
         {activeTab === 'appearance'    && <AppearanceTab    />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'account'       && <AccountTab       />}
+      </div>
       </div>
     </AppShell>
   )

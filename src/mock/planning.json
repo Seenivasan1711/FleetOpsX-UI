@@ -1,0 +1,58 @@
+{
+  "scenarios": [
+    {
+      "type": "fastest",     "label": "FASTEST",      "accentColor": "#22d3ee",
+      "primaryValue": "4h 12m", "primaryDot": "Total", "primaryUnit": "time",
+      "drivers": 11, "distance_km": 192, "cost_inr": 4820, "co2_kg": 42,
+      "recommended": false
+    },
+    {
+      "type": "economical",  "label": "ECONOMICAL",   "accentColor": "#34d399",
+      "primaryValue": "₹3,150", "primaryDot": "Total", "primaryUnit": "cost",
+      "drivers": 8,  "distance_km": 168, "cost_inr": 3150, "co2_kg": 31,
+      "recommended": false
+    },
+    {
+      "type": "balanced",    "label": "BALANCED",     "accentColor": "#a78bfa",
+      "primaryValue": "94%",    "primaryDot": "",      "primaryUnit": "Optimality",
+      "drivers": 9,  "distance_km": 176, "cost_inr": 3720, "co2_kg": 34,
+      "recommended": true
+    },
+    {
+      "type": "driver_fair", "label": "DRIVER FAIR",  "accentColor": "#22d3ee",
+      "primaryValue": "0.92",   "primaryDot": "",      "primaryUnit": "Gini index",
+      "drivers": 11, "distance_km": 184, "cost_inr": 4100, "co2_kg": 38,
+      "recommended": false
+    }
+  ],
+  "planDetail": {
+    "fastest": [
+      { "route": "R-001", "driver": "Arjun Mehta",  "stops": 12, "departure": "07:30", "return_time": "12:45", "distance_km": 42, "load_pct": 95, "risk": "med"  },
+      { "route": "R-002", "driver": "Priya Sharma", "stops": 10, "departure": "07:30", "return_time": "12:10", "distance_km": 32, "load_pct": 82, "risk": "low"  },
+      { "route": "R-003", "driver": "Sneha Reddy",  "stops": 14, "departure": "07:30", "return_time": "13:00", "distance_km": 51, "load_pct": 97, "risk": "high" },
+      { "route": "R-004", "driver": "Vikram Singh", "stops":  8, "departure": "07:45", "return_time": "12:00", "distance_km": 28, "load_pct": 71, "risk": "low"  },
+      { "route": "R-005", "driver": "Rohan Das",    "stops": 10, "departure": "07:30", "return_time": "13:30", "distance_km": 39, "load_pct": 88, "risk": "med"  }
+    ],
+    "economical": [
+      { "route": "R-001", "driver": "Arjun Mehta",  "stops": 10, "departure": "08:00", "return_time": "14:15", "distance_km": 31, "load_pct": 90, "risk": "low" },
+      { "route": "R-002", "driver": "Priya Sharma", "stops":  9, "departure": "08:15", "return_time": "13:40", "distance_km": 26, "load_pct": 78, "risk": "low" },
+      { "route": "R-003", "driver": "Sneha Reddy",  "stops": 13, "departure": "08:00", "return_time": "14:55", "distance_km": 44, "load_pct": 93, "risk": "med" },
+      { "route": "R-004", "driver": "Vikram Singh", "stops":  7, "departure": "08:30", "return_time": "13:00", "distance_km": 21, "load_pct": 65, "risk": "low" },
+      { "route": "R-005", "driver": "Rohan Das",    "stops":  9, "departure": "08:15", "return_time": "14:30", "distance_km": 46, "load_pct": 87, "risk": "low" }
+    ],
+    "balanced": [
+      { "route": "R-001", "driver": "Arjun Mehta",  "stops":  9, "departure": "08:00", "return_time": "13:42", "distance_km": 38, "load_pct": 88, "risk": "low"  },
+      { "route": "R-002", "driver": "Priya Sharma", "stops":  7, "departure": "08:30", "return_time": "12:50", "distance_km": 24, "load_pct": 76, "risk": "low"  },
+      { "route": "R-003", "driver": "Sneha Reddy",  "stops": 11, "departure": "07:45", "return_time": "14:20", "distance_km": 46, "load_pct": 94, "risk": "med"  },
+      { "route": "R-004", "driver": "Vikram Singh", "stops":  6, "departure": "09:00", "return_time": "13:10", "distance_km": 22, "load_pct": 62, "risk": "low"  },
+      { "route": "R-005", "driver": "Rohan Das",    "stops":  8, "departure": "08:15", "return_time": "14:00", "distance_km": 30, "load_pct": 80, "risk": "high" }
+    ],
+    "driver_fair": [
+      { "route": "R-001", "driver": "Arjun Mehta",  "stops": 8, "departure": "08:00", "return_time": "13:00", "distance_km": 33, "load_pct": 75, "risk": "low" },
+      { "route": "R-002", "driver": "Priya Sharma", "stops": 8, "departure": "08:00", "return_time": "13:15", "distance_km": 28, "load_pct": 73, "risk": "low" },
+      { "route": "R-003", "driver": "Sneha Reddy",  "stops": 8, "departure": "08:00", "return_time": "13:30", "distance_km": 35, "load_pct": 77, "risk": "low" },
+      { "route": "R-004", "driver": "Vikram Singh", "stops": 9, "departure": "08:00", "return_time": "13:45", "distance_km": 37, "load_pct": 79, "risk": "low" },
+      { "route": "R-005", "driver": "Rohan Das",    "stops": 7, "departure": "08:00", "return_time": "12:45", "distance_km": 30, "load_pct": 72, "risk": "low" }
+    ]
+  }
+}

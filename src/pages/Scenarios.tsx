@@ -194,7 +194,7 @@ function ResultsPanel({ run }: { run: ScenarioRun }) {
   if (isLoading || results.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
         </div>
         <Skeleton className="h-56 rounded-2xl" />
@@ -222,7 +222,7 @@ function ResultsPanel({ run }: { run: ScenarioRun }) {
   return (
     <div className="space-y-4">
       {/* KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kpiCards.map(({ label, key, higher, fmt }) => {
           const d   = avgDelta(key)
           const val = (results[results.length - 1]?.[key as keyof ScenarioResult] as number) ?? 0
@@ -265,6 +265,7 @@ function ResultsPanel({ run }: { run: ScenarioRun }) {
         <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-elevated)' }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--c-muted)]">Daily Breakdown</p>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
@@ -291,6 +292,7 @@ function ResultsPanel({ run }: { run: ScenarioRun }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

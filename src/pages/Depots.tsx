@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Pencil, Plus, MapPin } from 'lucide-react'
+import { Pencil, Plus, MapPin, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AppShell }       from '../components/layout/AppShell'
 import { Button }         from '../components/ui/Button'
@@ -13,8 +13,19 @@ import { Toggle }         from '../components/ui/Toggle'
 import DataTable          from '../components/shared/DataTable'
 import FormField          from '../components/shared/FormField'
 import { fetchDepots, createDepot, updateDepot } from '../api/depots'
+import { exportDepots, importDepots, triggerBlobDownload } from '../api/exportImport'
 import { QUERY_KEYS }     from '../lib/utils/constants'
+import { useMockData }    from '../mock/config'
 import type { Depot }     from '../types'
+
+// ── Mock data (demo CSV export) ───────────────────────────────────────────────
+
+const MOCK_DEPOTS = [
+  { name: 'Koramangala Depot',     city: 'Bangalore', address: '80 Feet Rd, 5th Block',       latitude: 12.9352, longitude: 77.6245 },
+  { name: 'HSR Layout Depot',      city: 'Bangalore', address: 'Sector 1, HSR Layout',         latitude: 12.9121, longitude: 77.6446 },
+  { name: 'Whitefield Hub',        city: 'Bangalore', address: 'ITPL Main Rd, Whitefield',     latitude: 12.9718, longitude: 77.7500 },
+  { name: 'Electronic City Depot', city: 'Bangalore', address: 'Phase 1, Electronic City',     latitude: 12.8449, longitude: 77.6602 },
+]
 
 // ─── Schema ────────────────────────────────────────────────────────────────────
 
@@ -34,10 +45,14 @@ type DepotFormData = z.infer<typeof depotSchema>
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Depots() {
+  const isMock = useMockData()
   const qc = useQueryClient()
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editingDepot, setEditingDepot] = useState<Depot | null>(null)
   const [search,       setSearch]       = useState('')
+  const [exportLoading, setExportLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
 
   const { data: depots = [], isLoading } = useQuery({
     queryKey: QUERY_KEYS.depots,
@@ -81,6 +96,47 @@ export default function Depots() {
   }
 
   const handleClose = () => { setModalOpen(false); setEditingDepot(null); reset() }
+
+  const handleExport = async () => {
+    if (isMock) {
+      const header = 'name,city,address,latitude,longitude'
+      const rows = MOCK_DEPOTS.map((d) =>
+        `"${d.name}","${d.city}","${d.address}",${d.latitude},${d.longitude}`
+      )
+      triggerBlobDownload(new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }), 'depots.csv')
+      return
+    }
+    setExportLoading(true)
+    try {
+      const blob = await exportDepots()
+      triggerBlobDownload(blob, 'depots.csv')
+    } catch {
+      toast.error('Export failed')
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  const handleImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    if (isMock) {
+      const lines = (await file.text()).trim().split('\n').slice(1).filter(Boolean)
+      toast.success(`Import complete — ${lines.length} records loaded (demo)`)
+      return
+    }
+    setImportLoading(true)
+    try {
+      const result = await importDepots(file)
+      toast.success(`Import complete — ${result.created} records loaded`)
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.depots })
+    } catch {
+      toast.error('Import failed')
+    } finally {
+      setImportLoading(false)
+    }
+  }
 
   const filtered = (depots as Depot[]).filter((d) => {
     const q = search.toLowerCase()
@@ -150,6 +206,13 @@ export default function Depots() {
             onChange={(e) => setSearch(e.target.value)}
             containerClass="flex-1 max-w-xs"
           />
+          <Button variant="secondary" size="sm" onClick={handleExport} loading={exportLoading}>
+            <Download size={14} /> Export
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => importRef.current?.click()} loading={importLoading}>
+            <Upload size={14} /> Import
+          </Button>
+          <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
           <Button onClick={() => handleOpen()}>
             <Plus size={15} /> Add Depot
           </Button>

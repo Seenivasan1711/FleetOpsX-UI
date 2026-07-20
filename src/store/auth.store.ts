@@ -8,12 +8,15 @@ type AuthState = {
   effectiveTenantId: string | null
   isReadOnly:        boolean
   isSuperadmin:      boolean
+  // Superadmin-only: show mock/demo data instead of live APIs
+  demoMode:          boolean
 
   setAuth:              (user: User) => void
   clearAuth:            () => void
   setEffectiveTenant:   (tenantId: string, readOnly: boolean) => void
   clearEffectiveTenant: () => void
   setReadOnly:          (readOnly: boolean) => void
+  setDemoMode:          (on: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,11 +27,14 @@ export const useAuthStore = create<AuthState>()(
       effectiveTenantId: null,
       isReadOnly:        false,
       isSuperadmin:      false,
+      demoMode:          false,
 
       setAuth: (user) => set({
         accessToken:  user.access_token,
         user,
         isSuperadmin: user.role === 'superadmin',
+        // Non-superadmin always gets live data
+        demoMode: false,
       }),
 
       clearAuth: () => set({
@@ -37,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
         effectiveTenantId: null,
         isReadOnly:        false,
         isSuperadmin:      false,
+        demoMode:          false,
       }),
 
       setEffectiveTenant: (tenantId, readOnly) => set({
@@ -50,6 +57,9 @@ export const useAuthStore = create<AuthState>()(
       }),
 
       setReadOnly: (readOnly) => set({ isReadOnly: readOnly }),
+
+      // Only meaningful when isSuperadmin=true; non-superadmin can't set this
+      setDemoMode: (on) => set((s) => ({ demoMode: s.isSuperadmin ? on : false })),
     }),
     {
       name:        'fleetopsx-auth',
@@ -59,6 +69,7 @@ export const useAuthStore = create<AuthState>()(
         effectiveTenantId: s.effectiveTenantId,
         isReadOnly:        s.isReadOnly,
         isSuperadmin:      s.isSuperadmin,
+        demoMode:          s.demoMode,
       }),
     }
   )

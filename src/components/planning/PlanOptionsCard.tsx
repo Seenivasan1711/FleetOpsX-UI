@@ -1,12 +1,17 @@
+<<<<<<< HEAD
 import { useState } from 'react'
 import { Zap, Leaf, Scale, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Star } from 'lucide-react'
+=======
+import { Leaf, Scale } from 'lucide-react'
+import { Icon } from '../ui/icons'
+>>>>>>> origin/main
 import type { PlanOption, PlanOptionMode } from '../../types'
 
 const MODE_META: Record<PlanOptionMode, {
-  icon: typeof Zap; label: string; color: string; bg: string
+  icon: React.FC<{ size?: number; style?: React.CSSProperties }>; label: string; color: string; bg: string
 }> = {
   fastest: {
-    icon: Zap,
+    icon: Icon.Bolt,
     label: 'Fastest',
     color: 'var(--c-accent)',
     bg: 'var(--c-accent-dim)',
@@ -61,10 +66,15 @@ function ConfidenceBadge({ score }: { score: number }) {
 export function PlanOptionsCard({ option, selected, recommended, onSelect }: PlanOptionsCardProps) {
   const [reasoningOpen, setReasoningOpen] = useState(false)
   const meta = MODE_META[option.mode]
+<<<<<<< HEAD
   const Icon = meta.icon
   const coverage = Math.round((option.orders_covered / Math.max(option.total_orders, 1)) * 100)
   const hasReasoning = (option.reasoning_steps?.length ?? 0) > 0
   const hasWarnings = (option.warnings?.length ?? 0) > 0
+=======
+  const ModeIcon = meta.icon
+  const coverage = Math.round((option.assigned_orders / Math.max(option.total_orders, 1)) * 100)
+>>>>>>> origin/main
 
   return (
     <div
@@ -82,7 +92,7 @@ export function PlanOptionsCard({ option, selected, recommended, onSelect }: Pla
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: `${meta.color}22` }}
         >
-          <Icon size={16} style={{ color: meta.color }} />
+          <ModeIcon size={16} style={{ color: meta.color }} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -100,7 +110,7 @@ export function PlanOptionsCard({ option, selected, recommended, onSelect }: Pla
             <p className="text-xs text-[var(--c-muted)] mt-0.5 leading-tight line-clamp-2">{option.ai_summary}</p>
           )}
         </div>
-        {selected && <CheckCircle2 size={18} style={{ color: meta.color, flexShrink: 0 }} />}
+        {selected && <Icon.Check size={18} style={{ color: meta.color, flexShrink: 0 }} />}
       </div>
 
       {/* Confidence badge */}

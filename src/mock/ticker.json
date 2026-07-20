@@ -1,0 +1,10 @@
+[
+  { "id": "t1", "type": "info",     "variant": "lightning", "text": "AI plan generated for 11 routes · 4.2hr saved",                 "bold": ["11 routes", "4.2hr"] },
+  { "id": "t2", "type": "warning",  "variant": "warning",   "text": "SLA risk on ORD-2026-115 · rerouted via HSR",                   "bold": ["ORD-2026-115"] },
+  { "id": "t3", "type": "success",  "variant": "truck",     "text": "Driver Arjun Mehta picked up 8 packages from Depot",            "bold": ["Arjun Mehta", "8 packages"] },
+  { "id": "t4", "type": "warning",  "variant": "warning",   "text": "ORD-2026-119 window closes in 12 min · action needed",          "bold": ["ORD-2026-119", "12 min"] },
+  { "id": "t5", "type": "success",  "variant": "check",     "text": "Priya Sharma completed 6 stops · on time",                     "bold": ["Priya Sharma", "6", "on time"] },
+  { "id": "t6", "type": "info",     "variant": "lightning", "text": "13 drivers available · 4 vehicles idle today",                  "bold": ["13", "4"] },
+  { "id": "t7", "type": "success",  "variant": "truck",     "text": "Driver Rohan Das dispatched 7 stops · ETA on track",            "bold": ["Rohan Das", "7 stops"] },
+  { "id": "t8", "type": "critical", "variant": "dot",       "text": "ORD-2026-103 rescheduled · swap with ORD-2026-122 in progress", "bold": ["ORD-2026-103", "ORD-2026-122"] }
+]

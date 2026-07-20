@@ -1,4 +1,5 @@
-import { CheckCircle2, Clock, DollarSign, Truck, Users } from 'lucide-react'
+import { DollarSign } from 'lucide-react'
+import { Icon } from '../ui/icons'
 import type { AiScenario, AiPlanResult } from '../../api/aiPlanning'
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
 const SCENARIO_META: Record<string, { label: string; icon: React.ReactNode; color: string; accentBg: string }> = {
   fastest: {
     label:    'Fastest',
-    icon:     <Clock className="w-4 h-4" />,
+    icon:     <Icon.Clock size={16} />,
     color:    'text-[#3b82f6]',
     accentBg: 'rgba(59,130,246,0.1)',
   },
@@ -23,13 +24,13 @@ const SCENARIO_META: Record<string, { label: string; icon: React.ReactNode; colo
   },
   balanced: {
     label:    'Balanced',
-    icon:     <CheckCircle2 className="w-4 h-4" />,
+    icon:     <Icon.Check size={16} />,
     color:    'text-[#7c3aed]',
     accentBg: 'rgba(124,58,237,0.1)',
   },
   driver_availability: {
     label:    'Driver Availability',
-    icon:     <Users className="w-4 h-4" />,
+    icon:     <Icon.Users size={16} />,
     color:    'text-[#f59e0b]',
     accentBg: 'rgba(245,158,11,0.1)',
   },
@@ -72,7 +73,7 @@ export function ScenarioCards({ planResult, onSelect, selectedType, confirming }
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {scenarios.map((scenario) => {
           const meta  = SCENARIO_META[scenario.type] ?? {
-            label: 'Balanced', icon: <CheckCircle2 className="w-4 h-4" />,
+            label: 'Balanced', icon: <Icon.Check size={16} />,
             color: 'text-[#7c3aed]', accentBg: 'rgba(124,58,237,0.1)',
           }
           const isSelected = selectedType === scenario.type
@@ -122,7 +123,7 @@ export function ScenarioCards({ planResult, onSelect, selectedType, confirming }
                   <span className="font-mono font-semibold text-[#f0f0f0]">{scenario.kpis.coverage_pct}%</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#6b7280] flex items-center gap-1"><Truck className="w-3 h-3" /> Routes</span>
+                  <span className="text-[#6b7280] flex items-center gap-1"><Icon.Truck size={12} /> Routes</span>
                   <span className="font-mono font-semibold text-[#f0f0f0]">{scenario.total_routes}</span>
                 </div>
               </div>

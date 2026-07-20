@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { useEffect, type ReactNode } from 'react'
+import { MapContainer, TileLayer, useMap, ZoomControl } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DriverMarker from './DriverMarker'
 import type { LivePosition } from '../../api/tracking'
+import { useUiStore } from '../../store'
 
 // Fix Leaflet default marker icon paths broken by Vite's asset bundling
 // Must be done once before any map renders
@@ -14,9 +15,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// To swap to Mapbox later: change TILE_URL + add accessToken query param
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-const TILE_ATTRIBUTION = '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+const TILE_ATTR  = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
 // Inner component that auto-pans the map to fit all markers when positions change
 function AutoFit({ positions }: { positions: LivePosition[] }) {
@@ -30,23 +31,31 @@ function AutoFit({ positions }: { positions: LivePosition[] }) {
 }
 
 interface Props {
-  positions: LivePosition[]
-  center?: [number, number]
-  zoom?: number
+  positions:  LivePosition[]
+  center?:    [number, number]
+  zoom?:      number
+  children?:  ReactNode
+  colorMap?:  Record<string, string>
 }
 
 export default function FleetMap({
   positions,
   center = [12.9716, 77.5946],
   zoom = 12,
+  children,
+  colorMap,
 }: Props) {
+  const theme = useUiStore((s) => s.theme)
+  const tileUrl = theme === 'dark' ? TILE_DARK : TILE_LIGHT
   return (
-    <MapContainer center={center} zoom={zoom} className="w-full h-full rounded-lg">
-      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+    <MapContainer center={center} zoom={zoom} className="w-full h-full rounded-lg" zoomControl={false}>
+      <TileLayer key={tileUrl} url={tileUrl} attribution={TILE_ATTR} />
+      <ZoomControl position="topright" />
       {positions.length > 0 && <AutoFit positions={positions} />}
       {positions.map(p => (
-        <DriverMarker key={p.driver_id} position={p} />
+        <DriverMarker key={p.driver_id} position={p} color={colorMap?.[p.driver_id]} />
       ))}
+      {children}
     </MapContainer>
   )
 }
