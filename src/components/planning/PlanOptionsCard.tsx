@@ -1,10 +1,6 @@
-<<<<<<< HEAD
 import { useState } from 'react'
-import { Zap, Leaf, Scale, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Star } from 'lucide-react'
-=======
-import { Leaf, Scale } from 'lucide-react'
+import { Leaf, Scale, AlertTriangle, ChevronDown, ChevronRight, Star } from 'lucide-react'
 import { Icon } from '../ui/icons'
->>>>>>> origin/main
 import type { PlanOption, PlanOptionMode } from '../../types'
 
 const MODE_META: Record<PlanOptionMode, {
@@ -66,15 +62,10 @@ function ConfidenceBadge({ score }: { score: number }) {
 export function PlanOptionsCard({ option, selected, recommended, onSelect }: PlanOptionsCardProps) {
   const [reasoningOpen, setReasoningOpen] = useState(false)
   const meta = MODE_META[option.mode]
-<<<<<<< HEAD
-  const Icon = meta.icon
+  const ModeIcon = meta.icon
   const coverage = Math.round((option.orders_covered / Math.max(option.total_orders, 1)) * 100)
   const hasReasoning = (option.reasoning_steps?.length ?? 0) > 0
   const hasWarnings = (option.warnings?.length ?? 0) > 0
-=======
-  const ModeIcon = meta.icon
-  const coverage = Math.round((option.assigned_orders / Math.max(option.total_orders, 1)) * 100)
->>>>>>> origin/main
 
   return (
     <div
