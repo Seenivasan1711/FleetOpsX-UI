@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Plus, Trash2, MessageSquare, Bot } from 'lucide-react'
 import { AppShell } from '../components/layout/AppShell'
-import { today }    from '../lib/utils/format'
 
 // ── Design tokens (matte-black, same as ChatPanel) ────────────────────────────
 const C = {
@@ -458,10 +457,10 @@ export default function ChatPage() {
 
     try {
       const { sendChatMessage } = await import('../api/chat')
-      const res  = await sendChatMessage(trimmed, today())
-      const card = tryParseCard(res.content)
-      const displayText = card ? res.content.replace(/```json[\s\S]*?```/, '').trim() : res.content
-      const aiMsg: Msg = { id: res.id, role: 'assistant', text: displayText, time: ts(), card, followUps: inferFollowUps(res.content) }
+      const res  = await sendChatMessage(targetId, trimmed)
+      const card = tryParseCard(res.reply)
+      const displayText = card ? res.reply.replace(/```json[\s\S]*?```/, '').trim() : res.reply
+      const aiMsg: Msg = { id: crypto.randomUUID(), role: 'assistant', text: displayText, time: ts(), card, followUps: inferFollowUps(res.reply) }
       updateConvo(targetId, (c) => ({ ...c, updatedAt: new Date().toISOString(), messages: [...c.messages, aiMsg] }))
     } catch {
       const errMsg: Msg = {

@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect, useCallback, createContext, useContext } from 'react'
 import { useUiStore } from '../../store/ui.store'
 import { useAuthStore } from '../../store/auth.store'
-import client from '../../api/client'
 import {
-  fetchConversations,
-  createConversation,
-  fetchMessages,
-  sendMessage,
-  deleteConversation,
-  type Conversation,
+  sendChatMessage,
+  fetchChatHistory,
+  getChatSessionId,
+  newChatSession,
   type ChatMessage,
-} from '../../api/conversations'
+} from '../../api/chat'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const DARK_C = {
@@ -169,6 +166,19 @@ function apiMsgToMsg(m: ChatMessage): Msg {
     time:     new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     card,
     followUps: m.role === 'assistant' ? inferFollowUps(m.content) : undefined,
+  }
+}
+
+function replyToMsg(reply: string): Msg {
+  const card = tryParseCard(reply)
+  const displayText = card ? reply.replace(/```json[\s\S]*?```/, '').trim() : reply
+  return {
+    id:   crypto.randomUUID(),
+    role: 'assistant',
+    text: displayText,
+    time: ts(),
+    card,
+    followUps: inferFollowUps(reply),
   }
 }
 
@@ -400,109 +410,6 @@ function SlashLauncher({
   )
 }
 
-// ── Conversation History Dropdown ─────────────────────────────────────────────
-
-function HistoryDropdown({
-  conversations,
-  activeId,
-  onSelect,
-  onDelete,
-  onNew,
-  onClose,
-}: {
-  conversations: Conversation[]
-  activeId: string | null
-  onSelect: (conv: Conversation) => void
-  onDelete: (id: string) => void
-  onNew: () => void
-  onClose: () => void
-}) {
-  const C = useC()
-  return (
-    <div
-      className="fox-hist"
-      style={{
-        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, marginTop: 4,
-        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
-        boxShadow: '0 16px 40px rgba(0,0,0,0.6)', overflow: 'hidden',
-        maxHeight: 320, display: 'flex', flexDirection: 'column',
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        padding: '9px 12px 8px',
-        borderBottom: `1px solid ${C.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.textMute, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Chat History
-        </span>
-        <button
-          onClick={onNew}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px',
-            background: C.accentDim, border: `1px solid ${C.accent}`,
-            borderRadius: 6, cursor: 'pointer', fontSize: 11, color: C.accent, fontWeight: 600,
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          New Chat
-        </button>
-      </div>
-
-      {/* List */}
-      <div style={{ overflowY: 'auto', flex: 1 }}>
-        {conversations.length === 0 ? (
-          <p style={{ fontSize: 12, color: C.textGhost, textAlign: 'center', padding: '20px 12px' }}>
-            No past conversations
-          </p>
-        ) : conversations.map((conv) => (
-          <div
-            key={conv.id}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 12px',
-              background: conv.id === activeId ? C.accentDim : 'transparent',
-              borderLeft: `2px solid ${conv.id === activeId ? C.accent : 'transparent'}`,
-              cursor: 'pointer', transition: 'background .12s',
-            }}
-            onClick={() => { onSelect(conv); onClose() }}
-            onMouseEnter={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(128,128,128,0.06)' }}
-            onMouseLeave={(e) => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={conv.id === activeId ? C.accent : C.textGhost} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            <span style={{
-              flex: 1, fontSize: 12.5,
-              color: conv.id === activeId ? C.accent : C.textMid,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {conv.title}
-            </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(conv.id) }}
-              style={{
-                padding: '2px 4px', background: 'transparent', border: 'none',
-                color: C.textGhost, cursor: 'pointer', borderRadius: 4,
-                flexShrink: 0, display: 'flex', alignItems: 'center',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = C.red }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = C.textGhost }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-              </svg>
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function ChatPanel() {
@@ -517,47 +424,30 @@ export function ChatPanel() {
   const [slashOpen,    setSlashOpen]   = useState(false)
   const [slashQuery,   setSlashQuery]  = useState('')
   const [slashIdx,     setSlashIdx]    = useState(0)
-  const [convId,       setConvId]      = useState<string | null>(null)
-  const [convTitle,    setConvTitle]   = useState<string>('New Chat')
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [histOpen,     setHistOpen]    = useState(false)
+  const [sessionId,    setSessionId]   = useState<string>(() => getChatSessionId())
   const [histLoading,  setHistLoading] = useState(false)
-  const [mongoActive,  setMongoActive] = useState(false)
 
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const inputWrap  = useRef<HTMLDivElement>(null)
   const headerRef  = useRef<HTMLDivElement>(null)
 
-  // On open: detect MongoDB mode and load conversation list
+  // On open: load this session's chat history
   useEffect(() => {
-    if (!chatOpen) { setHistOpen(false); return }
+    if (!chatOpen) return
     setTimeout(() => inputRef.current?.focus(), 80)
 
     const init = async () => {
+      setHistLoading(true)
       try {
-        const { data } = await client.get<{ mongodb_active: boolean }>('/api/v1/chat/conversations/status')
-        setMongoActive(data.mongodb_active)
-        if (data.mongodb_active) {
-          const convs = await fetchConversations()
-          setConversations(convs)
-        }
-      } catch { /* ignore — service may not be running */ }
-    }
-    init()
-  }, [chatOpen])
-
-  // Close history dropdown on outside click
-  useEffect(() => {
-    if (!histOpen) return
-    const handler = (e: MouseEvent) => {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
-        setHistOpen(false)
+        const history = await fetchChatHistory(sessionId)
+        setMsgs(history.map(apiMsgToMsg))
+      } catch { /* ignore — no history yet, or backend unavailable */ } finally {
+        setHistLoading(false)
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [histOpen])
+    init()
+  }, [chatOpen, sessionId])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, loading])
 
@@ -586,18 +476,6 @@ export function ChatPanel() {
     inputRef.current?.focus()
   }
 
-  // Ensure conversation exists before sending
-  const ensureConv = useCallback(async (): Promise<string> => {
-    if (convId) return convId
-    const conv = await createConversation()
-    setConvId(conv.id)
-    setConvTitle(conv.title)
-    if (mongoActive && conv.id !== 'session') {
-      setConversations((prev) => [conv, ...prev])
-    }
-    return conv.id
-  }, [convId, mongoActive])
-
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || loading) return
@@ -610,21 +488,8 @@ export function ChatPanel() {
     setLoading(true)
 
     try {
-      const cid = await ensureConv()
-      const returned: ChatMessage[] = await sendMessage(cid, trimmed)
-      const assistantMsg = returned.find((m) => m.role === 'assistant')
-      if (assistantMsg) {
-        const mapped = apiMsgToMsg(assistantMsg)
-        setMsgs((m) => [...m, mapped])
-
-        // Update conversation title in list after first message
-        if (mongoActive && cid !== 'session') {
-          setConversations((prev) => prev.map((c) =>
-            c.id === cid ? { ...c, title: trimmed.slice(0, 60), updated_at: new Date().toISOString() } : c
-          ))
-          setConvTitle(trimmed.slice(0, 60))
-        }
-      }
+      const res = await sendChatMessage(sessionId, trimmed)
+      setMsgs((m) => [...m, replyToMsg(res.reply)])
     } catch {
       setMsgs((m) => [...m, {
         id:   crypto.randomUUID(),
@@ -636,34 +501,11 @@ export function ChatPanel() {
     } finally {
       setLoading(false)
     }
-  }, [loading, ensureConv, mongoActive])
+  }, [loading, sessionId])
 
-  const loadConversation = async (conv: Conversation) => {
-    setHistLoading(true)
-    setConvId(conv.id)
-    setConvTitle(conv.title)
+  const startNewChat = () => {
+    setSessionId(newChatSession())
     setMsgs([])
-    try {
-      const apiMsgs = await fetchMessages(conv.id)
-      setMsgs(apiMsgs.map(apiMsgToMsg))
-    } catch { /* ignore */ } finally {
-      setHistLoading(false)
-    }
-  }
-
-  const startNewChat = async () => {
-    setConvId(null)
-    setConvTitle('New Chat')
-    setMsgs([])
-    setHistOpen(false)
-  }
-
-  const handleDeleteConv = async (id: string) => {
-    try {
-      await deleteConversation(id)
-      setConversations((prev) => prev.filter((c) => c.id !== id))
-      if (convId === id) startNewChat()
-    } catch { /* ignore */ }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -720,32 +562,14 @@ export function ChatPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <AIAvatar size={36} />
 
-            {/* Title — clickable to open history when MongoDB active */}
-            <div
-              onClick={() => mongoActive && setHistOpen((o) => !o)}
-              style={{
-                cursor: mongoActive ? 'pointer' : 'default',
-                display: 'flex', flexDirection: 'column', minWidth: 0,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <p style={{
-                  fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  maxWidth: mongoActive ? 140 : 180,
-                }}>
-                  FleetOpsX AI
-                </p>
-                {mongoActive && (
-                  <svg
-                    width="10" height="10" viewBox="0 0 24 24" fill="none"
-                    stroke={C.textGhost} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ flexShrink: 0, transform: histOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
-                  >
-                    <polyline points="6 9 12 15 18 9"/>
-                  </svg>
-                )}
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <p style={{
+                fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: 180,
+              }}>
+                FleetOpsX AI
+              </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
                 <span style={{ fontSize: 10.5, color: C.textMute }}>
                   {loading ? 'Thinking…' : 'Operations assistant · live context'}
@@ -804,18 +628,6 @@ export function ChatPanel() {
               </svg>
             </button>
           </div>
-
-          {/* History dropdown */}
-          {histOpen && mongoActive && (
-            <HistoryDropdown
-              conversations={conversations}
-              activeId={convId}
-              onSelect={loadConversation}
-              onDelete={handleDeleteConv}
-              onNew={startNewChat}
-              onClose={() => setHistOpen(false)}
-            />
-          )}
         </div>
 
         {/* ── Messages ── */}
@@ -828,7 +640,7 @@ export function ChatPanel() {
                   <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                 </svg>
               </span>
-              Loading conversation…
+              Loading chat history…
             </div>
           ) : msgs.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
