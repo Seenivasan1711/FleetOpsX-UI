@@ -78,6 +78,7 @@ export const Icon = {
   Gauge:     svg(<><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12 8 8"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M2 12h3M12 22v-3"/></>),
   Package:   svg(<><path d="M12 3 2 8v8l10 5 10-5V8z"/><path d="M2 8l10 5M22 8l-10 5M12 13v9M7 5.5l10 5"/></>),
   Users:     svg(<><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5M14.4 20c.4-2.4 2.3-4 4.6-4s3 1.5 3 4"/></>),
+  Book:      svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></>),
 } as const
 
 export type IconName = keyof typeof Icon

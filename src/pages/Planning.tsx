@@ -1,17 +1,27 @@
 import { useState, useMemo, useRef } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Bot, Brain, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react'
+import {
+  Bot, Zap, Leaf, AlertTriangle, Info, ListOrdered, CheckCircle2, Brain, MessageSquare,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
-import { AppShell }           from '../components/layout/AppShell'
-import { Button }             from '../components/ui/Button'
-import { Input }              from '../components/ui/Input'
-import { Modal }              from '../components/ui/Modal'
-import AgentFeed              from '../components/shared/AgentFeed'
+import { AppShell }       from '../components/layout/AppShell'
+import { Button }         from '../components/ui/Button'
+import { Input }          from '../components/ui/Input'
+import { Modal }          from '../components/ui/Modal'
+import { PriorityBadge }  from '../components/ui/Badge'
+import { EmptyState }     from '../components/ui/EmptyState'
+import { PlanOptionsCard } from '../components/planning/PlanOptionsCard'
+import AgentFeed          from '../components/shared/AgentFeed'
+import { PlanningSessionPanel }  from '../components/planning/PlanningSessionPanel'
+import { PlanningProgressPanel } from '../components/planning/PlanningProgressPanel'
+import { PlanningChatPanel }     from '../components/planning/PlanningChatPanel'
+import { LearningPatternsPanel } from '../components/planning/LearningPatternsPanel'
 import { generatePlanOptions, confirmPlan } from '../api/planning'
-import { fetchOrders }        from '../api/orders'
-import { fetchAgentLogs }     from '../api/agentLogs'
-import { fetchSuggestions }   from '../api/agentSuggestions'
+import { fetchOrders }    from '../api/orders'
+import { fetchAgentLogs } from '../api/agentLogs'
+import { fetchSuggestions } from '../api/agentSuggestions'
 import { startAiScenarios, confirmScenario } from '../api/aiPlanning'
+import { getActiveSession } from '../api/planningSessions'
 import type { AiScenario } from '../api/aiPlanning'
 import { usePlanPolling }     from '../hooks/usePlanPolling'
 import { QUERY_KEYS }         from '../lib/utils/constants'
@@ -19,7 +29,7 @@ import { usePlanStore }       from '../store/plan.store'
 import { useMockData }        from '../mock/config'
 import { MOCK_SCENARIOS, MOCK_PLAN_DETAIL } from '../mock/data'
 import type { ScenarioType, Scenario, PlanRoute } from '../mock/data'
-import type { PlanOption, Assignment, Order } from '../types'
+import type { PlanResult, PlanOption, PlanOptionMode, PlanOptionsApiResponse, Assignment, Order } from '../types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,14 +51,14 @@ function optionsToScenarios(opts: PlanOption[], totalOrders: number): Scenario[]
   const econ = get('economical')
   const bal  = get('balanced')
 
-  const totalKm = (o: PlanOption | undefined) => o?.estimated_km ?? 0
+  const totalKm = (o: PlanOption | undefined) => o?.total_distance_km ?? 0
   const costOf  = (km: number) => Math.round(km * 24)
   const co2Of   = (km: number) => Math.round(km * 0.21)
 
   return [
     {
       type: 'fastest',    label: 'FASTEST',     accentColor: '#22d3ee',
-      primaryValue: fast ? fmtDuration(fast.estimated_duration_min ?? 0) : '—',
+      primaryValue: fast ? fmtDuration(fast.est_duration_min ?? 0) : '—',
       primaryDot: 'Total', primaryUnit: 'time',
       drivers: fast?.total_routes ?? 0, distance_km: totalKm(fast),
       cost_inr: costOf(totalKm(fast)), co2_kg: co2Of(totalKm(fast)),
@@ -64,7 +74,7 @@ function optionsToScenarios(opts: PlanOption[], totalOrders: number): Scenario[]
     },
     {
       type: 'balanced',   label: 'BALANCED',    accentColor: '#a78bfa',
-      primaryValue: bal ? `${Math.round((bal.assigned_orders / Math.max(totalOrders, 1)) * 100)}%` : '—',
+      primaryValue: bal ? `${Math.round((bal.orders_covered / Math.max(totalOrders, 1)) * 100)}%` : '—',
       primaryDot: '', primaryUnit: 'Optimality',
       drivers: bal?.total_routes ?? 0, distance_km: totalKm(bal),
       cost_inr: costOf(totalKm(bal)), co2_kg: co2Of(totalKm(bal)),
@@ -244,9 +254,20 @@ export default function Planning() {
   const today  = new Date().toISOString().slice(0, 10)
 
   const [planDate,         setPlanDate]         = useState(today)
+  const [planResult,       setPlanResult]       = useState<PlanResult | null>(null)
   const [planOptions,      setPlanOptions]      = useState<PlanOption[] | null>(null)
+  const [selectedOption,   setSelectedOption]   = useState<PlanOptionMode | null>(null)
+  const [recommendation,   setRecommendation]   = useState<string | null>(null)
+  const [naiveDistanceKm,  setNaiveDistanceKm]  = useState<number | null>(null)
   const [activeScenario,   setActiveScenario]   = useState<ScenarioType>('balanced')
   const [showWarnings,     setShowWarnings]     = useState(false)
+
+  // AI-1 — Planning session + progress + chat
+  const [progressRunId,  setProgressRunId]  = useState<string | null>(null)
+  const [showProgress,   setShowProgress]   = useState(false)
+  const [showPlanChat,   setShowPlanChat]   = useState(false)
+
+  // P5-E2 — AI Scenario Planning
   const [showAiModal,      setShowAiModal]      = useState(false)
   const [nlConstraints,    setNlConstraints]    = useState('')
   const [userHints,        setUserHints]        = useState('')
@@ -276,7 +297,17 @@ export default function Planning() {
     enabled:         !isMock,
   })
 
+  // AI-1 — active planning session
+  const { data: activeSession } = useQuery({
+    queryKey: QUERY_KEYS.activeSession,
+    queryFn:  getActiveSession,
+    refetchInterval: 30_000,
+  })
+  const sessionForDate = activeSession?.plan_date === planDate ? activeSession : null
+
   const unassigned = (orders as Order[]).filter(o => o.status === 'PENDING')
+
+  // ── Pre-plan warnings ───────────────────────────────────────────────────────
 
   // Pre-plan warnings derived from live orders
   const warnings = useMemo(() => {
@@ -309,49 +340,40 @@ export default function Planning() {
   // ── Options mutation ────────────────────────────────────────────────────────
 
   const optionsMutation = useMutation({
-    mutationFn: async (): Promise<PlanOption[]> => {
-      try {
-        return await generatePlanOptions(planDate, userHints || undefined)
-      } catch {
-        const { generatePlan } = await import('../api/planning')
-        const base = await generatePlan(planDate)
-        setLastPlan(base, planDate)
-        return [
-          {
-            mode: 'fastest',    label: 'Fastest',    description: 'Min delivery time',
-            plan_id: base.plan_id, assigned_orders: base.assigned_orders,
-            total_orders: base.total_orders, total_routes: base.total_routes,
-            assignments: base.assignments,
-            estimated_km: base.total_routes * 32, estimated_duration_min: base.total_routes * 75,
-          },
-          {
-            mode: 'economical', label: 'Economical', description: 'Min fuel & distance',
-            plan_id: base.plan_id,
-            assigned_orders: Math.max(base.assigned_orders - Math.ceil(base.assigned_orders * 0.05), 0),
-            total_orders: base.total_orders, total_routes: Math.max(base.total_routes - 1, 1),
-            assignments: base.assignments,
-            estimated_km: base.total_routes * 21, estimated_duration_min: base.total_routes * 110,
-          },
-          {
-            mode: 'balanced',   label: 'Balanced',   description: 'Best mix',
-            plan_id: base.plan_id, assigned_orders: base.assigned_orders,
-            total_orders: base.total_orders, total_routes: base.total_routes,
-            assignments: base.assignments,
-            estimated_km: base.total_routes * 26, estimated_duration_min: base.total_routes * 95,
-          },
-        ]
-      }
-    },
+    mutationFn: (): Promise<PlanOptionsApiResponse> => generatePlanOptions(planDate, userHints || undefined),
     onSuccess: (data) => {
-      setPlanOptions(data)
-      setActiveScenario('balanced')
+      setPlanOptions(data.options)
+      setRecommendation(data.recommendation ?? null)
+      setNaiveDistanceKm(data.naive_distance_km ?? null)
+      setPlanResult(null)
+      setSelectedOption(data.recommendation as PlanOptionMode ?? null)
+      setActiveScenario((data.recommendation as ScenarioType) ?? 'balanced')
       refetchOrders()
-      toast.success(`${data.length} scenarios ready — select one to dispatch`)
+      toast.success(`${data.options.length} plan options ready — select one to confirm`)
     },
     onError: () => toast.error('Failed to generate plan options'),
   })
 
   // ── Confirm / dispatch ──────────────────────────────────────────────────────
+
+  const confirmMutation = useMutation({
+    mutationFn: async (): Promise<PlanResult> => {
+      const opt = planOptions?.find((o) => o.mode === selectedOption)
+      if (!opt) throw new Error('No option selected')
+      return confirmPlan(opt.plan_id, planDate)
+    },
+    onSuccess: (data) => {
+      setPlanResult(data)
+      setPlanOptions(null)
+      setSelectedOption(null)
+      setRecommendation(null)
+      setNaiveDistanceKm(null)
+      setLastPlan(data, planDate)
+      refetchOrders()
+      toast.success(`Plan confirmed — ${data.assigned_orders} orders assigned`)
+    },
+    onError: () => toast.error('Failed to confirm plan'),
+  })
 
   const handleApproveDispatch = async () => {
     if (isMock) {
@@ -364,7 +386,7 @@ export default function Planning() {
     if (!opt) { toast.error('Select a scenario first'); return }
     setConfirming(true)
     try {
-      const result = await confirmPlan(opt.plan_id)
+      const result = await confirmPlan(opt.plan_id, planDate)
       setLastPlan(result, planDate)
       refetchOrders()
       toast.success(`Dispatched! ${result.assigned_orders} orders across ${result.total_routes} routes`)
@@ -431,8 +453,8 @@ export default function Planning() {
 
   const planRoutes: PlanRoute[] = useMemo(() => {
     if (isMock) return MOCK_PLAN_DETAIL[activeScenario]
-    if (!activePlanOption) return []
-    return assignmentsToRoutes(activePlanOption.assignments, activePlanOption.estimated_km ?? 0)
+    if (!activePlanOption?.assignments?.length) return []
+    return assignmentsToRoutes(activePlanOption.assignments, activePlanOption.total_distance_km ?? 0)
   }, [isMock, activeScenario, activePlanOption])
 
   const totalStops   = planRoutes.reduce((s, r) => s + r.stops, 0)
@@ -454,6 +476,37 @@ export default function Planning() {
             Generate, compare and dispatch route plans
           </p>
         </div>
+
+        {/* ── AI-1: Planning Session Panel ─────────────────────────────────── */}
+        <PlanningSessionPanel
+          planDate={planDate}
+          onRunStarted={(runId) => {
+            setProgressRunId(runId)
+            setShowProgress(true)
+          }}
+        />
+
+        {/* ── AI-1: Planning Chat toggle button (when session is OPEN) ──────── */}
+        {sessionForDate?.status === 'OPEN' && (
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowPlanChat((v) => !v)}
+            >
+              <MessageSquare size={13} />
+              {showPlanChat ? 'Close Planning Chat' : 'Planning Chat'}
+            </Button>
+          </div>
+        )}
+
+        {/* ── AI-1: Planning Chat Panel ─────────────────────────────────────── */}
+        {showPlanChat && sessionForDate && (
+          <PlanningChatPanel
+            session={sessionForDate}
+            onClose={() => setShowPlanChat(false)}
+          />
+        )}
 
         {/* AI Planner banner */}
         <div
@@ -581,6 +634,138 @@ export default function Planning() {
           </div>
         )}
 
+        {/* ── Unassigned orders ────────────────────────────────────────────── */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+        >
+          <div className="px-5 py-4 border-b border-[var(--c-border)] flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-[var(--c-text)]">Unassigned Orders</p>
+              <p className="text-xs text-[var(--c-muted)] mt-0.5">{planDate}</p>
+            </div>
+            <span
+              className="text-sm font-bold"
+              style={{ color: unassigned.length > 0 ? 'var(--c-red)' : 'var(--c-green)' }}
+            >
+              {unassigned.length} pending
+            </span>
+          </div>
+
+          {unassigned.length === 0 ? (
+            <EmptyState
+              title="All orders dispatched"
+              subtitle="No unassigned orders for this date — the plan is fully covered."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Address</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Priority</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--c-muted)]">Time Window</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unassigned.slice(0, 12).map((order) => (
+                  <tr
+                    key={order.id}
+                    className="transition-colors"
+                    style={{ borderBottom: '1px solid var(--c-border)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-elevated)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                  >
+                    <td className="px-5 py-3 text-[var(--c-text)] truncate max-w-xs">{order.delivery_address}</td>
+                    <td className="px-5 py-3"><PriorityBadge priority={order.priority} /></td>
+                    <td className="px-5 py-3 text-sm text-[var(--c-muted)] font-mono">
+                      {order.time_window_start ? `${order.time_window_start} – ${order.time_window_end}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {unassigned.length > 12 && (
+                  <tr>
+                    <td colSpan={3} className="px-5 py-3 text-xs text-[var(--c-muted)]">
+                      +{unassigned.length - 12} more orders…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ── Plan Options (PP-E2 / AI-1-T7) ─────────────────────────────── */}
+        {planOptions && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <ListOrdered size={15} style={{ color: 'var(--c-accent)' }} />
+              <p className="text-sm font-bold text-[var(--c-text)]">Choose a Plan</p>
+              <p className="text-xs text-[var(--c-muted)]">Select one of the optimisation strategies below</p>
+              {recommendation && (
+                <span
+                  className="ml-auto text-[11px] font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(167,139,250,0.15)', color: 'var(--c-purple)' }}
+                >
+                  AI recommends: {recommendation}
+                </span>
+              )}
+            </div>
+
+            {/* Savings banner (AI-1-T8) */}
+            {naiveDistanceKm != null && planOptions.length > 1 && (() => {
+              const economical = planOptions.find((o) => o.mode === 'economical')
+              const savedKm = economical
+                ? (naiveDistanceKm - economical.total_distance_km).toFixed(1)
+                : null
+              if (!savedKm || parseFloat(savedKm) <= 0) return null
+              const pct = Math.round(parseFloat(savedKm) / naiveDistanceKm * 100)
+              return (
+                <div
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
+                  style={{ background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.25)' }}
+                >
+                  <Leaf size={14} style={{ color: 'var(--c-green)', flexShrink: 0 }} />
+                  <span style={{ color: 'var(--c-text)' }}>
+                    <span className="font-bold" style={{ color: 'var(--c-green)' }}>
+                      AI saved {savedKm} km ({pct}%)
+                    </span>
+                    {' '}vs unoptimised baseline of {naiveDistanceKm.toFixed(1)} km — less fuel, faster deliveries.
+                  </span>
+                </div>
+              )
+            })()}
+
+            <div className="grid grid-cols-3 gap-4">
+              {planOptions.map((opt) => (
+                <PlanOptionsCard
+                  key={opt.mode}
+                  option={opt}
+                  selected={selectedOption === opt.mode}
+                  recommended={opt.mode === recommendation}
+                  onSelect={() => setSelectedOption(opt.mode)}
+                />
+              ))}
+            </div>
+            {selectedOption && (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => confirmMutation.mutate()}
+                  loading={confirmMutation.isPending}
+                >
+                  <CheckCircle2 size={15} />
+                  Confirm {selectedOption} plan
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setPlanOptions(null); setSelectedOption(null); setRecommendation(null); setNaiveDistanceKm(null) }}
+                >
+                  Discard
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Plan Detail */}
         {hasScenarios && planRoutes.length > 0 && (
           <div
@@ -690,6 +875,29 @@ export default function Planning() {
           </div>
         )}
 
+        {/* ── AI-1: Savings KPI (km_saved / hrs_saved from E2) ─────────────── */}
+        {planResult && ((planResult as PlanResult & { km_saved?: number; hrs_saved?: number }).km_saved ?? 0) > 0 && (() => {
+          const r = planResult as PlanResult & { km_saved?: number; hrs_saved?: number }
+          return (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
+              style={{ background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.25)' }}
+            >
+              <Leaf size={14} style={{ color: 'var(--c-green)', flexShrink: 0 }} />
+              <span style={{ color: 'var(--c-text)' }}>
+                <span className="font-bold" style={{ color: 'var(--c-green)' }}>
+                  AI saved {r.km_saved?.toFixed(1)} km
+                  {r.hrs_saved ? ` · ${r.hrs_saved.toFixed(1)} hrs` : ''}
+                </span>
+                {' '}vs unoptimised naive routing.
+              </span>
+            </div>
+          )
+        })()}
+
+        {/* ── AI-1: Learning Patterns review ───────────────────────────────── */}
+        <LearningPatternsPanel />
+
         {/* Agent reasoning (collapsed, for AI-planner results) */}
         {pollStatus === 'done' && aiResult && (
           <div
@@ -717,6 +925,17 @@ export default function Planning() {
           </div>
         )}
       </div>
+
+      {/* ── AI-1: Planning Progress Panel (WS) ──────────────────────────────── */}
+      <PlanningProgressPanel
+        runId={progressRunId}
+        open={showProgress}
+        onClose={() => setShowProgress(false)}
+        onComplete={() => {
+          // Refresh orders so newly assigned ones disappear from pending list
+          refetchOrders()
+        }}
+      />
 
       {/* ── AI Scenarios Modal ────────────────────────────────────────────────── */}
       <Modal open={showAiModal} onClose={() => setShowAiModal(false)} title="AI Scenario Planning">

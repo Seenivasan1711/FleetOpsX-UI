@@ -25,7 +25,8 @@ const DriverView    = lazy(() => import('../pages/DriverView'))
 const PlanHistory   = lazy(() => import('../pages/PlanHistory'))
 const TrackOrder      = lazy(() => import('../pages/TrackOrder'))
 const UserManagement  = lazy(() => import('../pages/UserManagement'))
-const Profile         = lazy(() => import('../pages/Profile'))
+const PlanningInstructions  = lazy(() => import('../pages/PlanningInstructions'))
+const Profile               = lazy(() => import('../pages/Profile'))
 // ChatPage removed in Phase 6 — Ask AI is now in topbar drawer
 
 const PageLoader = () => (
@@ -71,8 +72,9 @@ export default function AppRoutes() {
           <Route path="/governance"    element={dispatcher(<AuditLog />)} />
           <Route path="/scenarios"     element={dispatcher(<Scenarios />)} />
 
-          <Route path="/admin/ai-providers" element={superadmin(<AiProviders />)} />
-          <Route path="/ai-config"          element={dispatcher(<TenantAiConfig />)} />
+          <Route path="/admin/ai-providers"  element={superadmin(<AiProviders />)} />
+          <Route path="/admin/instructions"  element={dispatcher(<PlanningInstructions />)} />
+          <Route path="/ai-config"           element={dispatcher(<TenantAiConfig />)} />
           <Route path="/plan-history"       element={dispatcher(<PlanHistory />)} />
           <Route path="/team"               element={dispatcher(<UserManagement />)} />
           <Route path="/profile"            element={dispatcher(<Profile />)} />

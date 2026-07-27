@@ -10,17 +10,18 @@
 ## Quick Status ← UPDATE THIS EVERY SESSION
 
 ```
-Last Updated  : 2026-05-05
-Last Worked On: Phase P — ALL 7 epics frontend complete (PP-E1 through PP-E7)
-Current Phase : Phase P – Priority Features (backend endpoints remaining)
-Current Epic  : Phase P Backend — wire up BE endpoints to activate PP-E1/E2/E3/E4/E5
-Next Action   : PP-E5 BE — export/import endpoints (quickest win, no LLM needed)
-               PP-E4 BE — chat LLM endpoint
-               PP-E1/E2 BE — plan confidence + plan options endpoints
-               PP-E3 BE — fleet/availability endpoint + DB migration
-Blocker       : None (all frontends work in demo/fallback mode already)
-Demo Target   : Phase P BE endpoints → Phase 4 (5 enterprise epics)
-Timeline      : Priority phase FE done; BE endpoints first, then Phase 4
+Last Updated  : 2026-05-20
+Last Worked On: Phase 6 – UI/UX Redesign V2 (ALL DONE) + Phase 7 AI brainstorm
+Current Phase : Phase 7 – AI Excellence (3 sub-phases)
+Current Epic  : Phase 7-AI-1 — Planning AI (unblock LangGraph, ground scenarios in OR-Tools)
+Next Action   : Start AI-1 implementation (see Phase 7 section below)
+               1. Fix planning.py planner factory (stop hardcoding ORToolsPlanner)
+               2. Rewrite plan_options_service to use LangGraphPlanner per mode
+               3. Add REPLAN_DRIVER to monitor_agent
+               4. FE: show ai_summary + confidence + warnings on scenario cards
+Blocker       : None
+North Star    : 37% travel reduction, 95km vs 150km — see product_ai_route_optimization memory
+Git State     : FleetOpsX-API 1 commit ahead of origin (push needed); UI clean
 ```
 
 ---
@@ -29,11 +30,14 @@ Timeline      : Priority phase FE done; BE endpoints first, then Phase 4
 
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
-| **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
-| **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
-| **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
-| **Phase P** | Priority Features (NEW) | 🟡 FE complete · BE endpoints needed | Demo-ready polish + power features |
-| **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
+| **Phase 1** | MVP – Assisted Dispatch | ✅ Done | Investor + pilot demo ready |
+| **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done | Pilot customer live |
+| **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done | AI moat for Series A |
+| **Phase P** | Priority Features | ✅ Done | Demo-ready polish + power features |
+| **Phase 4** | Fleet Intelligence Platform | ✅ Done | Enterprise contracts |
+| **Phase 5** | Platform Intelligence & UX | ✅ Done | — |
+| **Phase 6** | UI/UX Redesign V2 | ✅ Done 2026-05-20 | Production-quality UI |
+| **Phase 7** | AI Excellence | 🟡 In Progress | Real agents, not just API calls |
 
 ---
 
@@ -611,3 +615,99 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ---
 
 *Last updated: 2026-04-30*
+
+---
+
+## Phase 7 – AI Excellence
+
+> **North Star (locked product input):** AI finds A→E→S→D→C→G→B→A (95 km, 3.5 hr) vs naive A→B→C→D→E→S→G→A (150 km, 6 hr). **37% travel reduction.** Every AI-1 feature must serve this outcome.
+>
+> **Core principle:** Real agent orchestration — not simple LLM API calls with a context string. LangGraph pipelines, tool-calling, sub-agents, grounded-in-data outputs.
+
+---
+
+### Phase 7 – Sub-Phase Overview
+
+| ID | Sub-Phase | Focus | Status |
+|----|-----------|-------|--------|
+| AI-1 | Planning AI | Unblock LangGraph, ground scenarios in OR-Tools reality, complete monitor agent | ⬜ TODO |
+| AI-2 | Analytics AI | LLM narrative over real ETL data, weekly insights endpoint + UI card | ⬜ TODO |
+| AI-3 | Chat AI | Tool-calling, rich context, SSE streaming | ⬜ TODO |
+
+---
+
+### Phase 7-AI-1 — Planning AI Excellence
+
+**Goal:** Make plan generation truly agentic. Kill hallucinated KPIs. Every scenario card shows real OR-Tools numbers + LLM reasoning grounded in those numbers.
+
+#### Current Architecture Problems
+
+| File | Problem |
+|------|---------|
+| `app/api/v1/planning.py:95,139` | Hardcodes `ORToolsPlanner()` — ignores `PLANNER_TYPE` env var entirely |
+| `app/services/plan_options_service.py` | Uses bare `ORToolsPlanner` per mode — no LLM reasoning, no agent |
+| `app/services/ai_planner_service.py` | LLM **hallucinates** scenario KPIs (total_time_min, fuel_cost) — not from OR-Tools |
+| `app/core/config.py:18` | `PLANNER_TYPE` defaults to `rule_based` — LangGraph/MultiAgent never runs |
+| `app/planners/agents/monitor_agent.py` | Only creates `EARLY_SLA_WARNING` — never creates `REPLAN_DRIVER` |
+
+#### Tasks
+
+| # | Task | File(s) | Notes |
+|---|------|---------|-------|
+| AI-1-T1 | **Planner factory** — `get_planner(db, tenant_id)` returns LangGraph/MultiAgent/ORTools based on `PLANNER_TYPE` | `app/planners/factory.py` (new) | `PLANNER_TYPE`: `langgraph` \| `multi_agent` \| `ortools` \| `rule_based`; change default to `langgraph` |
+| AI-1-T2 | **Wire factory into planning.py** — replace all 3 hardcoded `ORToolsPlanner()` calls | `app/api/v1/planning.py` | `plan_day`, `replan`, confirm all use `get_planner()` |
+| AI-1-T3 | **Rewrite plan_options_service.generate_options()** — run `LangGraphPlanner` per mode; each mode returns real KPIs + `ai_summary` + `confidence_score` + `warnings` | `app/services/plan_options_service.py` | LangGraph already has OR-Tools inside; just run it per mode |
+| AI-1-T4 | **Retire ai_planner_service.py** — replace Celery `ai_scenario_task` with the grounded LangGraph scenario output | `app/services/ai_planner_service.py`, `app/workers/tasks.py` | LLM explains real numbers — no more hardcoded fallback scenarios |
+| AI-1-T5 | **Enhance PlanSummary schema** — add `ai_summary`, `confidence_score`, `reasoning_steps: list[str]`, `warnings: list[str]` | `app/schemas/plan_options.py` | Already returned by LangGraphPlanner |
+| AI-1-T6 | **Monitor agent: add REPLAN_DRIVER** — when ETA overrun > 30 min AND has remaining PENDING stops, create REPLAN_DRIVER suggestion | `app/planners/agents/monitor_agent.py` | Add after EARLY_SLA_WARNING block; use same GPS+haversine logic |
+| AI-1-T7 | **FE Planning UI** — scenario cards show AI badge: confidence%, warnings pill, expandable reasoning steps, ai_summary text | `FleetOpsX-UI/src/pages/Planning.tsx` | Collapse reasoning by default; amber warnings banner if warnings.length > 0 |
+| AI-1-T8 | **FE: "AI saved X km / Y hours"** — show vs-naive-baseline metric on confirm screen and Plan History rows | `Planning.tsx`, `PlanHistory.tsx` | Baseline = sum of nearest-stop naive distances; store in plan metadata |
+
+---
+
+### Phase 7-AI-2 — Analytics AI Narrative
+
+**Goal:** After each ETL run, LLM generates a plain-English fleet performance summary. Dispatcher reads it instead of parsing charts.
+
+#### Tasks
+
+| # | Task | File(s) | Notes |
+|---|------|---------|-------|
+| AI-2-T1 | **`AnalyticsInsight` model** — `(id, tenant_id, period, period_label, narrative, generated_at)` | `app/models/analytics_insight.py` + Alembic migration | `period`: `weekly` \| `daily`; `narrative`: LLM text |
+| AI-2-T2 | **`analytics_insights_service.generate_insight()`** — query KPIs + driver scores + zone on-time rates → build structured context → call LLM → store narrative | `app/services/analytics_insights_service.py` | Grounded in DeliveryAnalytics + DriverPerformanceScore |
+| AI-2-T3 | **Celery task `generate_analytics_insights`** — triggered after ETL task completes | `app/workers/tasks.py` | Chain: `run_etl_task` → `generate_analytics_insights` |
+| AI-2-T4 | **`GET /api/v1/analytics/insights`** — returns latest insight for tenant | `app/api/v1/analytics.py` | Query params: `period=weekly\|daily` |
+| AI-2-T5 | **FE Analytics page: "AI Insights" card** — gradient header, LLM narrative text, "Generated X min ago" timestamp | `FleetOpsX-UI/src/pages/Analytics.tsx` | Show below KPI cards; fallback "Run ETL to generate insights" |
+
+---
+
+### Phase 7-AI-3 — Chat AI Excellence
+
+**Goal:** Ask AI answers real fleet questions using tool-calling. Responses stream token-by-token.
+
+#### Tasks
+
+| # | Task | File(s) | Notes |
+|---|------|---------|-------|
+| AI-3-T1 | **LangChain tools** — 5 DB-query tools: `query_orders`, `query_driver_status`, `query_route_progress`, `query_kpi_summary`, `search_order` | `app/services/chat_tools.py` (new) | Each tool is a `@tool` decorated function with real DB queries |
+| AI-3-T2 | **Wire tools into chat service** — use `llm.bind_tools(tools)` + `ToolNode` in LangGraph; replace simple `llm.invoke()` | `app/services/chat_service.py` | Agent loop: LLM → tool call → result → LLM → final answer |
+| AI-3-T3 | **Richer static context** — replace 5-line summary with structured block: top 5 pending orders (with addresses), all drivers (name + status + route), today's plan progress | `app/services/chat_context_service.py` | Keep under ~800 tokens; truncate order lists |
+| AI-3-T4 | **SSE streaming endpoint** — `POST /chat/stream` → `text/event-stream`, yields tokens as LLM generates | `app/api/v1/chat.py` | `StreamingResponse` + `llm.stream()` |
+| AI-3-T5 | **FE ChatPanel streaming** — consume SSE, append tokens to message bubble in real-time | `FleetOpsX-UI/src/components/ChatPanel.tsx` | `EventSource` or `fetch` with `ReadableStream`; replace spinner with streaming cursor |
+
+---
+
+### Phase 7 – Implementation Order
+
+```
+AI-1-T1 → AI-1-T2 → AI-1-T3 → AI-1-T4 → AI-1-T5   (BE: planning agent)
+AI-1-T6                                                (BE: monitor REPLAN_DRIVER)
+AI-1-T7 → AI-1-T8                                     (FE: scenario card + savings metric)
+
+AI-2-T1 → AI-2-T2 → AI-2-T3 → AI-2-T4               (BE: insights service + endpoint)
+AI-2-T5                                                (FE: analytics insights card)
+
+AI-3-T1 → AI-3-T2 → AI-3-T3                          (BE: tools + richer context)
+AI-3-T4                                                (BE: SSE streaming)
+AI-3-T5                                                (FE: streaming chat)
+```

@@ -113,15 +113,29 @@ export type PlanOptionMode = 'fastest' | 'economical' | 'balanced'
 
 export interface PlanOption {
   mode: PlanOptionMode
-  label: string
-  description: string
   plan_id: string
-  assigned_orders: number
+  orders_covered: number
   total_orders: number
   total_routes: number
-  estimated_km?: number
-  estimated_duration_min?: number
-  assignments: Assignment[]
+  total_distance_km: number
+  est_duration_min: number
+  est_fuel_cost: number
+  // AI-enriched fields — null when no LLM configured
+  ai_summary?: string | null
+  confidence_score?: number | null
+  reasoning_steps?: string[]
+  warnings?: string[]
+  // Legacy FE-only fields for display
+  label?: string
+  description?: string
+  assignments?: Assignment[]
+}
+
+export interface PlanOptionsApiResponse {
+  plan_date: string
+  options: PlanOption[]
+  recommendation?: string | null
+  naive_distance_km?: number | null
 }
 
 export interface AgentLogEntry {
@@ -132,6 +146,94 @@ export interface AgentLogEntry {
   content: string
   llm_provider?: string
   created_at: string
+}
+
+// ── AI-1 Planning types ───────────────────────────────────────────────────────
+
+export type PlanningSessionStatus = 'OPEN' | 'LOCKED' | 'COMPLETED' | 'EXPIRED'
+
+export interface PlanningSession {
+  id: string
+  tenant_id: string
+  plan_date: string
+  status: PlanningSessionStatus
+  current_round: number
+  active_plan_id: string | null
+  accumulated_hints: Record<string, unknown>
+  cutoff_time: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export type RunStatus =
+  | 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+  | 'RETRYING' | 'BLOCKED_WAITING_USER'
+
+export interface RunAgentCheckpoint {
+  agent: string
+  phase: number
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  started_at: string | null
+  completed_at: string | null
+  progress_pct: number
+  result_summary: string | null
+  error: string | null
+}
+
+export interface PlanningRun {
+  id: string
+  session_id: string | null
+  plan_date: string
+  status: RunStatus
+  current_agent: string | null
+  progress_pct: number
+  error_info: string | null
+  checkpoints: RunAgentCheckpoint[]
+  created_at: string
+  completed_at: string | null
+}
+
+export interface PlanningInstruction {
+  id: string
+  tenant_id: string
+  rule_text: string
+  priority: number
+  is_active: boolean
+  created_by: string
+  created_at: string
+}
+
+export type LearningStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
+
+export interface PlanningLearning {
+  id: string
+  tenant_id: string
+  pattern_type: string
+  pattern_text: string
+  trigger_conditions: Record<string, unknown>
+  status: LearningStatus
+  detected_at: string
+  approved_by: string | null
+}
+
+export interface PlanningChatMessage {
+  id: string
+  session_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface PlanningRunEvent {
+  event_type: string
+  run_id: string
+  agent?: string
+  phase?: number
+  status?: string
+  progress_pct?: number
+  message?: string
+  timestamp: string
 }
 
 export interface AgentSuggestion {
